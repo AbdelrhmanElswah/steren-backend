@@ -20,6 +20,7 @@ class CarListing extends Model
         'studio_id',
         'is_sponsored',
         'views',
+        'car_model_id',
     ];
 
     public function brand() {
@@ -44,6 +45,10 @@ class CarListing extends Model
 
     public function badges() {
         return $this->belongsToMany(ListingBadge::class, 'car_listing_badge');
+    }
+
+    public function carModel() {
+        return $this->belongsTo(CarModel::class, 'car_model_id');
     }
 }
 

@@ -20,6 +20,7 @@ return new class extends Migration
             $table->foreignId('location_id')->constrained()->onDelete('cascade');
             $table->foreignId('car_brand_id')->constrained()->onDelete('cascade');
             $table->foreignId('car_body_type_id')->constrained()->onDelete('cascade');
+            $table->foreignId('car_model_id')->nullable()->constrained('car_models')->onDelete('set null');
             $table->foreignId('studio_id')->nullable()->constrained()->nullOnDelete();
             $table->boolean('is_sponsored')->default(false);
             $table->integer('views')->default(0);

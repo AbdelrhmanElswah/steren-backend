@@ -14,5 +14,9 @@ class Studio extends Model
     public function listings() {
         return $this->hasMany(CarListing::class);
     }
+
+    public function location() {
+        return $this->belongsTo(Location::class);
+    }
 }
 
