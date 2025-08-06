@@ -21,6 +21,15 @@ class CarListing extends Model
         'is_sponsored',
         'views',
         'car_model_id',
+        'car_condition_id',
+        'mileage_type_id',
+        'import_type_id',
+        'fuel_type_id',
+        'transmission_id',
+        'exterior_color_id',
+        'drive_type_id',
+        'warranty_status_id',
+        'cylinder_id',
     ];
 
     public function brand() {
@@ -50,5 +59,42 @@ class CarListing extends Model
     public function carModel() {
         return $this->belongsTo(CarModel::class, 'car_model_id');
     }
+
+    public function carCondition() {
+        return $this->belongsTo(CarCondition::class);
+    }
+
+    public function mileageType() {
+        return $this->belongsTo(MileageType::class);
+    }
+
+    public function importType() {
+        return $this->belongsTo(ImportType::class);
+    }
+
+    public function fuelType() {
+        return $this->belongsTo(FuelType::class);
+    }
+
+    public function transmission() {
+        return $this->belongsTo(Transmission::class);
+    }
+
+    public function exteriorColor() {
+        return $this->belongsTo(ExteriorColor::class);
+    }
+
+    public function driveType() {
+        return $this->belongsTo(DriveType::class);
+    }
+
+    public function warrantyStatus() {
+        return $this->belongsTo(WarrantyStatus::class);
+    }
+
+    public function cylinder() {
+        return $this->belongsTo(CylinderOption::class);
+    }
+
 }
 
