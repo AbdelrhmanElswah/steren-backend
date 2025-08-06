@@ -20,5 +20,9 @@ class CarBrand extends Model
     {
         return $this->morphOne(Media::class, 'modelable')->where('info', 'logo');
     }
+
+    public function listings() {
+        return $this->hasMany(CarListing::class);
+    }
 }
 

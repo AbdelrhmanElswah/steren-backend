@@ -15,5 +15,9 @@ class BodyType extends Model
     {
         return $this->hasMany(UserPreference::class);
     }
+
+    public function listings() {
+        return $this->hasMany(CarListing::class);
+    }
 }
 
