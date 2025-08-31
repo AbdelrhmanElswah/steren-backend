@@ -9,7 +9,7 @@ class CarBrand extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name'];
+    protected $fillable = ['name', 'logo_url'];
 
     public function userPreferences()
     {
@@ -22,7 +22,15 @@ class CarBrand extends Model
     }
 
     public function listings() {
-        return $this->hasMany(CarListing::class);
+        return $this->hasMany(CarListing::class, 'car_brand_id');
+    }
+
+    public function carModels() {
+        return $this->hasMany(CarModel::class, 'car_brand_id');
+    }
+
+    public function carSubmissions() {
+        return $this->hasMany(CarSubmission::class, 'car_brand_id');
     }
 }
 

@@ -15,8 +15,16 @@ return new class extends Migration
             $table->id();
             $table->string('title');
             $table->decimal('price', 10, 2);
+            $table->integer('year'); // Year of the car
+            $table->string('trim')->nullable(); // SEL, Limited, etc.
+            $table->integer('doors')->nullable(); // 4dr, 2dr
             $table->integer('mileage');
             $table->string('origin_country');
+            $table->string('condition_type')->default('used'); // For "Used cars" vs "New cars"
+            $table->boolean('has_warranty')->default(false); // For "Warranty" badge
+            $table->boolean('is_inspected')->default(false); // For "Inspected" badge
+            $table->boolean('is_verified')->default(false); // For "Verified" badge
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null'); // Seller
             $table->foreignId('location_id')->constrained()->onDelete('cascade');
             $table->foreignId('car_brand_id')->constrained()->onDelete('cascade');
             $table->foreignId('car_body_type_id')->constrained()->onDelete('cascade');

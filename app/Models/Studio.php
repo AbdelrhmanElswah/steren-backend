@@ -9,7 +9,20 @@ class Studio extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'location_id'];
+    protected $fillable = [
+        'name', 
+        'location_id', 
+        'logo_url', 
+        'description', 
+        'contact_info', 
+        'is_featured',
+        'tagline'
+    ];
+
+    protected $casts = [
+        'contact_info' => 'array',
+        'is_featured' => 'boolean',
+    ];
 
     public function listings() {
         return $this->hasMany(CarListing::class);
@@ -17,6 +30,10 @@ class Studio extends Model
 
     public function location() {
         return $this->belongsTo(Location::class);
+    }
+
+    public function featuredListings() {
+        return $this->hasMany(CarListing::class)->where('is_sponsored', true);
     }
 }
 

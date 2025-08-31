@@ -23,6 +23,20 @@ class DatabaseSeeder extends Seeder
             DriveTypeSeeder::class,
             WarrantyStatusSeeder::class,
             CylinderOptionSeeder::class,
+            PromotionSeeder::class,
+            SafetyTipSeeder::class,
+            ContactMethodSeeder::class,
+            CarTrimSeeder::class,
+            NewsArticleSeeder::class,
+            CarFeatureSeeder::class,
+            ConditionTypeSeeder::class,
+            PromotionTypeSeeder::class,
+            StatusTypeSeeder::class,
+            ReportReasonSeeder::class,
+            SearchHistorySeeder::class,
+            SubscriptionPlanSeeder::class,
+            PaymentMethodSeeder::class,
+            CarListingAnalyticsSeeder::class,
         ]);
     }
 }

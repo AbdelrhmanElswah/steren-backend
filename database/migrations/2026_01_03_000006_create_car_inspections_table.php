@@ -1,0 +1,38 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('car_inspections', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('car_listing_id')->constrained()->onDelete('cascade');
+            $table->foreignId('inspector_id')->nullable()->constrained('users')->onDelete('set null');
+            $table->string('inspection_number')->unique();
+            $table->date('inspection_date');
+            $table->string('status')->default('pending');
+            $table->json('inspection_results')->nullable(); // Detailed inspection data
+            $table->text('notes')->nullable();
+            $table->string('report_url')->nullable(); // Link to inspection report
+            $table->decimal('score', 3, 1)->nullable(); // Overall inspection score (0-100)
+            $table->boolean('is_verified')->default(false);
+            $table->timestamp('verified_at')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('car_inspections');
+    }
+};

@@ -1,0 +1,28 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('car_listings', function (Blueprint $table) {
+            $table->boolean('has_insurance')->default(false)->after('is_verified');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('car_listings', function (Blueprint $table) {
+            $table->dropColumn('has_insurance');
+        });
+    }
+};

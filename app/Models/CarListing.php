@@ -11,9 +11,19 @@ class CarListing extends Model
 
     protected $fillable = [
         'title',
+        'vin',
         'price',
+        'year',
+        'trim',
+        'doors',
         'mileage',
         'origin_country',
+        'condition_type',
+        'has_warranty',
+        'is_inspected',
+        'is_verified',
+        'has_insurance',
+        'user_id',
         'location_id',
         'car_brand_id',
         'car_body_type_id',
@@ -30,7 +40,57 @@ class CarListing extends Model
         'drive_type_id',
         'warranty_status_id',
         'cylinder_id',
+        // New fields
+        'engine_size',
+        'engine_type',
+        'horsepower',
+        'torque',
+        'acceleration_0_100',
+        'top_speed',
+        'seating_capacity',
+        'mileage_efficiency',
+        'length',
+        'width',
+        'height',
+        'status',
+        'is_featured',
+        'is_new_arrival',
+        'description',
+        'features',
+        'specifications',
+        'seller_name',
+        'seller_phone',
+        'seller_email',
+        'sold_at',
+        'featured_at',
     ];
+
+    protected $casts = [
+        'price' => 'decimal:2',
+        'has_warranty' => 'boolean',
+        'is_inspected' => 'boolean',
+        'is_verified' => 'boolean',
+        'has_insurance' => 'boolean',
+        'is_sponsored' => 'boolean',
+        'horsepower' => 'integer',
+        'acceleration_0_100' => 'decimal:1',
+        'top_speed' => 'integer',
+        'seating_capacity' => 'integer',
+        'mileage_efficiency' => 'decimal:2',
+        'length' => 'decimal:2',
+        'width' => 'decimal:2',
+        'height' => 'decimal:2',
+        'is_featured' => 'boolean',
+        'is_new_arrival' => 'boolean',
+        'features' => 'array',
+        'specifications' => 'array',
+        'sold_at' => 'datetime',
+        'featured_at' => 'datetime',
+    ];
+
+    public function user() {
+        return $this->belongsTo(User::class);
+    }
 
     public function brand() {
         return $this->belongsTo(CarBrand::class, 'car_brand_id');
@@ -96,5 +156,273 @@ class CarListing extends Model
         return $this->belongsTo(CylinderOption::class);
     }
 
+    public function carTrim() {
+        return $this->belongsTo(CarTrim::class);
+    }
+
+    public function features() {
+        return $this->belongsToMany(CarFeature::class, 'car_listing_feature')
+                    ->withPivot('is_included', 'notes')
+                    ->withTimestamps();
+    }
+
+    public function specifications() {
+        return $this->hasMany(CarSpecification::class);
+    }
+
+    public function damagedParts()
+    {
+        return $this->belongsToMany(CarPart::class, 'car_listing_damages')
+            ->withPivot('condition')
+            ->withTimestamps();
+    }
+
+    public function favorites() {
+        return $this->belongsToMany(User::class, 'favorites')->withTimestamps();
+    }
+
+    public function isFavoritedBy($userId)
+    {
+        return $this->favorites()->where('user_id', $userId)->exists();
+    }
+
+    public function getFavoriteByUser($userId)
+    {
+        return $this->favorites()->where('user_id', $userId)->first();
+    }
+
+    public function vinDecoder() {
+        return $this->hasOne(VinDecoder::class, 'vin', 'vin');
+    }
+
+    public function inspection() {
+        return $this->hasOne(CarInspection::class);
+    }
+
+    public function carfaxReport() {
+        return $this->hasOne(CarfaxReport::class);
+    }
+
+    public function carDamages() {
+        return $this->hasMany(CarDamage::class);
+    }
+
+    public function reports() {
+        return $this->morphMany(Report::class, 'reportable');
+    }
+
+    /**
+     * Get analytics for this car listing
+     */
+    public function analytics()
+    {
+        return $this->hasMany(CarListingAnalytics::class);
+    }
+
+    /**
+     * Get active boosts for this car listing
+     */
+    public function activeBoosts()
+    {
+        return $this->hasMany(AdBoost::class)->active();
+    }
+
+    /**
+     * Get all boosts for this car listing
+     */
+    public function boosts()
+    {
+        return $this->hasMany(AdBoost::class);
+    }
+
+    // Helper methods for UI
+    public function getFormattedPriceAttribute() {
+        return '$' . number_format($this->price, 0);
+    }
+
+    public function getFormattedViewsAttribute() {
+        if ($this->views >= 1000) {
+            return number_format($this->views / 1000, 1) . 'K Views';
+        }
+        return $this->views . ' Views';
+    }
+
+    public function getFullTitleAttribute() {
+        $parts = [$this->year, $this->brand->name, $this->carModel->name ?? ''];
+        if ($this->trim) {
+            $parts[] = $this->trim;
+        }
+        if ($this->doors) {
+            $parts[] = $this->doors . 'dr';
+        }
+        if ($this->driveType) {
+            $parts[] = $this->driveType->name;
+        }
+        if ($this->transmission) {
+            $parts[] = $this->transmission->name;
+        }
+        
+        return implode(' ', array_filter($parts));
+    }
+
+    public function scopeByVin($query, $vin) {
+        return $query->where('vin', strtoupper($vin));
+    }
+
+    public function scopeSimilar($query, $excludeId = null) {
+        $query = $query->where('car_brand_id', $this->car_brand_id)
+                      ->where('car_model_id', $this->car_model_id)
+                      ->where('year', '>=', $this->year - 2)
+                      ->where('year', '<=', $this->year + 2);
+        
+        if ($excludeId) {
+            $query->where('id', '!=', $excludeId);
+        }
+        
+        return $query;
+    }
+
+    // Badge helper methods
+    public function getActiveBadgesAttribute() {
+        $badges = [];
+        
+        if ($this->has_warranty) {
+            $badges[] = [
+                'text' => 'Warranty',
+                'color' => 'purple',
+                'icon' => 'shield',
+                'description' => 'Manufacturer coverage protects against post-purchase defects.'
+            ];
+        }
+        
+        if ($this->is_verified) {
+            $badges[] = [
+                'text' => 'Verified',
+                'color' => 'blue',
+                'icon' => 'person',
+                'description' => 'Awarded to trusted, long-term, active dealerships only.'
+            ];
+        }
+        
+        if ($this->has_insurance) {
+            $badges[] = [
+                'text' => 'Insurance',
+                'color' => 'blue',
+                'icon' => 'circular_arrow',
+                'description' => 'Drive with confidence, this vehicle is insured, offering added protection and peace of mind after purchase.'
+            ];
+        }
+        
+        if ($this->is_inspected) {
+            $badges[] = [
+                'text' => 'Inspected',
+                'color' => 'green',
+                'icon' => 'eye',
+                'description' => 'This badge means the seller uploaded an inspection.'
+            ];
+        }
+        
+        return $badges;
+    }
+
+    public function getDamageStatusAttribute() {
+        $damages = $this->carDamages;
+        
+        if ($damages->where('status', 'damaged')->count() > 0) {
+            return 'damaged';
+        }
+        
+        if ($damages->where('status', 'needs_repair')->count() > 0) {
+            return 'needs_repair';
+        }
+        
+        if ($damages->where('status', 'repaired')->count() > 0) {
+            return 'repaired';
+        }
+        
+        return 'clean';
+    }
+
+    // Additional helper methods for UI
+    public function getStatusBadgeAttribute() {
+        if ($this->status === 'sold') {
+            return [
+                'text' => 'Sold',
+                'color' => 'red',
+                'icon' => 'check_circle'
+            ];
+        }
+        
+        if ($this->is_sponsored) {
+            return [
+                'text' => 'Sponsored',
+                'color' => 'orange',
+                'icon' => 'star'
+            ];
+        }
+        
+        if ($this->is_new_arrival) {
+            return [
+                'text' => 'New Arrival',
+                'color' => 'green',
+                'icon' => 'new_releases'
+            ];
+        }
+        
+        return null;
+    }
+
+    public function getFormattedMileageAttribute() {
+        if ($this->mileage >= 1000) {
+            return number_format($this->mileage / 1000, 1) . 'K km';
+        }
+        return $this->mileage . ' km';
+    }
+
+    public function getFormattedDimensionsAttribute() {
+        $dimensions = [];
+        if ($this->length) $dimensions[] = $this->length . ' mm';
+        if ($this->width) $dimensions[] = $this->width . ' mm';
+        if ($this->height) $dimensions[] = $this->height . ' mm';
+        
+        return implode(' - ', $dimensions);
+    }
+
+    public function getFormattedMileageEfficiencyAttribute() {
+        return $this->mileage_efficiency ? '~' . $this->mileage_efficiency . ' Km/L' : null;
+    }
+
+    // Scopes for filtering
+    public function scopeActive($query) {
+        return $query->where('status', 'active');
+    }
+
+    public function scopeFeatured($query) {
+        return $query->where('is_featured', true);
+    }
+
+    public function scopeNewArrivals($query) {
+        return $query->where('is_new_arrival', true);
+    }
+
+    public function scopeSponsored($query) {
+        return $query->where('is_sponsored', true);
+    }
+
+    public function scopeByStatus($query, $status) {
+        return $query->where('status', $status);
+    }
+
+    public function scopeByPriceRange($query, $min, $max) {
+        return $query->whereBetween('price', [$min, $max]);
+    }
+
+    public function scopeByYearRange($query, $min, $max) {
+        return $query->whereBetween('year', [$min, $max]);
+    }
+
+    public function scopeByMileageRange($query, $min, $max) {
+        return $query->whereBetween('mileage', [$min, $max]);
+    }
 }
 
