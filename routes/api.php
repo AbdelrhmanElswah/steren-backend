@@ -18,6 +18,21 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+// Auth Routes
+Route::prefix('auth')->group(function () {
+    Route::post('/register', [App\Http\Controllers\Auth\AuthController::class, 'register']);
+    Route::post('/login', [App\Http\Controllers\Auth\AuthController::class, 'login']);
+    Route::post('/send-otp', [App\Http\Controllers\Auth\AuthController::class, 'sendOtp']);
+    Route::post('/verify-otp', [App\Http\Controllers\Auth\AuthController::class, 'verifyOtp']);
+    Route::post('/password/forgot', [App\Http\Controllers\Auth\AuthController::class, 'startPasswordReset']);
+    Route::post('/password/reset', [App\Http\Controllers\Auth\AuthController::class, 'completePasswordReset']);
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/me', [App\Http\Controllers\Auth\AuthController::class, 'me']);
+        Route::post('/logout', [App\Http\Controllers\Auth\AuthController::class, 'logout']);
+    });
+});
+
 // Car Damage Routes - GET only
 Route::prefix('car-damages')->group(function () {
     Route::get('/car-parts', [App\Http\Controllers\Data\CarDamageController::class, 'getCarParts']);
