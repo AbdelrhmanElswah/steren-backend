@@ -11,11 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('search_histories', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('term');
-            $table->timestamps();
+        Schema::table('car_inspections', function (Blueprint $table) {
+            $table->string('odoo_id')->nullable()->unique()->after('id');
+            $table->index('odoo_id');
         });
     }
 
@@ -24,6 +22,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('search_histories');
+        Schema::table('car_inspections', function (Blueprint $table) {
+            $table->dropIndex(['odoo_id']);
+            $table->dropColumn('odoo_id');
+        });
     }
 };

@@ -20,8 +20,8 @@ return new class extends Migration
             $table->decimal('cost', 12, 2);
             $table->string('currency')->default('IQD');
             $table->integer('duration_days'); // How long the boost lasts
-            $table->timestamp('started_at');
-            $table->timestamp('expires_at');
+            $table->timestamp('started_at')->nullable();
+            $table->timestamp('expires_at')->nullable();
             $table->string('status')->default('active'); // active, expired, cancelled
             $table->json('boost_features')->nullable(); // Features included in this boost
             $table->json('payment_details')->nullable(); // Payment information

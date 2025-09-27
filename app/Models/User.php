@@ -5,14 +5,15 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
-        'full_name', 'email', 'phone', 'password', 'language_id', 'otp_code', 'otp_expires_at',
+        'partner_id', 'odoo_id', 'full_name', 'email', 'phone', 'password', 'language_id', 'otp_code', 'otp_expires_at',
         'profile_picture',
         'display_name',
         'birthday',
@@ -168,7 +169,7 @@ class User extends Authenticatable
      */
     public function getDisplayNameAttribute()
     {
-        return $this->display_name ?: $this->full_name ?: $this->name;
+        return $this->attributes['display_name'] ?? $this->full_name ?? $this->name ?? null;
     }
 
     /**

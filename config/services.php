@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'odoo' => [
+        'base_url' => env('ODOO_BASE_URL', 'http://steren-app.test'),
+        'database' => env('ODOO_DATABASE', ''),
+        'username' => env('ODOO_USERNAME', ''),
+        'password' => env('ODOO_PASSWORD', ''),
+        'api_key' => env('ODOO_API_KEY', ''),
+    ],
+
 ];

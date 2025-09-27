@@ -27,7 +27,7 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null'); // Seller
             $table->foreignId('location_id')->constrained()->onDelete('cascade');
             $table->foreignId('car_brand_id')->constrained()->onDelete('cascade');
-            $table->foreignId('car_body_type_id')->constrained()->onDelete('cascade');
+            $table->foreignId('car_body_type_id')->constrained('body_types')->onDelete('cascade');
             $table->foreignId('car_model_id')->nullable()->constrained('car_models')->onDelete('set null');
             $table->foreignId('car_condition_id')->nullable()->constrained('car_conditions')->nullOnDelete();
             $table->foreignId('mileage_type_id')->nullable()->constrained('mileage_types')->nullOnDelete();

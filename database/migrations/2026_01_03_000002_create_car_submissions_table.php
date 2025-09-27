@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Schema\Blueprint;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -25,7 +25,7 @@ return new class extends Migration
             $table->string('condition_type')->default('used');
             $table->foreignId('car_brand_id')->constrained()->onDelete('cascade');
             $table->foreignId('car_model_id')->nullable()->constrained('car_models')->onDelete('set null');
-            $table->foreignId('car_body_type_id')->constrained()->onDelete('cascade');
+            $table->foreignId('car_body_type_id')->constrained('body_types')->onDelete('cascade');
             $table->foreignId('car_condition_id')->nullable()->constrained('car_conditions')->nullOnDelete();
             $table->foreignId('mileage_type_id')->nullable()->constrained('mileage_types')->nullOnDelete();
             $table->foreignId('import_type_id')->nullable()->constrained('import_types')->nullOnDelete();

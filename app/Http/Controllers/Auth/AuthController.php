@@ -4,13 +4,20 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Http\Resources\PartnerResource;
+use App\Http\Resources\OdooIntegrationResource;
 use App\Services\AuthService;
+use App\Services\OdooService;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SendOtpRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
 use App\Http\Requests\Auth\StartPasswordResetRequest;
 use App\Http\Requests\Auth\CompletePasswordResetRequest;
+use App\Http\Requests\Auth\UpdatePartnerRequest;
+use App\Exceptions\OdooConnectionException;
+use App\Exceptions\OdooPartnerCreationException;
+use App\Exceptions\OdooOtpVerificationException;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,8 +27,10 @@ class AuthController extends Controller
 {
     use ApiResponse;
 
-    public function __construct(private AuthService $authService)
-    {
+    public function __construct(
+        private AuthService $authService,
+        private OdooService $odooService
+    ) {
     }
 
     public function register(RegisterRequest $request)
@@ -59,6 +68,7 @@ class AuthController extends Controller
         return $this->successResponse([
             'user' => new UserResource($result['user']),
             'token' => $result['token'],
+            'odoo_integration' => new OdooIntegrationResource($result['odoo_integration']),
         ], 'Verified');
     }
 
@@ -85,6 +95,55 @@ class AuthController extends Controller
         $this->authService->completePasswordReset($validated['phone'], $validated['code'], $validated['password']);
         return $this->successResponse(null, 'Password updated');
     }
+
+    public function getPartnerInfo(Request $request)
+    {
+        $user = $request->user();
+        
+        if (!$user->partner_id) {
+            return $this->errorResponse('No partner ID found for this user', 404);
+        }
+
+        try {
+            $result = $this->odooService->getPartnerInfo($user->partner_id);
+            
+            if ($result['success']) {
+                return $this->successResponse(
+                    new PartnerResource($result['partner']), 
+                    'Partner information retrieved'
+                );
+            }
+
+            return $this->errorResponse($result['message'], 400);
+        } catch (OdooConnectionException $e) {
+            return $this->serviceUnavailableResponse('Unable to retrieve partner information: ' . $e->getMessage());
+        }
+    }
+
+    public function updatePartnerInfo(UpdatePartnerRequest $request)
+    {
+        $user = $request->user();
+        
+        if (!$user->partner_id) {
+            return $this->errorResponse('No partner ID found for this user', 404);
+        }
+
+        $validated = $request->validated();
+
+        try {
+            $result = $this->odooService->updatePartner($user->partner_id, $validated);
+            
+            if ($result['success']) {
+                $user->update($validated);
+                return $this->successResponse(null, 'Partner information updated');
+            }
+
+            return $this->errorResponse($result['message'], 400);
+        } catch (OdooConnectionException $e) {
+            return $this->serviceUnavailableResponse('Unable to update partner information: ' . $e->getMessage());
+        }
+    }
+
 }
 
 

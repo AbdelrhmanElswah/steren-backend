@@ -15,17 +15,9 @@ class ConditionTypeSeeder extends Seeder
         $conditionTypes = [
             [
                 'name' => 'New',
-                'value' => 'new',
-                'description' => 'Brand new vehicles',
-                'is_active' => true,
-                'sort_order' => 1,
             ],
             [
                 'name' => 'Used',
-                'value' => 'used',
-                'description' => 'Previously owned vehicles',
-                'is_active' => true,
-                'sort_order' => 2,
             ],
         ];
 

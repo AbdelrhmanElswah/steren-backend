@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Schema\Blueprint;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -28,14 +28,14 @@ return new class extends Migration
         // Add missing fields to cities table if needed
         if (!Schema::hasColumn('cities', 'country_id')) {
             Schema::table('cities', function (Blueprint $table) {
-                $table->foreignId('country_id')->nullable()->constrained()->onDelete('set null')->after('name');
+                $table->unsignedBigInteger('country_id')->nullable()->after('name');
             });
         }
 
         // Add missing fields to media table if needed
         if (!Schema::hasColumn('media', 'order')) {
             Schema::table('media', function (Blueprint $table) {
-                $table->integer('order')->default(0)->after('url');
+                $table->integer('order')->default(0)->after('media');
             });
         }
     }
@@ -54,7 +54,6 @@ return new class extends Migration
         });
 
         Schema::table('cities', function (Blueprint $table) {
-            $table->dropForeign(['country_id']);
             $table->dropColumn('country_id');
         });
 
