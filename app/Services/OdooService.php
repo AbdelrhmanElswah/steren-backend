@@ -78,10 +78,12 @@ class OdooService
 
             if ($response->successful()) {
                 $data = $response->json();
-                if (!($data['success'] ?? false)) {
-                    throw new OdooOtpVerificationException($data['message'] ?? 'OTP verification failed');
+                
+                if (isset($data['result']) && $data['result']['success']) {
+                    return;
                 }
-                return;
+
+                throw new OdooOtpVerificationException($data['result']['message'] ?? 'OTP verification failed');
             }
 
             if ($response->status() >= 500) {
@@ -115,13 +117,20 @@ class OdooService
 
             if ($response->successful()) {
                 $data = $response->json();
-                $partnerId = $data['partner_id'] ?? null;
                 
-                if (!$partnerId) {
-                    throw new OdooPartnerCreationException('Partner created but no partner ID returned');
+                // Handle the JSON-RPC response structure
+                if (isset($data['result']) && $data['result']['success']) {
+                    $partnerInfo = $data['result']['data'];
+                    $partnerId = $partnerInfo['id'] ?? null;
+                    
+                    if (!$partnerId) {
+                        throw new OdooPartnerCreationException('Partner created but no partner ID returned');
+                    }
+                    
+                    return (string) $partnerId;
                 }
-                
-                return $partnerId;
+
+                throw new OdooPartnerCreationException('Partner creation failed: ' . ($data['result']['message'] ?? 'Unknown error'));
             }
 
             if ($response->status() >= 500) {
@@ -129,12 +138,13 @@ class OdooService
             }
 
             $errorData = $response->json();
-            $errors = $errorData['errors'] ?? ['Failed to create partner'];
+            $errorMessage = 'Failed to create partner in Odoo';
             
-            throw new OdooPartnerCreationException(
-                $errorData['message'] ?? 'Failed to create partner in Odoo',
-                $errors
-            );
+            if (isset($errorData['result']['message'])) {
+                $errorMessage = $errorData['result']['message'];
+            }
+            
+            throw new OdooPartnerCreationException($errorMessage);
 
         } catch (OdooPartnerCreationException|OdooConnectionException $e) {
             throw $e;
@@ -169,10 +179,18 @@ class OdooService
 
             if ($response->successful()) {
                 $data = $response->json();
+                
+                if (isset($data['result']) && $data['result']['success']) {
+                    return [
+                        'success' => true,
+                        'partner' => $data['result']['data'] ?? null,
+                        'message' => $data['result']['message'] ?? 'Partner retrieved successfully'
+                    ];
+                }
+
                 return [
-                    'success' => true,
-                    'partner' => $data['partner'] ?? null,
-                    'message' => $data['message'] ?? 'Partner retrieved successfully'
+                    'success' => false,
+                    'message' => $data['result']['message'] ?? 'Failed to retrieve partner'
                 ];
             }
 
@@ -211,9 +229,18 @@ class OdooService
 
             if ($response->successful()) {
                 $data = $response->json();
+                
+                // Handle the JSON-RPC response structure
+                if (isset($data['result']) && $data['result']['success']) {
+                    return [
+                        'success' => true,
+                        'message' => $data['result']['message'] ?? 'Partner updated successfully'
+                    ];
+                }
+
                 return [
-                    'success' => true,
-                    'message' => $data['message'] ?? 'Partner updated successfully'
+                    'success' => false,
+                    'message' => $data['result']['message'] ?? 'Failed to update partner'
                 ];
             }
 
@@ -237,6 +264,60 @@ class OdooService
             ]);
 
             throw new OdooConnectionException('Unable to update partner in Odoo: ' . $e->getMessage(), 0, $e);
+        }
+    }
+    public function createClient(array $clientData): array
+    {
+        try {
+            $response = Http::timeout(30)->withHeaders([
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer ' . $this->apiKey,
+            ])->post($this->baseUrl . '/api/client/create', [
+                'full_name' => $clientData['full_name'],
+                'phone' => $clientData['phone'],
+                'email' => $clientData['email'],
+                'database' => $this->database
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                if (isset($data['result']) && $data['result']['success']) {
+                    $clientInfo = $data['result']['data'];
+                    
+                    return [
+                        'success' => true,
+                        'message' => $data['result']['message'] ?? 'Client created successfully',
+                        'odoo_client_id' => $clientInfo['id'],
+                        'client_data' => $clientInfo
+                    ];
+                }
+
+                throw new OdooPartnerCreationException('Client creation failed: ' . ($data['result']['message'] ?? 'Unknown error'));
+            }
+
+            if ($response->status() >= 500) {
+                throw new OdooConnectionException('Odoo service is temporarily unavailable');
+            }
+
+            $errorData = $response->json();
+            $errorMessage = 'Failed to create client in Odoo';
+            
+            if (isset($errorData['result']['message'])) {
+                $errorMessage = $errorData['result']['message'];
+            }
+            
+            throw new OdooPartnerCreationException($errorMessage);
+
+        } catch (OdooPartnerCreationException|OdooConnectionException $e) {
+            throw $e;
+        } catch (Exception $e) {
+            Log::error('Odoo client creation failed', [
+                'client_data' => $clientData,
+                'error' => $e->getMessage()
+            ]);
+
+            throw new OdooConnectionException('Unable to create client in Odoo: ' . $e->getMessage(), 0, $e);
         }
     }
 }

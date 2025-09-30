@@ -11,9 +11,9 @@ class CarInspectionResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'odoo_id' => $this->odoo_id,,
-            'car_listing_id' => $this->car_listing_id,,
-            'inspector_name' => $this->inspector_name,,
+            'odoo_id' => $this->odoo_id,
+            'car_listing_id' => $this->car_listing_id,
+            'inspector_name' => $this->inspector_name,
             'inspection_date' => $this->inspection_date,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

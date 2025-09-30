@@ -8,10 +8,11 @@ use App\Http\Requests\Api\Odoo\UpdateCarModelRequest;
 use App\Http\Resources\Api\Odoo\CarModelResource;
 use App\Services\Odoo\CarModelService;
 use App\Traits\ApiResponse;
+use App\Traits\OdooFetchTrait;
 
 class CarModelController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, OdooFetchTrait;
 
     public function __construct(
         private CarModelService $CarModelService
@@ -38,13 +39,31 @@ class CarModelController extends Controller
         $this->CarModelService->deleteByOdooId($odooId);
 
         return $this->noContentResponse('CarModel deleted successfully');
-    }public function restoreByOdooId(string $odooId)
+    }
+
+    public function restoreByOdooId(string $odooId)
     {
         $CarModel = $this->CarModelService->restoreByOdooId($odooId);
 
         return $this->successResponse(
             new CarModelResource($CarModel),
             'CarModel restored successfully'
+        );
+    }
+
+    /**
+     * Fetch car models from regular database for user end
+     */
+    public function getCarModels(\Illuminate\Http\Request $request)
+    {
+        return $this->fetchModelData(
+            \App\Models\CarModel::class,
+            'car_models',
+            $request,
+            [
+                'with' => ['carBrand'],
+                'customFields' => ['car_brand_id'],
+            ]
         );
     }
 }

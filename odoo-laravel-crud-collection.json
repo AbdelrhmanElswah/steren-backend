@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Odoo-Laravel CRUD Collection",
-    "description": "Complete CRUD operations for Odoo integration with Laravel backend - Odoo ID based only",
+    "description": "Complete CRUD operations for Odoo integration with Laravel backend - All POST methods",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -20,6 +20,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -36,7 +40,7 @@
         {
           "name": "Update City by Odoo ID",
           "request": {
-            "method": "PUT",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -45,6 +49,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -52,26 +60,30 @@
               "raw": "{\n  \"name\": \"Updated City Name\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/odoo/cities/odoo/odoo_city_123",
+              "raw": "{{base_url}}/api/odoo/cities/odoo/odoo_city_123/update",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "cities", "odoo", "odoo_city_123"]
+              "path": ["api", "odoo", "cities", "odoo", "odoo_city_123", "update"]
             }
           }
         },
         {
           "name": "Delete City by Odoo ID",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/odoo/cities/odoo/odoo_city_123",
+              "raw": "{{base_url}}/api/odoo/cities/odoo/odoo_city_123/delete",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "cities", "odoo", "odoo_city_123"]
+              "path": ["api", "odoo", "cities", "odoo", "odoo_city_123", "delete"]
             }
           }
         },
@@ -83,6 +95,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
@@ -109,6 +125,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -125,7 +145,7 @@
         {
           "name": "Update Car Brand by Odoo ID",
           "request": {
-            "method": "PUT",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -134,6 +154,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -141,26 +165,30 @@
               "raw": "{\n  \"name\": \"Updated Brand Name\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/odoo/car-brands/odoo/odoo_brand_123",
+              "raw": "{{base_url}}/api/odoo/car-brands/odoo/odoo_brand_123/update",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "car-brands", "odoo", "odoo_brand_123"]
+              "path": ["api", "odoo", "car-brands", "odoo", "odoo_brand_123", "update"]
             }
           }
         },
         {
           "name": "Delete Car Brand by Odoo ID",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/odoo/car-brands/odoo/odoo_brand_123",
+              "raw": "{{base_url}}/api/odoo/car-brands/odoo/odoo_brand_123/delete",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "car-brands", "odoo", "odoo_brand_123"]
+              "path": ["api", "odoo", "car-brands", "odoo", "odoo_brand_123", "delete"]
             }
           }
         },
@@ -172,6 +200,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
@@ -198,6 +230,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -214,7 +250,7 @@
         {
           "name": "Update Car Model by Odoo ID",
           "request": {
-            "method": "PUT",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -223,6 +259,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -230,26 +270,30 @@
               "raw": "{\n  \"name\": \"Updated Model Name\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/odoo/car-models/odoo/odoo_model_123",
+              "raw": "{{base_url}}/api/odoo/car-models/odoo/odoo_model_123/update",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "car-models", "odoo", "odoo_model_123"]
+              "path": ["api", "odoo", "car-models", "odoo", "odoo_model_123", "update"]
             }
           }
         },
         {
           "name": "Delete Car Model by Odoo ID",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/odoo/car-models/odoo/odoo_model_123",
+              "raw": "{{base_url}}/api/odoo/car-models/odoo/odoo_model_123/delete",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "car-models", "odoo", "odoo_model_123"]
+              "path": ["api", "odoo", "car-models", "odoo", "odoo_model_123", "delete"]
             }
           }
         },
@@ -261,6 +305,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
@@ -287,6 +335,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -303,7 +355,7 @@
         {
           "name": "Update Location by Odoo ID",
           "request": {
-            "method": "PUT",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -312,6 +364,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -319,26 +375,30 @@
               "raw": "{\n  \"name\": \"Updated Location Name\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/odoo/locations/odoo/odoo_location_123",
+              "raw": "{{base_url}}/api/odoo/locations/odoo/odoo_location_123/update",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "locations", "odoo", "odoo_location_123"]
+              "path": ["api", "odoo", "locations", "odoo", "odoo_location_123", "update"]
             }
           }
         },
         {
           "name": "Delete Location by Odoo ID",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/odoo/locations/odoo/odoo_location_123",
+              "raw": "{{base_url}}/api/odoo/locations/odoo/odoo_location_123/delete",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "locations", "odoo", "odoo_location_123"]
+              "path": ["api", "odoo", "locations", "odoo", "odoo_location_123", "delete"]
             }
           }
         },
@@ -350,6 +410,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
@@ -376,6 +440,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -392,7 +460,7 @@
         {
           "name": "Update Studio by Odoo ID",
           "request": {
-            "method": "PUT",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -401,6 +469,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -408,26 +480,30 @@
               "raw": "{\n  \"name\": \"Updated Studio Name\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/odoo/studios/odoo/odoo_studio_123",
+              "raw": "{{base_url}}/api/odoo/studios/odoo/odoo_studio_123/update",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "studios", "odoo", "odoo_studio_123"]
+              "path": ["api", "odoo", "studios", "odoo", "odoo_studio_123", "update"]
             }
           }
         },
         {
           "name": "Delete Studio by Odoo ID",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/odoo/studios/odoo/odoo_studio_123",
+              "raw": "{{base_url}}/api/odoo/studios/odoo/odoo_studio_123/delete",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "studios", "odoo", "odoo_studio_123"]
+              "path": ["api", "odoo", "studios", "odoo", "odoo_studio_123", "delete"]
             }
           }
         },
@@ -439,6 +515,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
@@ -465,6 +545,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -481,7 +565,7 @@
         {
           "name": "Update User by Odoo ID",
           "request": {
-            "method": "PUT",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -490,6 +574,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -497,26 +585,30 @@
               "raw": "{\n  \"full_name\": \"Updated Name\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/odoo/users/odoo/odoo_user_123",
+              "raw": "{{base_url}}/api/odoo/users/odoo/odoo_user_123/update",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "users", "odoo", "odoo_user_123"]
+              "path": ["api", "odoo", "users", "odoo", "odoo_user_123", "update"]
             }
           }
         },
         {
           "name": "Delete User by Odoo ID",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/odoo/users/odoo/odoo_user_123",
+              "raw": "{{base_url}}/api/odoo/users/odoo/odoo_user_123/delete",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "users", "odoo", "odoo_user_123"]
+              "path": ["api", "odoo", "users", "odoo", "odoo_user_123", "delete"]
             }
           }
         },
@@ -528,6 +620,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
@@ -554,6 +650,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -570,7 +670,7 @@
         {
           "name": "Update Car Listing by Odoo ID",
           "request": {
-            "method": "PUT",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -579,6 +679,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -586,26 +690,30 @@
               "raw": "{\n  \"title\": \"Updated Car Title\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/odoo/car-listings/odoo/odoo_listing_123",
+              "raw": "{{base_url}}/api/odoo/car-listings/odoo/odoo_listing_123/update",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "car-listings", "odoo", "odoo_listing_123"]
+              "path": ["api", "odoo", "car-listings", "odoo", "odoo_listing_123", "update"]
             }
           }
         },
         {
           "name": "Delete Car Listing by Odoo ID",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/odoo/car-listings/odoo/odoo_listing_123",
+              "raw": "{{base_url}}/api/odoo/car-listings/odoo/odoo_listing_123/delete",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "car-listings", "odoo", "odoo_listing_123"]
+              "path": ["api", "odoo", "car-listings", "odoo", "odoo_listing_123", "delete"]
             }
           }
         },
@@ -617,6 +725,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
@@ -643,6 +755,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -659,7 +775,7 @@
         {
           "name": "Update Car Submission by Odoo ID",
           "request": {
-            "method": "PUT",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -668,6 +784,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -675,26 +795,30 @@
               "raw": "{\n  \"car_brand_id\": 2\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/odoo/car-submissions/odoo/odoo_submission_123",
+              "raw": "{{base_url}}/api/odoo/car-submissions/odoo/odoo_submission_123/update",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "car-submissions", "odoo", "odoo_submission_123"]
+              "path": ["api", "odoo", "car-submissions", "odoo", "odoo_submission_123", "update"]
             }
           }
         },
         {
           "name": "Delete Car Submission by Odoo ID",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/odoo/car-submissions/odoo/odoo_submission_123",
+              "raw": "{{base_url}}/api/odoo/car-submissions/odoo/odoo_submission_123/delete",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "car-submissions", "odoo", "odoo_submission_123"]
+              "path": ["api", "odoo", "car-submissions", "odoo", "odoo_submission_123", "delete"]
             }
           }
         },
@@ -706,6 +830,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
@@ -732,6 +860,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -748,7 +880,7 @@
         {
           "name": "Update Car Inspection by Odoo ID",
           "request": {
-            "method": "PUT",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -757,6 +889,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -764,26 +900,30 @@
               "raw": "{\n  \"inspector_name\": \"Updated Inspector\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/odoo/car-inspections/odoo/odoo_inspection_123",
+              "raw": "{{base_url}}/api/odoo/car-inspections/odoo/odoo_inspection_123/update",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "car-inspections", "odoo", "odoo_inspection_123"]
+              "path": ["api", "odoo", "car-inspections", "odoo", "odoo_inspection_123", "update"]
             }
           }
         },
         {
           "name": "Delete Car Inspection by Odoo ID",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/odoo/car-inspections/odoo/odoo_inspection_123",
+              "raw": "{{base_url}}/api/odoo/car-inspections/odoo/odoo_inspection_123/delete",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "car-inspections", "odoo", "odoo_inspection_123"]
+              "path": ["api", "odoo", "car-inspections", "odoo", "odoo_inspection_123", "delete"]
             }
           }
         },
@@ -795,6 +935,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
@@ -821,6 +965,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -837,7 +985,7 @@
         {
           "name": "Update Carfax Report by Odoo ID",
           "request": {
-            "method": "PUT",
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -846,6 +994,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "body": {
@@ -853,26 +1005,30 @@
               "raw": "{\n  \"report_data\": \"{\\\"accidents\\\": 1, \\\"owners\\\": 2}\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/odoo/carfax-reports/odoo/odoo_carfax_123",
+              "raw": "{{base_url}}/api/odoo/carfax-reports/odoo/odoo_carfax_123/update",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "carfax-reports", "odoo", "odoo_carfax_123"]
+              "path": ["api", "odoo", "carfax-reports", "odoo", "odoo_carfax_123", "update"]
             }
           }
         },
         {
           "name": "Delete Carfax Report by Odoo ID",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/odoo/carfax-reports/odoo/odoo_carfax_123",
+              "raw": "{{base_url}}/api/odoo/carfax-reports/odoo/odoo_carfax_123/delete",
               "host": ["{{base_url}}"],
-              "path": ["api", "odoo", "carfax-reports", "odoo", "odoo_carfax_123"]
+              "path": ["api", "odoo", "carfax-reports", "odoo", "odoo_carfax_123", "delete"]
             }
           }
         },
@@ -884,6 +1040,10 @@
               {
                 "key": "Accept",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
               }
             ],
             "url": {

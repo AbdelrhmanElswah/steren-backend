@@ -18,56 +18,71 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::prefix('odoo')->group(function () {
+Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('car-listings', [App\Http\Controllers\Api\Odoo\CarListingController::class, 'store']);
-    Route::put('car-listings/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CarListingController::class, 'updateByOdooId']);
-    Route::delete('car-listings/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CarListingController::class, 'deleteByOdooId']);
+    Route::post('car-listings/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarListingController::class, 'updateByOdooId']);
+    Route::post('car-listings/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarListingController::class, 'deleteByOdooId']);
     Route::post('car-listings/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarListingController::class, 'restoreByOdooId']);
     
     Route::post('car-submissions', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'store']);
-    Route::put('car-submissions/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'updateByOdooId']);
-    Route::delete('car-submissions/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'deleteByOdooId']);
+    Route::post('car-submissions/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'updateByOdooId']);
+    Route::post('car-submissions/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'deleteByOdooId']);
     Route::post('car-submissions/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'restoreByOdooId']);
     
     Route::post('car-inspections', [App\Http\Controllers\Api\Odoo\CarInspectionController::class, 'store']);
-    Route::put('car-inspections/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CarInspectionController::class, 'updateByOdooId']);
-    Route::delete('car-inspections/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CarInspectionController::class, 'deleteByOdooId']);
+    Route::post('car-inspections/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarInspectionController::class, 'updateByOdooId']);
+    Route::post('car-inspections/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarInspectionController::class, 'deleteByOdooId']);
     Route::post('car-inspections/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarInspectionController::class, 'restoreByOdooId']);
     
     Route::post('carfax-reports', [App\Http\Controllers\Api\Odoo\CarfaxReportController::class, 'store']);
-    Route::put('carfax-reports/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CarfaxReportController::class, 'updateByOdooId']);
-    Route::delete('carfax-reports/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CarfaxReportController::class, 'deleteByOdooId']);
+    Route::post('carfax-reports/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarfaxReportController::class, 'updateByOdooId']);
+    Route::post('carfax-reports/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarfaxReportController::class, 'deleteByOdooId']);
     Route::post('carfax-reports/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarfaxReportController::class, 'restoreByOdooId']);
     
     Route::post('cities', [App\Http\Controllers\Api\Odoo\CityController::class, 'store']);
-    Route::put('cities/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CityController::class, 'updateByOdooId']);
-    Route::delete('cities/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CityController::class, 'deleteByOdooId']);
+    Route::post('cities/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CityController::class, 'updateByOdooId']);
+    Route::post('cities/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CityController::class, 'deleteByOdooId']);
     Route::post('cities/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CityController::class, 'restoreByOdooId']);
     
     Route::post('car-brands', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'store']);
-    Route::put('car-brands/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'updateByOdooId']);
-    Route::delete('car-brands/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'deleteByOdooId']);
+    Route::post('car-brands/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'updateByOdooId']);
+    Route::post('car-brands/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'deleteByOdooId']);
     Route::post('car-brands/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'restoreByOdooId']);
     
     Route::post('car-models', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'store']);
-    Route::put('car-models/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'updateByOdooId']);
-    Route::delete('car-models/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'deleteByOdooId']);
+    Route::post('car-models/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'updateByOdooId']);
+    Route::post('car-models/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'deleteByOdooId']);
     Route::post('car-models/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'restoreByOdooId']);
     
     Route::post('locations', [App\Http\Controllers\Api\Odoo\LocationController::class, 'store']);
-    Route::put('locations/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\LocationController::class, 'updateByOdooId']);
-    Route::delete('locations/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\LocationController::class, 'deleteByOdooId']);
+    Route::post('locations/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\LocationController::class, 'updateByOdooId']);
+    Route::post('locations/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\LocationController::class, 'deleteByOdooId']);
     Route::post('locations/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\LocationController::class, 'restoreByOdooId']);
     
     Route::post('studios', [App\Http\Controllers\Api\Odoo\StudioController::class, 'store']);
-    Route::put('studios/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\StudioController::class, 'updateByOdooId']);
-    Route::delete('studios/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\StudioController::class, 'deleteByOdooId']);
+    Route::post('studios/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\StudioController::class, 'updateByOdooId']);
+    Route::post('studios/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\StudioController::class, 'deleteByOdooId']);
     Route::post('studios/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\StudioController::class, 'restoreByOdooId']);
     
     Route::post('users', [App\Http\Controllers\Api\Odoo\UserController::class, 'store']);
-    Route::put('users/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\UserController::class, 'updateByOdooId']);
-    Route::delete('users/odoo/{odooId}', [App\Http\Controllers\Api\Odoo\UserController::class, 'deleteByOdooId']);
+    Route::post('users/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\UserController::class, 'updateByOdooId']);
+    Route::post('users/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\UserController::class, 'deleteByOdooId']);
     Route::post('users/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\UserController::class, 'restoreByOdooId']);
+});
+
+// Odoo Data Fetch Routes (GET requests to fetch from regular database)
+Route::prefix('odoo')->group(function () {
+    Route::get('brands', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'getBrands']);
+    Route::get('cities', [App\Http\Controllers\Api\Odoo\CityController::class, 'getCities']);
+    Route::get('car-models', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'getCarModels']);
+    Route::get('locations', [App\Http\Controllers\Api\Odoo\LocationController::class, 'getLocations']);
+    Route::get('studios', [App\Http\Controllers\Api\Odoo\StudioController::class, 'getStudios']);
+});
+
+// Client Routes
+Route::prefix('client')->group(function () {
+    Route::post('create', [App\Http\Controllers\Api\Client\ClientController::class, 'create']);
+    Route::get('partner/{partnerId}', [App\Http\Controllers\Api\Client\ClientController::class, 'getByPartnerId']);
 });
 
 // Auth Routes

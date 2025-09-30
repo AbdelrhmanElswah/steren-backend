@@ -25,7 +25,9 @@ class CarInspectionController extends Controller
             new CarInspectionResource($CarInspection),
             'CarInspection created successfully'
         );
-    }public function updateByOdooId(UpdateCarInspectionRequest $request, string $odooId)
+    }
+
+    public function updateByOdooId(UpdateCarInspectionRequest $request, string $odooId)
     {
         $CarInspection = $this->CarInspectionService->updateByOdooId($odooId, $request->validated());
 
@@ -33,12 +35,16 @@ class CarInspectionController extends Controller
             new CarInspectionResource($CarInspection),
             'CarInspection updated successfully'
         );
-    }public function deleteByOdooId(string $odooId)
+    }
+
+    public function deleteByOdooId(string $odooId)
     {
         $this->CarInspectionService->deleteByOdooId($odooId);
 
         return $this->noContentResponse('CarInspection deleted successfully');
-    }public function restoreByOdooId(string $odooId)
+    }
+
+    public function restoreByOdooId(string $odooId)
     {
         $CarInspection = $this->CarInspectionService->restoreByOdooId($odooId);
 

@@ -10,7 +10,7 @@ class CarBrand extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['odoo_id', 'name', 'logo_url'];
+    protected $fillable = ['odoo_id', 'name'];
 
     public function userPreferences()
     {

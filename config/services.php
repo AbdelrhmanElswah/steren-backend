@@ -36,7 +36,7 @@ return [
     ],
 
     'odoo' => [
-        'base_url' => env('ODOO_BASE_URL', 'http://steren-app.test'),
+        'base_url' => env('ODOO_BASE_URL', 'https://odoo-clients.teleoceans.cloud'),
         'database' => env('ODOO_DATABASE', ''),
         'username' => env('ODOO_USERNAME', ''),
         'password' => env('ODOO_PASSWORD', ''),

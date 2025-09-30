@@ -5,6 +5,7 @@ namespace App\Exceptions;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class OdooConnectionException extends Exception
 {
@@ -18,14 +19,28 @@ class OdooConnectionException extends Exception
 
     public function render(Request $request): JsonResponse
     {
-        return response()->json([
+        $errorData = [
             'success' => false,
             'error' => [
                 'code' => $this->errorCode,
                 'message' => $this->getMessage(),
                 'status_code' => $this->statusCode,
+                'timestamp' => now()->toISOString(),
+                'request_id' => $request->header('X-Request-ID', uniqid()),
+                'endpoint' => $request->fullUrl(),
+                'method' => $request->method(),
             ],
-        ], $this->statusCode);
+        ];
+
+        Log::error('Odoo Connection Error', [
+            'error_code' => $this->errorCode,
+            'message' => $this->getMessage(),
+            'request' => $request->all(),
+            'url' => $request->fullUrl(),
+            'timestamp' => now()->toISOString(),
+        ]);
+
+        return response()->json($errorData, $this->statusCode);
     }
 
     public function getStatusCode(): int

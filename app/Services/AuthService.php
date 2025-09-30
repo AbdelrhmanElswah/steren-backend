@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Services\OdooService;
+use App\Services\ClientService;
 use App\Exceptions\OdooConnectionException;
 use App\Exceptions\OdooPartnerCreationException;
 use App\Exceptions\OdooOtpVerificationException;
@@ -18,8 +19,10 @@ class AuthService
 {
     use OtpHelper;
 
-    public function __construct(private OdooService $odooService)
-    {
+    public function __construct(
+        private OdooService $odooService,
+        private ClientService $clientService
+    ) {
     }
 
     public function register(array $payload): array
@@ -70,7 +73,7 @@ class AuthService
         return ['sent' => true];
     }
 
-    public function verifyOtp(string $phone, string $code): array
+    public function verifyOtp(string $phone, string $code, ?array $clientData = null): array
     {
         if (!$this->validateOtp($this->phoneKey($phone), $code)) {
             throw ValidationException::withMessages([
@@ -83,52 +86,43 @@ class AuthService
         $user = User::query()->firstOrCreate(['phone' => $phone]);
         $user->markAsVerified();
 
-        $odooIntegration = [
+        $clientIntegration = [
             'success' => false,
             'partner_id' => null,
-            'message' => 'Odoo integration not attempted'
+            'message' => 'Client creation not attempted'
         ];
 
-        try {
-            $odooResult = $this->odooService->createPartnerAfterOtpVerification($user, $code);
-            $odooIntegration = [
-                'success' => $odooResult['success'],
-                'partner_id' => $odooResult['partner_id'] ?? null,
-                'message' => $odooResult['message'] ?? 'Partner created successfully'
-            ];
-        } catch (OdooOtpVerificationException $e) {
-            Log::warning('Odoo OTP verification failed during user authentication', [
-                'user_id' => $user->id,
-                'phone' => $phone,
-                'error' => $e->getMessage()
-            ]);
-            $odooIntegration = [
-                'success' => false,
-                'partner_id' => null,
-                'message' => 'OTP verification failed in Odoo'
-            ];
-        } catch (OdooPartnerCreationException $e) {
-            Log::warning('Odoo partner creation failed during user authentication', [
-                'user_id' => $user->id,
-                'phone' => $phone,
-                'error' => $e->getMessage()
-            ]);
-            $odooIntegration = [
-                'success' => false,
-                'partner_id' => null,
-                'message' => 'Partner creation failed in Odoo'
-            ];
-        } catch (OdooConnectionException $e) {
-            Log::warning('Odoo connection failed during user authentication', [
-                'user_id' => $user->id,
-                'phone' => $phone,
-                'error' => $e->getMessage()
-            ]);
-            $odooIntegration = [
-                'success' => false,
-                'partner_id' => null,
-                'message' => 'Odoo service unavailable'
-            ];
+        if ($clientData && isset($clientData['full_name'], $clientData['email'])) {
+            try {
+                $clientResult = $this->clientService->createClient([
+                    'full_name' => $clientData['full_name'],
+                    'phone' => $phone,
+                    'email' => $clientData['email']
+                ]);
+
+                $clientIntegration = [
+                    'success' => $clientResult['success'],
+                    'partner_id' => $clientResult['partner_id'],
+                    'message' => $clientResult['message']
+                ];
+
+                // Update user with partner_id
+                $user->update(['partner_id' => $clientResult['partner_id']]);
+
+            } catch (\Exception $e) {
+                Log::error('Client creation failed during OTP verification', [
+                    'user_id' => $user->id,
+                    'phone' => $phone,
+                    'client_data' => $clientData,
+                    'error' => $e->getMessage()
+                ]);
+
+                $clientIntegration = [
+                    'success' => false,
+                    'partner_id' => null,
+                    'message' => 'Client creation failed: ' . $e->getMessage()
+                ];
+            }
         }
 
         $token = $user->createToken('api')->plainTextToken;
@@ -136,7 +130,7 @@ class AuthService
         return [
             'user' => $user,
             'token' => $token,
-            'odoo_integration' => $odooIntegration
+            'client_integration' => $clientIntegration
         ];
     }
 

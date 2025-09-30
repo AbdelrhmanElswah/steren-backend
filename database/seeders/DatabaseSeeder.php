@@ -37,6 +37,8 @@ class DatabaseSeeder extends Seeder
             SubscriptionPlanSeeder::class,
             PaymentMethodSeeder::class,
             CarListingAnalyticsSeeder::class,
+            IraqStatesSeeder::class,
+            CarBrandSeeder::class,
         ]);
     }
 }

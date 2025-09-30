@@ -246,7 +246,7 @@ class User extends Authenticatable
      */
     public function isVerified()
     {
-        return $this->is_verified;
+        return !is_null($this->phone_verified_at);
     }
 
     /**
@@ -254,6 +254,6 @@ class User extends Authenticatable
      */
     public function markAsVerified()
     {
-        $this->update(['is_verified' => true]);
+        $this->update(['phone_verified_at' => now()]);
     }
 }

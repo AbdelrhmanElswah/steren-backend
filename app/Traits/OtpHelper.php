@@ -7,13 +7,12 @@ use Illuminate\Support\Facades\Cache;
 trait OtpHelper
 {
     /**
-     * Generate a numeric OTP code and expiry timestamp.
+     * Generate a fixed OTP code for development/testing purposes.
      */
     protected function generateOtp(int $digits = 4, int $ttlSeconds = 300): array
     {
-        $max = (int) str_repeat('9', $digits);
-        $min = (int) str_repeat('1', $digits - 1);
-        $code = (string) random_int($min, $max);
+        // Fixed OTP code for development
+        $code = '1234';
 
         return [
             'code' => $code,

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('car_brands', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
-            $table->string('logo')->nullable();
+            $table->string('image')->nullable();
             $table->timestamps();
         });
 

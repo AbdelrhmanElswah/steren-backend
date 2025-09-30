@@ -63,12 +63,21 @@ class AuthController extends Controller
     public function verifyOtp(VerifyOtpRequest $request)
     {
         $validated = $request->validated();
-        $result = $this->authService->verifyOtp($validated['phone'], $validated['code']);
+        
+        $clientData = null;
+        if (isset($validated['full_name']) && isset($validated['email'])) {
+            $clientData = [
+                'full_name' => $validated['full_name'],
+                'email' => $validated['email']
+            ];
+        }
+        
+        $result = $this->authService->verifyOtp($validated['phone'], $validated['code'], $clientData);
 
         return $this->successResponse([
             'user' => new UserResource($result['user']),
             'token' => $result['token'],
-            'odoo_integration' => new OdooIntegrationResource($result['odoo_integration']),
+            'client_integration' => $result['client_integration'] ?? null,
         ], 'Verified');
     }
 
