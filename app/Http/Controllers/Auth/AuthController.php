@@ -92,6 +92,12 @@ class AuthController extends Controller
         return $this->successResponse(null, 'Logged out');
     }
 
+    public function logoutAll(Request $request)
+    {
+        $this->authService->logoutAll($request->user());
+        return $this->successResponse(null, 'Logged out from all devices');
+    }
+
     public function startPasswordReset(StartPasswordResetRequest $request)
     {
         $result = $this->authService->startPasswordReset($request->validated()['phone']);

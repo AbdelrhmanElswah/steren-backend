@@ -19,7 +19,7 @@ class Media extends Model
 
     public function getMediaLinkAttribute()
     {
-        return url('files/' . $this->path_file_name);
+        return asset('storage/' . $this->path_file_name);
     }
 }
 

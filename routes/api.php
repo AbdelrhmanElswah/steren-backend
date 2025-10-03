@@ -96,12 +96,14 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [App\Http\Controllers\Auth\AuthController::class, 'login']);
     Route::post('/send-otp', [App\Http\Controllers\Auth\AuthController::class, 'sendOtp']);
     Route::post('/verify-otp', [App\Http\Controllers\Auth\AuthController::class, 'verifyOtp']);
+    Route::post('/social-login', [App\Http\Controllers\Auth\SocialAuthController::class, 'socialLogin']);
     Route::post('/password/forgot', [App\Http\Controllers\Auth\AuthController::class, 'startPasswordReset']);
     Route::post('/password/reset', [App\Http\Controllers\Auth\AuthController::class, 'completePasswordReset']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [App\Http\Controllers\Auth\AuthController::class, 'me']);
         Route::post('/logout', [App\Http\Controllers\Auth\AuthController::class, 'logout']);
+        Route::post('/logout-all', [App\Http\Controllers\Auth\AuthController::class, 'logoutAll']);
         
         // Partner/Odoo integration routes
         Route::get('/partner/info', [App\Http\Controllers\Auth\AuthController::class, 'getPartnerInfo']);

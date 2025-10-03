@@ -24,6 +24,8 @@ class User extends Authenticatable
         'phone_verified_at',
         'social_provider',
         'social_id',
+        'firebase_uid',
+        'firebase_claims',
         'notifications_enabled',
         'marketing_emails_enabled',
         'notification_preferences',

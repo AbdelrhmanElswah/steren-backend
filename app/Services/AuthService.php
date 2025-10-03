@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Services\OdooService;
 use App\Services\ClientService;
+use App\Services\FirebaseService;
 use App\Exceptions\OdooConnectionException;
 use App\Exceptions\OdooPartnerCreationException;
 use App\Exceptions\OdooOtpVerificationException;
@@ -21,7 +22,8 @@ class AuthService
 
     public function __construct(
         private OdooService $odooService,
-        private ClientService $clientService
+        private ClientService $clientService,
+        private FirebaseService $firebaseService
     ) {
     }
 
@@ -139,6 +141,11 @@ class AuthService
         $user->currentAccessToken()?->delete();
     }
 
+    public function logoutAll(User $user): void
+    {
+        $user->tokens()->delete();
+    }
+
     public function startPasswordReset(string $phone): array
     {
         $user = User::query()->where('phone', $phone)->firstOrFail();
@@ -160,6 +167,111 @@ class AuthService
         $user->update(['password' => Hash::make($newPassword)]);
 
         return ['updated' => true, 'user' => $user];
+    }
+
+    public function socialAuth(string $provider, string $firebaseToken, array $additionalData = []): array
+    {
+        try {
+            $firebasePayload = $this->firebaseService->verifyIdToken($firebaseToken);
+            $firebaseUserInfo = $this->firebaseService->extractUserInfo($firebasePayload);
+            
+            Log::info('Firebase token verified successfully', [
+                'provider' => $provider,
+                'firebase_uid' => $firebaseUserInfo['firebase_uid'],
+                'email' => $firebaseUserInfo['email']
+            ]);
+            
+            $userData = [
+                'firebase_uid' => $firebaseUserInfo['firebase_uid'],
+                'email' => $firebaseUserInfo['email'] ?? $additionalData['email'] ?? null,
+                'full_name' => $firebaseUserInfo['name'] ?? $additionalData['full_name'] ?? null,
+                'phone' => $firebaseUserInfo['phone_number'] ?? $additionalData['phone'] ?? 'SOCIAL_' . $firebaseUserInfo['firebase_uid'],
+                'phone_verified_at' => now(),
+                'social_provider' => $provider,
+                'firebase_claims' => json_encode($firebaseUserInfo['firebase_claims']),
+            ];
+            
+            $user = User::where('firebase_uid', $firebaseUserInfo['firebase_uid'])->first();
+            
+            if (!$user && $userData['email']) {
+                $user = User::where('email', $userData['email'])->first();
+                
+                if ($user) {
+                    $user->update([
+                        'firebase_uid' => $firebaseUserInfo['firebase_uid'],
+                        'social_provider' => $provider,
+                        'firebase_claims' => json_encode($firebaseUserInfo['firebase_claims']),
+                    ]);
+                }
+            }
+            
+            if (!$user) {
+                $user = User::create($userData);
+            }
+            
+            $clientIntegration = [
+                'success' => false,
+                'partner_id' => null,
+                'message' => 'Client creation not attempted'
+            ];
+            
+            if ($userData['full_name'] && $userData['email']) {
+                try {
+                    $clientResult = $this->clientService->createClient([
+                        'full_name' => $userData['full_name'],
+                        'phone' => $userData['phone'] ?? 'SOCIAL_' . $firebaseUserInfo['firebase_uid'],
+                        'email' => $userData['email']
+                    ]);
+                    
+                    $clientIntegration = [
+                        'success' => $clientResult['success'],
+                        'partner_id' => $clientResult['partner_id'],
+                        'message' => $clientResult['message']
+                    ];
+                    
+                    $user->update(['partner_id' => $clientResult['partner_id']]);
+                    
+                } catch (\Exception $e) {
+                    Log::error('Client creation failed during social authentication', [
+                        'user_id' => $user->id,
+                        'firebase_uid' => $firebaseUserInfo['firebase_uid'],
+                        'provider' => $provider,
+                        'error' => $e->getMessage()
+                    ]);
+                    
+                    $clientIntegration = [
+                        'success' => false,
+                        'partner_id' => null,
+                        'message' => 'Client creation failed: ' . $e->getMessage()
+                    ];
+                }
+            }
+            
+            $token = $user->createToken('social-auth')->plainTextToken;
+            
+            Log::info('Social authentication successful', [
+                'user_id' => $user->id,
+                'provider' => $provider,
+                'firebase_uid' => $firebaseUserInfo['firebase_uid'],
+                'client_integration_success' => $clientIntegration['success']
+            ]);
+            
+            return [
+                'user' => $user,
+                'token' => $token,
+                'client_integration' => $clientIntegration,
+                'firebase_user_info' => $firebaseUserInfo,
+            ];
+            
+        } catch (\Exception $e) {
+            Log::error('Social authentication failed', [
+                'provider' => $provider,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            throw new AuthenticationException('Social authentication failed: ' . $e->getMessage());
+        }
     }
 
     protected function phoneKey(?string $phone): string
