@@ -9,7 +9,7 @@ class BodyType extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'icon_url'];
+    protected $fillable = ['name', 'odoo_id'];
 
     public function userPreferences()
     {
@@ -22,6 +22,11 @@ class BodyType extends Model
 
     public function carSubmissions() {
         return $this->hasMany(CarSubmission::class, 'car_body_type_id');
+    }
+
+    public function medias()
+    {
+        return $this->morphMany(Media::class, 'modelable');
     }
 }
 

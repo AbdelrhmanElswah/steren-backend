@@ -43,20 +43,19 @@ class CarouselSeeder extends Seeder
                     
                     foreach ($carousels as $carouselData) {
                         $carousel = Carousel::updateOrCreate(
-                            ['odoo_id' => $carouselData['id']], // Match by Odoo ID
+                            ['odoo_id' => $carouselData['id']], 
                             [
-                                'odoo_id' => $carouselData['id'], // Store Odoo ID
+                                'odoo_id' => $carouselData['id'], 
                                 'title' => $carouselData['title'],
                                 'description' => $carouselData['description'],
                                 'button_text' => $carouselData['button_text'],
                                 'start_date' => $carouselData['start_date'],
                                 'end_date' => $carouselData['end_date'],
                                 'is_active' => true,
-                                'sort_order' => $carouselData['id'], // Use Odoo ID as sort order
+                                'sort_order' => $carouselData['id'], 
                             ]
                         );
 
-                        // Handle image if provided
                         if (isset($carouselData['img']) && !empty($carouselData['img'])) {
                             $this->handleCarouselImage($carousel, $carouselData['img']);
                         }
