@@ -23,12 +23,15 @@ class CarouselSeeder extends Seeder
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-            ])->post(config('services.odoo.base_url') . '/api/carousel', [
-                'jsonrpc' => '2.0',
-                'id' => null,
-                'method' => 'call',
-                'params' => []
-            ]);
+            ])->withBody(
+                json_encode([
+                    'jsonrpc' => '2.0',
+                    'id' => null,
+                    'method' => 'call',
+                    'params' => []
+                ]),
+                'application/json'
+            )->get(config('services.odoo.base_url') . '/api/carousel');
             
             if ($response->successful()) {
                 $data = $response->json();
@@ -131,12 +134,10 @@ class CarouselSeeder extends Seeder
             Media::create([
                 'modelable_type' => Carousel::class,
                 'modelable_id' => $carousel->id,
-                'file_path' => $path,
-                'file_name' => $filename,
+                'media' => $filename,
+                'path_file_name' => $path,
                 'file_type' => 'image/' . $imageType,
-                'file_size' => strlen($imageData),
                 'info' => 'main',
-                'alt_text' => $carousel->title,
             ]);
 
             $this->command->info("Image saved for carousel: {$carousel->title} (Type: {$imageType}, Size: " . number_format(strlen($imageData)) . " bytes)");
