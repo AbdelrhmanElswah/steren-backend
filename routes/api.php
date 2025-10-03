@@ -49,6 +49,11 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('car-brands/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'deleteByOdooId']);
     Route::post('car-brands/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'restoreByOdooId']);
     
+    Route::post('carousels', [App\Http\Controllers\Api\Odoo\CarouselController::class, 'store']);
+    Route::post('carousels/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarouselController::class, 'updateByOdooId']);
+    Route::post('carousels/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarouselController::class, 'deleteByOdooId']);
+    Route::post('carousels/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarouselController::class, 'restoreByOdooId']);
+    
     Route::post('car-models', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'store']);
     Route::post('car-models/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'updateByOdooId']);
     Route::post('car-models/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'deleteByOdooId']);
@@ -149,6 +154,13 @@ Route::prefix('car-listings')->group(function () {
 // Contact Methods Routes - GET only
 Route::prefix('contact-methods')->group(function () {
     Route::get('/', [App\Http\Controllers\Data\ContactMethodController::class, 'getContactMethods']);
+});
+
+// Carousel Routes - GET only
+Route::prefix('carousels')->group(function () {
+    Route::get('/', [App\Http\Controllers\Data\CarouselController::class, 'getCarousels']);
+    Route::get('/all', [App\Http\Controllers\Data\CarouselController::class, 'getAllCarousels']);
+    Route::get('/{id}', [App\Http\Controllers\Data\CarouselController::class, 'getCarouselById']);
 });
 
 // Data Options Routes - GET only (Separated by category)
