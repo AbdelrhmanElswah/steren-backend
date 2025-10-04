@@ -12,7 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('body_types', function (Blueprint $table) {
-            $table->dropColumn('icon_url');
             $table->string('odoo_id')->nullable()->unique()->after('name');
         });
     }
@@ -23,7 +22,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('body_types', function (Blueprint $table) {
-            $table->string('icon_url')->nullable();
             $table->dropColumn('odoo_id');
         });
     }
