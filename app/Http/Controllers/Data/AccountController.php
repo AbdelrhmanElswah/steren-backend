@@ -49,12 +49,21 @@ class AccountController extends Controller
                     'currency' => $user->wallet->currency,
                 ] : null,
                 'subscription' => $user->current_plan ? [
+                    'id' => $user->current_plan->id,
                     'name' => $user->current_plan->name,
                     'price' => $user->current_plan->formatted_price,
                     'billing_cycle' => $user->current_plan->billing_cycle,
                     'expires_at' => $user->activeSubscription->formatted_expiry_date,
                     'days_remaining' => $user->activeSubscription->days_remaining,
                 ] : null,
+                'dealer_status' => [
+                    'is_dealer' => $user->isDealer(),
+                    'status' => $user->dealer_status,
+                    'has_pending_application' => $user->hasPendingDealerApplication(),
+                    'has_approved_application' => $user->hasApprovedDealerApplication(),
+                    'is_expiring_soon' => $user->isDealerExpiringSoon(),
+                    'is_expired' => $user->isDealerExpired(),
+                ],
             ];
 
             return $this->successResponse($data, 'Account information retrieved successfully');

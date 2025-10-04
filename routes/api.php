@@ -127,7 +127,7 @@ Route::prefix('auth')->group(function () {
     });
 });
 
-/* // Car Damage Routes - GET only
+// Car Damage Routes - GET only
 Route::prefix('car-damages')->group(function () {
     Route::get('/car-parts', [App\Http\Controllers\Data\CarDamageController::class, 'getCarParts']);
     Route::get('/statistics/{carListingId}', [App\Http\Controllers\Data\CarDamageController::class, 'getDamageStatistics']);
@@ -234,4 +234,22 @@ Route::prefix('analytics')->middleware('auth:sanctum')->group(function () {
 Route::prefix('payments')->middleware('auth:sanctum')->group(function () {
     Route::get('/status/{paymentId}', [App\Http\Controllers\Data\PaymentController::class, 'getPaymentStatus']);
 });
- */
+
+// Dealer Application Routes
+Route::prefix('dealer')->middleware('auth:sanctum')->group(function () {
+    // Application Management
+    Route::get('/status', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'status']);
+    Route::get('/subscription-plans', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'subscriptionPlans']);
+    Route::post('/application', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'store']);
+    Route::get('/application/{id}', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'show']);
+    Route::put('/application/{id}', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'update']);
+    Route::delete('/application/{id}', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'destroy']);
+    
+    // Subscription Management
+    Route::get('/subscription/current', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'current']);
+    Route::get('/subscription/plans', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'plans']);
+    Route::put('/subscription/update-plan', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'updatePlan']);
+    Route::post('/subscription/complete-payment', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'completePayment']);
+    Route::post('/subscription/renew', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'renew']);
+    Route::get('/subscription/billing-history', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'billingHistory']);
+});

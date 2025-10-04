@@ -167,6 +167,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Get dealer applications for this user
+     */
+    public function dealerApplications()
+    {
+        return $this->hasMany(DealerApplication::class);
+    }
+
+    /**
+     * Get the latest dealer application
+     */
+    public function latestDealerApplication()
+    {
+        return $this->hasOne(DealerApplication::class)->latest();
+    }
+
+    /**
+     * Get active dealer application
+     */
+    public function activeDealerApplication()
+    {
+        return $this->hasOne(DealerApplication::class)->active();
+    }
+
+    /**
      * Get user's display name
      */
     public function getDisplayNameAttribute()
@@ -257,5 +281,73 @@ class User extends Authenticatable
     public function markAsVerified()
     {
         $this->update(['phone_verified_at' => now()]);
+    }
+
+    /**
+     * Check if user is a dealer
+     */
+    public function isDealer()
+    {
+        return $this->activeDealerApplication && $this->activeDealerApplication->isActive();
+    }
+
+    /**
+     * Check if user has pending dealer application
+     */
+    public function hasPendingDealerApplication()
+    {
+        return $this->dealerApplications()->pending()->exists();
+    }
+
+    /**
+     * Check if user has approved dealer application
+     */
+    public function hasApprovedDealerApplication()
+    {
+        return $this->dealerApplications()->approved()->exists();
+    }
+
+    /**
+     * Check if user's dealer status is expiring soon
+     */
+    public function isDealerExpiringSoon()
+    {
+        $dealerApp = $this->activeDealerApplication;
+        return $dealerApp && $dealerApp->isExpiringSoon();
+    }
+
+    /**
+     * Check if user's dealer status is expired
+     */
+    public function isDealerExpired()
+    {
+        $dealerApp = $this->latestDealerApplication;
+        return $dealerApp && $dealerApp->isExpired();
+    }
+
+    /**
+     * Get dealer status for display
+     */
+    public function getDealerStatusAttribute()
+    {
+        $latestApp = $this->latestDealerApplication;
+        
+        if (!$latestApp) {
+            return null;
+        }
+
+        if ($latestApp->isActive()) {
+            return 'verified';
+        }
+
+        if ($latestApp->isExpiringSoon()) {
+            return 'expiring_soon';
+        }
+
+        if ($latestApp->isExpired()) {
+            return 'expired';
+        }
+
+        return $latestApp->status;
     }
 }
