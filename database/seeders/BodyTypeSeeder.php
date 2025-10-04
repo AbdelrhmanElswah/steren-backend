@@ -9,13 +9,7 @@ use App\Models\Media;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
 use Illuminate\Support\Str;
-=======
->>>>>>> f1e647cb0f702afed587be491f9e4c378f5d7c75
->>>>>>> Stashed changes
 
 class BodyTypeSeeder extends Seeder
 {
@@ -45,28 +39,6 @@ class BodyTypeSeeder extends Seeder
                     
                     $this->command->info("Found " . count($bodyTypes) . " body types to seed");
                     
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
-                    foreach ($bodyTypes as $bodyType) {
-                        $this->command->info("Processing body type: " . $bodyType['name']);
-                        
-                        // Create or update the body type
-                        $bodyTypeModel = BodyType::updateOrCreate(
-                            ['odoo_id' => $bodyType['id']],
-                            [
-                                'name' => $bodyType['name'],
-                                'odoo_id' => $bodyType['id']
-                            ]
-                        );
-                        
-                        // Handle image if present and not null/empty
-                        if (isset($bodyType['image']) && !empty(trim($bodyType['image'])) && $bodyType['image'] !== null) {
-                            $this->handleBodyTypeImage($bodyTypeModel, $bodyType['image']);
-                        } else {
-                            $this->command->info("No image found for body type: " . $bodyType['name']);
-=======
->>>>>>> Stashed changes
                     foreach ($bodyTypes as $bodyTypeData) {
                         $bodyType = BodyType::updateOrCreate(
                             ['odoo_id' => $bodyTypeData['id']], 
@@ -75,14 +47,9 @@ class BodyTypeSeeder extends Seeder
                                 'name' => $bodyTypeData['name'],
                             ]
                         );
-
                         
                         if (isset($bodyTypeData['image']) && !empty($bodyTypeData['image'])) {
                             $this->handleBodyTypeImage($bodyType, $bodyTypeData['image']);
-<<<<<<< Updated upstream
-=======
->>>>>>> f1e647cb0f702afed587be491f9e4c378f5d7c75
->>>>>>> Stashed changes
                         }
                     }
                     
@@ -106,9 +73,6 @@ class BodyTypeSeeder extends Seeder
             ]);
         }
     }
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
     
     /**
      * Handle body type image conversion from base64 to binary and storage
@@ -116,84 +80,21 @@ class BodyTypeSeeder extends Seeder
     private function handleBodyTypeImage(BodyType $bodyType, string $base64Image): void
     {
         try {
-            // Remove existing media if any
-            $bodyType->media()->delete();
-            
-            // Check if base64 string is valid and not empty
-            if (empty(trim($base64Image)) || $base64Image === null) {
-                $this->command->warn("Empty or null base64 image for body type: " . $bodyType->name);
-                return;
-            }
-            
-            // Decode base64 image
-            $imageData = base64_decode($base64Image, true); // strict mode
-            
-            if ($imageData === false) {
-                $this->command->warn("Failed to decode base64 image for body type: " . $bodyType->name . " (invalid base64 format)");
-                return;
-            }
-            
-            // Check if decoded data is actually an image
-            if (empty($imageData)) {
-                $this->command->warn("Decoded image data is empty for body type: " . $bodyType->name);
-                return;
-            }
-            
-            // Generate unique filename
-            $filename = 'bodytype_' . $bodyType->id . '_' . Str::slug($bodyType->name) . '_' . time() . '.png';
-            
-            // Store the image file
-            $stored = Storage::disk('public')->put('bodytypes/' . $filename, $imageData);
-            
-            if ($stored) {
-                // Create media record
-                $media = new Media([
-                    'media' => 'bodytypes/' . $filename, // Store the file path as media reference
-                    'path_file_name' => 'bodytypes/' . $filename,
-                    'file_type' => 'image/png',
-                    'info' => 'icon'
-                ]);
-                
-                $bodyType->media()->save($media);
-                
-                $this->command->info("Image saved for body type: " . $bodyType->name . " at: bodytypes/" . $filename);
-            } else {
-                $this->command->warn("Failed to store image for body type: " . $bodyType->name);
-            }
-            
-        } catch (\Exception $e) {
-            $this->command->error("Error handling image for body type {$bodyType->name}: " . $e->getMessage());
-            Log::error('BodyTypeSeeder: Image handling error', [
-                'body_type_id' => $bodyType->id,
-                'body_type_name' => $bodyType->name,
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-        }
-    }
-}
-=======
->>>>>>> Stashed changes
-
-
-    private function handleBodyTypeImage(BodyType $bodyType, string $base64Image): void
-    {
-        try {
             $bodyType->medias()->delete();
 
             $cleanBase64 = trim($base64Image);
             
-            
+            // Handle URL encoded base64
             if (str_starts_with($cleanBase64, '+')) {
                 $cleanBase64 = urldecode($cleanBase64);
             }
             
-            
+            // Remove data URL prefix if present
             if (str_contains($cleanBase64, ',')) {
                 $cleanBase64 = substr($cleanBase64, strpos($cleanBase64, ',') + 1);
             }
 
-            
+            // Decode base64 image
             $imageData = base64_decode($cleanBase64);
             
             if ($imageData === false) {
@@ -201,7 +102,7 @@ class BodyTypeSeeder extends Seeder
                 return;
             }
 
-            
+            // Detect image type
             $imageType = 'png'; // default
             if (str_starts_with($imageData, "\xFF\xD8\xFF")) {
                 $imageType = 'jpg';
@@ -211,14 +112,14 @@ class BodyTypeSeeder extends Seeder
                 $imageType = 'gif';
             }
 
-            
+            // Generate filename and path
             $filename = 'body_type_' . $bodyType->id . '_' . time() . '.' . $imageType;
             $path = 'body_types/' . $filename;
 
-            
+            // Store the image file
             Storage::disk('public')->put($path, $imageData);
 
-            
+            // Create media record
             Media::create([
                 'modelable_type' => BodyType::class,
                 'modelable_id' => $bodyType->id,
@@ -240,7 +141,3 @@ class BodyTypeSeeder extends Seeder
         }
     }
 }
-<<<<<<< Updated upstream
-=======
->>>>>>> f1e647cb0f702afed587be491f9e4c378f5d7c75
->>>>>>> Stashed changes
