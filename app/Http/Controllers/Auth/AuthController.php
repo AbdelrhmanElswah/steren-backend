@@ -40,6 +40,7 @@ class AuthController extends Controller
         return $this->successResponse([
             'user' => new UserResource($result['user']),
             'otp_sent' => $result['otp_sent'],
+            'token' => $result['token'],
         ], 'Registration initiated');
     }
 
@@ -63,16 +64,15 @@ class AuthController extends Controller
     public function verifyOtp(VerifyOtpRequest $request)
     {
         $validated = $request->validated();
+        $user = $request->user();
         
-        $clientData = null;
-        if (isset($validated['full_name']) && isset($validated['email'])) {
-            $clientData = [
-                'full_name' => $validated['full_name'],
-                'email' => $validated['email']
-            ];
-        }
+        $clientData = [
+            'full_name' => $user->full_name,
+            'phone' => $user->phone,
+            'email' => $user->email
+        ];
         
-        $result = $this->authService->verifyOtp($validated['phone'], $validated['code'], $clientData);
+        $result = $this->authService->verifyOtp($user, $validated['code'], $clientData);
 
         return $this->successResponse([
             'user' => new UserResource($result['user']),

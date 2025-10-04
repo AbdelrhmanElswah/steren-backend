@@ -951,6 +951,111 @@
       ]
     },
     {
+      "name": "Carousels",
+      "item": [
+        {
+          "name": "Create Carousel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"odoo_id\": \"odoo_carousel_123\",\n  \"title\": \"Special Offer\",\n  \"description\": \"Get 20% off on all cars\",\n  \"button_text\": \"Shop Now\",\n  \"start_date\": \"2024-01-01\",\n  \"end_date\": \"2024-12-31\",\n  \"is_active\": true,\n  \"sort_order\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/odoo/carousels",
+              "host": ["{{base_url}}"],
+              "path": ["api", "odoo", "carousels"]
+            }
+          }
+        },
+        {
+          "name": "Update Carousel by Odoo ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Carousel Title\",\n  \"description\": \"Updated description\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/odoo/carousels/odoo/odoo_carousel_123/update",
+              "host": ["{{base_url}}"],
+              "path": ["api", "odoo", "carousels", "odoo", "odoo_carousel_123", "update"]
+            }
+          }
+        },
+        {
+          "name": "Delete Carousel by Odoo ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/odoo/carousels/odoo/odoo_carousel_123/delete",
+              "host": ["{{base_url}}"],
+              "path": ["api", "odoo", "carousels", "odoo", "odoo_carousel_123", "delete"]
+            }
+          }
+        },
+        {
+          "name": "Restore Carousel by Odoo ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/odoo/carousels/odoo/odoo_carousel_123/restore",
+              "host": ["{{base_url}}"],
+              "path": ["api", "odoo", "carousels", "odoo", "odoo_carousel_123", "restore"]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Carfax Reports",
       "item": [
         {

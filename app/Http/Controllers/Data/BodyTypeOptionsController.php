@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Data;
 
 use App\Http\Controllers\Controller;
-use App\Models\BodyType;
+use App\Services\BodyTypeService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 
@@ -11,21 +11,18 @@ class BodyTypeOptionsController extends Controller
 {
     use ApiResponse;
 
-    /**
-     * Get all body types as options
-     */
+    protected BodyTypeService $bodyTypeService;
+
+    public function __construct(BodyTypeService $bodyTypeService)
+    {
+        $this->bodyTypeService = $bodyTypeService;
+    }
+
     public function getBodyTypeOptions(): JsonResponse
     {
         try {
-            $bodyTypes = BodyType::orderBy('name')->get();
-            
-            $options = $bodyTypes->map(function ($bodyType) {
-                return [
-                    'value' => $bodyType->id,
-                    'label' => $bodyType->name,
-                    'icon_url' => $bodyType->icon_url,
-                ];
-            });
+            $bodyTypes = $this->bodyTypeService->getBodyTypeOptions();
+            $options = $this->bodyTypeService->toOptionResourceCollection($bodyTypes);
 
             return $this->successResponse($options, 'Body type options retrieved successfully');
         } catch (\Exception $e) {

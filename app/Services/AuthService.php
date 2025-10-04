@@ -40,9 +40,12 @@ class AuthService
             $otp = $this->generateOtp();
             $this->storeOtp($this->phoneKey($user->phone), $otp['code']);
 
+            $token = $user->createToken('otp-verification', ['verify-otp'])->plainTextToken;
+
             return [
                 'user' => $user,
                 'otp_sent' => true,
+                'token' => $token,
             ];
         });
     }
@@ -75,17 +78,15 @@ class AuthService
         return ['sent' => true];
     }
 
-    public function verifyOtp(string $phone, string $code, ?array $clientData = null): array
+    public function verifyOtp(User $user, string $code, ?array $clientData = null): array
     {
-        if (!$this->validateOtp($this->phoneKey($phone), $code)) {
+        if (!$this->validateOtp($this->phoneKey($user->phone), $code)) {
             throw ValidationException::withMessages([
                 'code' => ['Invalid code'],
             ]);
         }
 
-        $this->clearOtp($this->phoneKey($phone));
-
-        $user = User::query()->firstOrCreate(['phone' => $phone]);
+        $this->clearOtp($this->phoneKey($user->phone));
         $user->markAsVerified();
 
         $clientIntegration = [
@@ -98,7 +99,7 @@ class AuthService
             try {
                 $clientResult = $this->clientService->createClient([
                     'full_name' => $clientData['full_name'],
-                    'phone' => $phone,
+                    'phone' => $clientData['phone'],
                     'email' => $clientData['email']
                 ]);
 
@@ -114,7 +115,7 @@ class AuthService
             } catch (\Exception $e) {
                 Log::error('Client creation failed during OTP verification', [
                     'user_id' => $user->id,
-                    'phone' => $phone,
+                    'phone' => $clientData['phone'],
                     'client_data' => $clientData,
                     'error' => $e->getMessage()
                 ]);
