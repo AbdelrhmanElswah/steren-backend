@@ -73,15 +73,26 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('users/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\UserController::class, 'updateByOdooId']);
     Route::post('users/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\UserController::class, 'deleteByOdooId']);
     Route::post('users/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\UserController::class, 'restoreByOdooId']);
+    
+    Route::post('body-types', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'store']);
+    Route::post('body-types/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'updateByOdooId']);
+    Route::post('body-types/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'deleteByOdooId']);
+    Route::post('body-types/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'restoreByOdooId']);
 });
 
 // Odoo Data Fetch Routes (GET requests to fetch from regular database)
 Route::prefix('odoo')->group(function () {
     Route::get('brands', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'getBrands']);
+    Route::get('body-types', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'getBodyTypes']);
     Route::get('cities', [App\Http\Controllers\Api\Odoo\CityController::class, 'getCities']);
     Route::get('car-models', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'getCarModels']);
     Route::get('locations', [App\Http\Controllers\Api\Odoo\LocationController::class, 'getLocations']);
     Route::get('studios', [App\Http\Controllers\Api\Odoo\StudioController::class, 'getStudios']);
+Route::prefix('carousels')->group(function () {
+    Route::get('/', [App\Http\Controllers\Data\CarouselController::class, 'getCarousels']);
+    Route::get('/all', [App\Http\Controllers\Data\CarouselController::class, 'getAllCarousels']);
+    Route::get('/{id}', [App\Http\Controllers\Data\CarouselController::class, 'getCarouselById']);
+});
 });
 
 // Client Routes
@@ -111,7 +122,7 @@ Route::prefix('auth')->group(function () {
     });
 });
 
-// Car Damage Routes - GET only
+/* // Car Damage Routes - GET only
 Route::prefix('car-damages')->group(function () {
     Route::get('/car-parts', [App\Http\Controllers\Data\CarDamageController::class, 'getCarParts']);
     Route::get('/statistics/{carListingId}', [App\Http\Controllers\Data\CarDamageController::class, 'getDamageStatistics']);
@@ -158,12 +169,6 @@ Route::prefix('contact-methods')->group(function () {
     Route::get('/', [App\Http\Controllers\Data\ContactMethodController::class, 'getContactMethods']);
 });
 
-// Carousel Routes - GET only
-Route::prefix('carousels')->group(function () {
-    Route::get('/', [App\Http\Controllers\Data\CarouselController::class, 'getCarousels']);
-    Route::get('/all', [App\Http\Controllers\Data\CarouselController::class, 'getAllCarousels']);
-    Route::get('/{id}', [App\Http\Controllers\Data\CarouselController::class, 'getCarouselById']);
-});
 
 // Data Options Routes - GET only (Separated by category)
 Route::prefix('options')->group(function () {
@@ -224,3 +229,4 @@ Route::prefix('analytics')->middleware('auth:sanctum')->group(function () {
 Route::prefix('payments')->middleware('auth:sanctum')->group(function () {
     Route::get('/status/{paymentId}', [App\Http\Controllers\Data\PaymentController::class, 'getPaymentStatus']);
 });
+ */
