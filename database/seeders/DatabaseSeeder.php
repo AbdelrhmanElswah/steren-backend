@@ -39,6 +39,8 @@ class DatabaseSeeder extends Seeder
             CarListingAnalyticsSeeder::class,
             IraqStatesSeeder::class,
             CarBrandSeeder::class,
+            BodyTypeSeeder::class,
+            CarouselSeeder::class,
         ]);
     }
 }
