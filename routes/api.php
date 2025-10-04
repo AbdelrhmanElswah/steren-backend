@@ -80,6 +80,11 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('body-types/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'restoreByOdooId']);
 });
 
+// Car Listing API Routes - Protected with Sanctum
+Route::prefix('car-listings')->middleware('auth:sanctum')->group(function () {
+    Route::post('/', [App\Http\Controllers\Api\CarListingApiController::class, 'store']);
+});
+
 // Odoo Data Fetch Routes (GET requests to fetch from regular database)
 Route::prefix('odoo')->group(function () {
     Route::get('brands', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'getBrands']);
