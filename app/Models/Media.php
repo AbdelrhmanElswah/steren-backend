@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Media extends Model
 {
-    protected $fillable = [
-        'media', 'path_file_name', 'file_type', 'info',
-    ];
+    use HasFactory;
+
+    protected $fillable = ['modelable_type', 'modelable_id', 'media', 'info', 'path_file_name', 'file_type'];
 
     protected $appends = ['media_link'];
 
@@ -19,7 +20,12 @@ class Media extends Model
 
     public function getMediaLinkAttribute()
     {
-        return asset('storage/' . $this->path_file_name);
+        return $this->getFileFromS3($this->path_file_name);
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
     }
 }
-
