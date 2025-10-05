@@ -10,14 +10,6 @@ trait MediaTrait
    
     protected function getMediaDisk(): string
     {
-        // Check if S3 is configured
-        if (!empty(env('AWS_ACCESS_KEY_ID')) && 
-            !empty(env('AWS_SECRET_ACCESS_KEY')) && 
-            !empty(env('AWS_BUCKET'))) {
-            return 's3';
-        }
-        
-        // Fallback to public disk
         return 'public';
     }
 
