@@ -19,13 +19,9 @@ class BodyTypeResource extends JsonResource
             'id' => $this->id,
             'odoo_id' => $this->odoo_id,
             'name' => $this->name,
-            'icon_url' => $this->when(
-                $this->relationLoaded('media') && $this->media, 
-                $this->getMediaUrl($this->media, $request, $useTemporaryUrl, $expirationMinutes)
-            ),
             'media' => $this->when(
-                $this->relationLoaded('media') && $this->media,
-                $this->getMediaData($this->media, $request, $useTemporaryUrl, $expirationMinutes)
+                $this->relationLoaded('medias') && $this->medias->isNotEmpty(),
+                $this->getStandardMedia($this->medias->first(), $request, $useTemporaryUrl, $expirationMinutes)
             ),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

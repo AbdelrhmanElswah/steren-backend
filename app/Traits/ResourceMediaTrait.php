@@ -25,7 +25,7 @@ trait ResourceMediaTrait
             'id' => $media->id,
             'info' => $media->info,
             'file_type' => $media->file_type,
-            'url' => $useTemporaryUrl 
+            'media_link' => $useTemporaryUrl 
                 ? $media->getS3TemporaryUrl($media->path_file_name, $expirationMinutes)
                 : $media->getS3PublicUrl($media->path_file_name),
             'public_url' => $media->getS3PublicUrl($media->path_file_name),
@@ -75,6 +75,28 @@ trait ResourceMediaTrait
         return $useTemporaryUrl 
             ? $media->getS3TemporaryUrl($media->path_file_name, $expirationMinutes)
             : $media->getS3PublicUrl($media->path_file_name);
+    }
+
+    /**
+     * Get standardized media object with media_link key
+     *
+     * @param mixed $media
+     * @param Request $request
+     * @param bool $useTemporaryUrl
+     * @param int $expirationMinutes
+     * @return array|null
+     */
+    public function getStandardMedia($media, Request $request, bool $useTemporaryUrl = true, int $expirationMinutes = 60): ?array
+    {
+        if (!$media) {
+            return null;
+        }
+
+        return [
+            'media_link' => $useTemporaryUrl 
+                ? $media->getS3TemporaryUrl($media->path_file_name, $expirationMinutes)
+                : $media->getS3PublicUrl($media->path_file_name),
+        ];
     }
 
     /**
