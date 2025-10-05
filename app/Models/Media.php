@@ -32,10 +32,6 @@ class Media extends Model
         try {
             $disk = \Storage::disk('public');
             
-            if (!$disk->exists($path)) {
-                return null;
-            }
-
             return $disk->url($path);
         } catch (\Exception $e) {
             \Log::error('Media: Error getting file URL', [
