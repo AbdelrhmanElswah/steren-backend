@@ -93,11 +93,7 @@ Route::prefix('odoo')->group(function () {
     Route::get('car-models', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'getCarModels']);
     Route::get('locations', [App\Http\Controllers\Api\Odoo\LocationController::class, 'getLocations']);
     Route::get('studios', [App\Http\Controllers\Api\Odoo\StudioController::class, 'getStudios']);
-Route::prefix('carousels')->group(function () {
-    Route::get('/', [App\Http\Controllers\Data\CarouselController::class, 'getCarousels']);
-    Route::get('/all', [App\Http\Controllers\Data\CarouselController::class, 'getAllCarousels']);
-    Route::get('/{id}', [App\Http\Controllers\Data\CarouselController::class, 'getCarouselById']);
-});
+
 });
 
 // Client Routes
@@ -173,7 +169,11 @@ Route::prefix('car-listings')->group(function () {
 Route::prefix('contact-methods')->group(function () {
     Route::get('/', [App\Http\Controllers\Data\ContactMethodController::class, 'getContactMethods']);
 });
-
+Route::prefix('carousels')->group(function () {
+    Route::get('/', [App\Http\Controllers\Data\CarouselController::class, 'getCarousels']);
+    Route::get('/all', [App\Http\Controllers\Data\CarouselController::class, 'getAllCarousels']);
+    Route::get('/{id}', [App\Http\Controllers\Data\CarouselController::class, 'getCarouselById']);
+});
 
 // Data Options Routes - GET only (Separated by category)
 Route::prefix('options')->group(function () {
