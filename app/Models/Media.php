@@ -30,8 +30,15 @@ class Media extends Model
         }
 
         try {
-            // For Laravel Cloud, we need to handle storage differently
-            // Try to use the storage disk first, then fall back to direct URL
+            // Check if S3 is configured and has credentials
+            if ($this->isS3Configured()) {
+                $disk = \Storage::disk('s3');
+                if ($disk->exists($path)) {
+                    return $disk->url($path);
+                }
+            }
+            
+            // Fallback to public disk
             $disk = \Storage::disk('public');
             
             // Check if we're on Laravel Cloud (production environment)
@@ -57,6 +64,13 @@ class Media extends Model
             ]);
             return null;
         }
+    }
+
+    public function isS3Configured(): bool
+    {
+        return !empty(env('AWS_ACCESS_KEY_ID')) && 
+               !empty(env('AWS_SECRET_ACCESS_KEY')) && 
+               !empty(env('AWS_BUCKET'));
     }
 
     protected static function boot()

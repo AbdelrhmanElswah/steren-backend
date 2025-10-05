@@ -122,10 +122,11 @@ class CarBrandSeeder extends Seeder
             
             $filename = 'brand_' . $carBrand->id . '_' . Str::slug($carBrand->name) . '_' . time() . '.png';
             
-            // For Laravel Cloud, we need to handle storage differently
-            // Try to store the file and handle any errors gracefully
+            // Try to use S3 if configured, otherwise use public disk
+            $disk = $this->getStorageDisk();
+            
             try {
-                $stored = Storage::disk('public')->put('brands/' . $filename, $imageData);
+                $stored = Storage::disk($disk)->put('brands/' . $filename, $imageData);
                 
                 if ($stored) {
                     $media = new Media([
@@ -167,5 +168,18 @@ class CarBrandSeeder extends Seeder
                 'trace' => $e->getTraceAsString()
             ]);
         }
+    }
+
+    private function getStorageDisk(): string
+    {
+        // Check if S3 is configured
+        if (!empty(env('AWS_ACCESS_KEY_ID')) && 
+            !empty(env('AWS_SECRET_ACCESS_KEY')) && 
+            !empty(env('AWS_BUCKET'))) {
+            return 's3';
+        }
+        
+        // Fallback to public disk
+        return 'public';
     }
 }
