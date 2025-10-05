@@ -28,10 +28,14 @@ trait MediaTrait
             }
 
             if (method_exists($disk, 'temporaryUrl')) {
-                return $disk->temporaryUrl(
-                    $path,
-                    Carbon::now()->addMinutes($expirationMinutes)
-                );
+                try {
+                    return $disk->temporaryUrl(
+                        $path,
+                        Carbon::now()->addMinutes($expirationMinutes)
+                    );
+                } catch (\RuntimeException $e) {
+                    return $disk->url($path);
+                }
             }
 
             return $disk->url($path);
@@ -60,7 +64,7 @@ trait MediaTrait
                 'file_size' => $media->file_size ?? null,
                 'mime_type' => $media->file_type,
                 'info' => $media->info,
-                'temporary_url' => $this->getTemporaryUrl($media->path_file_name, $expirationMinutes),
+                'media_link' => $this->getTemporaryUrl($media->path_file_name, $expirationMinutes),
                 'created_at' => $media->created_at,
                 'updated_at' => $media->updated_at,
             ];
@@ -82,7 +86,7 @@ trait MediaTrait
             'file_size' => $media->file_size ?? null,
             'mime_type' => $media->file_type,
             'info' => $media->info,
-            'temporary_url' => $this->getTemporaryUrl($media->path_file_name, $expirationMinutes),
+            'media_link' => $this->getTemporaryUrl($media->path_file_name, $expirationMinutes),
             'created_at' => $media->created_at,
             'updated_at' => $media->updated_at,
         ];

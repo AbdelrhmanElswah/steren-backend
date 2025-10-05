@@ -2,11 +2,13 @@
 
 namespace App\Http\Resources;
 
+use App\Traits\MediaTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class CarouselResource extends JsonResource
 {
+    use MediaTrait;
     /**
      * Transform the resource into an array.
      *
@@ -16,7 +18,7 @@ class CarouselResource extends JsonResource
     {
         $imageUrl = null;
         if ($this->relationLoaded('medias') && $this->medias->isNotEmpty()) {
-            $imageUrl = $this->medias->first()->media_link;
+            $imageUrl = $this->getTemporaryUrl($this->medias->first()->path_file_name);
         }
 
         return [
