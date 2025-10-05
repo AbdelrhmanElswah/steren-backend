@@ -30,8 +30,26 @@ class Media extends Model
         }
 
         try {
+            // For Laravel Cloud, we need to handle storage differently
+            // Try to use the storage disk first, then fall back to direct URL
+            $disk = \Storage::disk('public');
+            
+            // Check if we're on Laravel Cloud (production environment)
+            if (config('app.env') === 'production' && str_contains(config('app.url'), 'laravel.cloud')) {
+                // For Laravel Cloud, use direct URL format
+                $baseUrl = config('app.url');
+                return $baseUrl . '/storage/' . $path;
+            }
+            
+            // For local development, use the storage disk
+            if ($disk->exists($path)) {
+                return $disk->url($path);
+            }
+            
+            // Fallback to direct URL if file doesn't exist in storage
             $baseUrl = config('app.url');
             return $baseUrl . '/storage/' . $path;
+            
         } catch (\Exception $e) {
             \Log::error('Media: Error getting file URL', [
                 'path' => $path,
