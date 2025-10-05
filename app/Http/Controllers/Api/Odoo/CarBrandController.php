@@ -105,7 +105,7 @@ class CarBrandController extends Controller
     public function getBrands(GetCarBrandsRequest $request): JsonResponse
     {
         try {
-            $brands = \App\Models\CarBrand::with('media')
+            $brands = \App\Models\CarBrand::with(['media', 'medias'])
                 ->when($request->filled('search'), function ($query) use ($request) {
                     $query->where('name', 'like', '%' . $request->search . '%');
                 })

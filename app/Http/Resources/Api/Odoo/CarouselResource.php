@@ -2,11 +2,14 @@
 
 namespace App\Http\Resources\Api\Odoo;
 
+use App\Traits\MediaTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class CarouselResource extends JsonResource
 {
+    use MediaTrait;
+
     /**
      * Transform the resource into an array.
      *
@@ -27,9 +30,16 @@ class CarouselResource extends JsonResource
             'is_active' => $this->is_active,
             'is_currently_active' => $this->isCurrentlyActive(),
             'sort_order' => $this->sort_order,
+            'media' => $this->when($this->relationLoaded('media') && $this->media, 
+                $this->getMainMediaWithTemporaryUrl($this->media)
+            ),
+            'medias' => $this->when($this->relationLoaded('medias') && $this->medias, 
+                $this->getMediasWithTemporaryUrls($this->medias)
+            ),
             'image_details' => $this->when($this->media, [
                 'id' => $this->media?->id,
                 'url' => $this->media ? asset('storage/' . $this->media->file_path) : null,
+                'temporary_url' => $this->getTemporaryUrl($this->media?->file_path),
                 'alt_text' => $this->media?->alt_text,
                 'file_name' => $this->media?->file_name,
             ]),
