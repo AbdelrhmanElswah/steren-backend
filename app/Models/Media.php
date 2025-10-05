@@ -20,7 +20,30 @@ class Media extends Model
 
     public function getMediaLinkAttribute()
     {
-        return $this->getFileFromS3($this->path_file_name);
+        return $this->getFileFromStorage($this->path_file_name);
+    }
+
+    public function getFileFromStorage(?string $path): ?string
+    {
+        if (empty($path)) {
+            return null;
+        }
+
+        try {
+            $disk = \Storage::disk('public');
+            
+            if (!$disk->exists($path)) {
+                return null;
+            }
+
+            return $disk->url($path);
+        } catch (\Exception $e) {
+            \Log::error('Media: Error getting file URL', [
+                'path' => $path,
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
     }
 
     protected static function boot()

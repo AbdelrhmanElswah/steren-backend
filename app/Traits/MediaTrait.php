@@ -7,6 +7,12 @@ use Carbon\Carbon;
 
 trait MediaTrait
 {
+   
+    protected function getMediaDisk(): string
+    {
+        return 'public';
+    }
+
   
     public function getTemporaryUrl(?string $path, int $expirationMinutes = 60): ?string
     {
@@ -15,17 +21,24 @@ trait MediaTrait
         }
 
         try {
-            if (!Storage::disk('s3')->exists($path)) {
+            $disk = Storage::disk($this->getMediaDisk());
+            
+            if (!$disk->exists($path)) {
                 return null;
             }
 
-            return Storage::disk('s3')->temporaryUrl(
-                $path,
-                Carbon::now()->addMinutes($expirationMinutes)
-            );
+            if (method_exists($disk, 'temporaryUrl')) {
+                return $disk->temporaryUrl(
+                    $path,
+                    Carbon::now()->addMinutes($expirationMinutes)
+                );
+            }
+
+            return $disk->url($path);
         } catch (\Exception $e) {
             \Log::error('MediaTrait: Error generating temporary URL', [
                 'path' => $path,
+                'disk' => $this->getMediaDisk(),
                 'error' => $e->getMessage()
             ]);
             return null;
@@ -41,12 +54,13 @@ trait MediaTrait
         return $medias->map(function ($media) use ($expirationMinutes) {
             return [
                 'id' => $media->id,
-                'file_path' => $media->file_path,
-                'file_name' => $media->file_name,
-                'file_size' => $media->file_size,
-                'mime_type' => $media->mime_type,
+                'url' => $media->media_link, 
+                'file_path' => $media->path_file_name,
+                'file_name' => $media->path_file_name,
+                'file_size' => $media->file_size ?? null,
+                'mime_type' => $media->file_type,
                 'info' => $media->info,
-                'temporary_url' => $this->getTemporaryUrl($media->file_path, $expirationMinutes),
+                'temporary_url' => $this->getTemporaryUrl($media->path_file_name, $expirationMinutes),
                 'created_at' => $media->created_at,
                 'updated_at' => $media->updated_at,
             ];
@@ -62,12 +76,13 @@ trait MediaTrait
 
         return [
             'id' => $media->id,
-            'file_path' => $media->file_path,
-            'file_name' => $media->file_name,
-            'file_size' => $media->file_size,
-            'mime_type' => $media->mime_type,
+            'url' => $media->media_link,
+            'file_path' => $media->path_file_name,
+            'file_name' => $media->path_file_name,
+            'file_size' => $media->file_size ?? null,
+            'mime_type' => $media->file_type,
             'info' => $media->info,
-            'temporary_url' => $this->getTemporaryUrl($media->file_path, $expirationMinutes),
+            'temporary_url' => $this->getTemporaryUrl($media->path_file_name, $expirationMinutes),
             'created_at' => $media->created_at,
             'updated_at' => $media->updated_at,
         ];
