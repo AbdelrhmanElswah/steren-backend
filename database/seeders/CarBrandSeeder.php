@@ -108,7 +108,7 @@ class CarBrandSeeder extends Seeder
                 return;
             }
             
-            $imageData = base64_decode($base64Image, true);
+                $imageData = base64_decode($base64Image, true);
             
             if ($imageData === false) {
                 $this->command->warn("Failed to decode base64 image for brand: " . $carBrand->name . " (invalid base64 format)");
@@ -122,30 +122,9 @@ class CarBrandSeeder extends Seeder
             
             $filename = 'brand_' . $carBrand->id . '_' . Str::slug($carBrand->name) . '_' . time() . '.png';
             
-            // For Laravel Cloud, we need to handle storage differently
-            // Try to store the file and handle any errors gracefully
-            try {
-                $stored = Storage::disk('public')->put('brands/' . $filename, $imageData);
-                
-                if ($stored) {
-                    $media = new Media([
-                        'media' => 'brands/' . $filename, 
-                        'path_file_name' => 'brands/' . $filename,
-                        'file_type' => 'image/png',
-                        'info' => 'logo'
-                    ]);
-                    
-                    $carBrand->media()->save($media);
-                    
-                    $this->command->info("Image saved for brand: " . $carBrand->name . " at: brands/" . $filename);
-                } else {
-                    $this->command->warn("Failed to store image for brand: " . $carBrand->name);
-                }
-            } catch (\Exception $storageException) {
-                // If storage fails, create the media record anyway with the filename
-                // This allows the API to work even if the file isn't stored locally
-                $this->command->warn("Storage failed for brand: " . $carBrand->name . " - " . $storageException->getMessage());
-                
+            $stored = Storage::disk('public')->put('brands/' . $filename, $imageData);
+            
+            if ($stored) {
                 $media = new Media([
                     'media' => 'brands/' . $filename, 
                     'path_file_name' => 'brands/' . $filename,
@@ -155,7 +134,9 @@ class CarBrandSeeder extends Seeder
                 
                 $carBrand->media()->save($media);
                 
-                $this->command->info("Media record created for brand: " . $carBrand->name . " (file storage failed)");
+                $this->command->info("Image saved for brand: " . $carBrand->name . " at: brands/" . $filename);
+            } else {
+                $this->command->warn("Failed to store image for brand: " . $carBrand->name);
             }
             
         } catch (\Exception $e) {

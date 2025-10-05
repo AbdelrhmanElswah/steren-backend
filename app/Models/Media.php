@@ -4,64 +4,71 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\MediaTrait;
 
 class Media extends Model
 {
-    use HasFactory;
+    use HasFactory, MediaTrait;
 
     protected $fillable = ['modelable_type', 'modelable_id', 'media', 'info', 'path_file_name', 'file_type'];
 
-    protected $appends = ['media_link'];
+    protected $appends = ['media_link', 'media_temporary_url', 'file_size', 'mime_type'];
 
     public function modelable()
     {
         return $this->morphTo();
     }
 
+    /**
+     * Get media link (temporary URL)
+     */
     public function getMediaLinkAttribute()
     {
-        return $this->getFileFromStorage($this->path_file_name);
+        return $this->getS3TemporaryUrl($this->path_file_name);
     }
 
-    public function getFileFromStorage(?string $path): ?string
+    /**
+     * Get media temporary URL
+     */
+    public function getMediaTemporaryUrlAttribute()
     {
-        if (empty($path)) {
-            return null;
-        }
+        return $this->getS3TemporaryUrl($this->path_file_name, 60); // 1 hour expiration
+    }
 
-        try {
-            // For Laravel Cloud, we need to handle storage differently
-            // Try to use the storage disk first, then fall back to direct URL
-            $disk = \Storage::disk('public');
-            
-            // Check if we're on Laravel Cloud (production environment)
-            if (config('app.env') === 'production' && str_contains(config('app.url'), 'laravel.cloud')) {
-                // For Laravel Cloud, use direct URL format
-                $baseUrl = config('app.url');
-                return $baseUrl . '/storage/' . $path;
-            }
-            
-            // For local development, use the storage disk
-            if ($disk->exists($path)) {
-                return $disk->url($path);
-            }
-            
-            // Fallback to direct URL if file doesn't exist in storage
-            $baseUrl = config('app.url');
-            return $baseUrl . '/storage/' . $path;
-            
-        } catch (\Exception $e) {
-            \Log::error('Media: Error getting file URL', [
-                'path' => $path,
-                'error' => $e->getMessage()
-            ]);
-            return null;
-        }
+    /**
+     * Get file size
+     */
+    public function getFileSizeAttribute()
+    {
+        return $this->getS3FileSize($this->path_file_name);
+    }
+
+    /**
+     * Get MIME type
+     */
+    public function getMimeTypeAttribute()
+    {
+        return $this->getS3FileMimeType($this->path_file_name);
+    }
+
+    /**
+     * Get public URL (non-expiring)
+     */
+    public function getPublicUrlAttribute()
+    {
+        return $this->getS3PublicUrl($this->path_file_name);
+    }
+
+    /**
+     * Check if file exists
+     */
+    public function getFileExistsAttribute()
+    {
+        return $this->fileExistsInS3($this->path_file_name);
     }
 
     protected static function boot()
     {
         parent::boot();
-
     }
 }
