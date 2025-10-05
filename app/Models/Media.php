@@ -30,9 +30,8 @@ class Media extends Model
         }
 
         try {
-            $disk = \Storage::disk('public');
-            
-            return $disk->url($path);
+            $baseUrl = config('app.url');
+            return $baseUrl . '/storage/' . $path;
         } catch (\Exception $e) {
             \Log::error('Media: Error getting file URL', [
                 'path' => $path,
