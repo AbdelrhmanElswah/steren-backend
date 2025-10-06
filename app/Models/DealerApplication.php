@@ -13,6 +13,7 @@ class DealerApplication extends Model
 
     protected $fillable = [
         'user_id',
+        'odoo_id',
         'seller_type',
         'owner_manager_name',
         'phone_number',
@@ -24,7 +25,7 @@ class DealerApplication extends Model
         'automotive_brand_represented',
         'authorization_letter_path',
         'business_license_number',
-        'status',
+        'status_id',
         'rejection_reason',
         'reviewed_at',
         'reviewed_by',
@@ -72,11 +73,21 @@ class DealerApplication extends Model
     }
 
     /**
+     * Get the status of this application
+     */
+    public function status()
+    {
+        return $this->belongsTo(Status::class);
+    }
+
+    /**
      * Scope to get pending applications
      */
     public function scopePending($query)
     {
-        return $query->where('status', 'pending');
+        return $query->whereHas('status', function ($q) {
+            $q->where('name', 'pending')->where('type', 'dealer_application');
+        });
     }
 
     /**
@@ -84,7 +95,9 @@ class DealerApplication extends Model
      */
     public function scopeUnderReview($query)
     {
-        return $query->where('status', 'under_review');
+        return $query->whereHas('status', function ($q) {
+            $q->where('name', 'under_review')->where('type', 'dealer_application');
+        });
     }
 
     /**
@@ -92,7 +105,9 @@ class DealerApplication extends Model
      */
     public function scopeApproved($query)
     {
-        return $query->where('status', 'approved');
+        return $query->whereHas('status', function ($q) {
+            $q->where('name', 'approved')->where('type', 'dealer_application');
+        });
     }
 
     /**
@@ -100,7 +115,9 @@ class DealerApplication extends Model
      */
     public function scopeRejected($query)
     {
-        return $query->where('status', 'rejected');
+        return $query->whereHas('status', function ($q) {
+            $q->where('name', 'rejected')->where('type', 'dealer_application');
+        });
     }
 
     /**
@@ -108,11 +125,12 @@ class DealerApplication extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('status', 'approved')
-                    ->where(function ($q) {
-                        $q->whereNull('expires_at')
-                          ->orWhere('expires_at', '>', now());
-                    });
+        return $query->whereHas('status', function ($q) {
+            $q->where('name', 'approved')->where('type', 'dealer_application');
+        })->where(function ($q) {
+            $q->whereNull('expires_at')
+              ->orWhere('expires_at', '>', now());
+        });
     }
 
     /**
@@ -120,7 +138,7 @@ class DealerApplication extends Model
      */
     public function isPending()
     {
-        return $this->status === 'pending';
+        return $this->status && $this->status->name === 'pending' && $this->status->type === 'dealer_application';
     }
 
     /**
@@ -128,7 +146,7 @@ class DealerApplication extends Model
      */
     public function isUnderReview()
     {
-        return $this->status === 'under_review';
+        return $this->status && $this->status->name === 'under_review' && $this->status->type === 'dealer_application';
     }
 
     /**
@@ -136,7 +154,7 @@ class DealerApplication extends Model
      */
     public function isApproved()
     {
-        return $this->status === 'approved';
+        return $this->status && $this->status->name === 'approved' && $this->status->type === 'dealer_application';
     }
 
     /**
@@ -144,7 +162,7 @@ class DealerApplication extends Model
      */
     public function isRejected()
     {
-        return $this->status === 'rejected';
+        return $this->status && $this->status->name === 'rejected' && $this->status->type === 'dealer_application';
     }
 
     /**
@@ -183,8 +201,10 @@ class DealerApplication extends Model
      */
     public function approve($reviewedBy = null)
     {
+        $approvedStatus = Status::findByNameAndType('approved', 'dealer_application');
+        
         $this->update([
-            'status' => 'approved',
+            'status_id' => $approvedStatus?->id,
             'reviewed_at' => now(),
             'reviewed_by' => $reviewedBy,
             'approved_at' => now(),
@@ -199,8 +219,10 @@ class DealerApplication extends Model
      */
     public function reject($reason = null, $reviewedBy = null)
     {
+        $rejectedStatus = Status::findByNameAndType('rejected', 'dealer_application');
+        
         $this->update([
-            'status' => 'rejected',
+            'status_id' => $rejectedStatus?->id,
             'rejection_reason' => $reason,
             'reviewed_at' => now(),
             'reviewed_by' => $reviewedBy,
@@ -215,8 +237,10 @@ class DealerApplication extends Model
      */
     public function setUnderReview($reviewedBy = null)
     {
+        $underReviewStatus = Status::findByNameAndType('under_review', 'dealer_application');
+        
         $this->update([
-            'status' => 'under_review',
+            'status_id' => $underReviewStatus?->id,
             'reviewed_at' => now(),
             'reviewed_by' => $reviewedBy,
         ]);
@@ -235,7 +259,6 @@ class DealerApplication extends Model
             'approved_at' => now(),
         ]);
 
-        // Set expiration date based on subscription plan
         if ($this->subscriptionPlan) {
             $billingCycle = $this->subscriptionPlan->billing_cycle;
             $expiresAt = $billingCycle === 'yearly' 
@@ -245,7 +268,6 @@ class DealerApplication extends Model
             $this->update(['expires_at' => $expiresAt]);
         }
 
-        // Send activation notification
         app(DealerNotificationService::class)->notifyDealerActivated($this);
     }
 
@@ -266,12 +288,6 @@ class DealerApplication extends Model
      */
     public function getStatusBadgeColorAttribute()
     {
-        return match ($this->status) {
-            'pending' => 'yellow',
-            'under_review' => 'blue',
-            'approved' => 'green',
-            'rejected' => 'red',
-            default => 'gray',
-        };
+        return $this->status?->color ?? '#6B7280';
     }
 }

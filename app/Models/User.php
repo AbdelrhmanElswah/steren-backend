@@ -20,6 +20,7 @@ class User extends Authenticatable
         'language',
         'theme',
         'is_verified',
+        'is_dealer',
         'email_verified_at',
         'phone_verified_at',
         'social_provider',
@@ -41,6 +42,7 @@ class User extends Authenticatable
 
     protected $casts = [
         'is_verified' => 'boolean',
+        'is_dealer' => 'boolean',
         'email_verified_at' => 'datetime',
         'phone_verified_at' => 'datetime',
         'birthday' => 'date',

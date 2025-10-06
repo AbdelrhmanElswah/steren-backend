@@ -253,3 +253,28 @@ Route::prefix('dealer')->middleware('auth:sanctum')->group(function () {
     Route::post('/subscription/renew', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'renew']);
     Route::get('/subscription/billing-history', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'billingHistory']);
 });
+
+// Dealer Verification Routes
+Route::prefix('verification')->group(function () {
+    // Public routes for Odoo integration
+    Route::post('/submit', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'submit']);
+    Route::post('/update-status', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'updateStatus']);
+    
+    // Protected routes for authenticated users
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/status', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'status']);
+    });
+});
+
+// Dealer Application Management Routes (Admin/Staff)
+Route::prefix('dealer-applications')->middleware('auth:sanctum')->group(function () {
+    // Routes by application ID
+    Route::post('/{applicationId}/approve', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'approve']);
+    Route::post('/{applicationId}/reject', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'reject']);
+    Route::post('/{applicationId}/process', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'processApplication']);
+    
+    // Routes by Odoo ID (for Odoo integration)
+    Route::post('/odoo/{odooId}/approve', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'approveByOdooId']);
+    Route::post('/odoo/{odooId}/reject', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'rejectByOdooId']);
+    Route::post('/odoo/{odooId}/process', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'processByOdooId']);
+});
