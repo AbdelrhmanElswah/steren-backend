@@ -28,6 +28,13 @@ class CarListingApiController extends Controller
     public function store(CarListingCreateRequest $request)
     {
         try {
+            if (!$request->user()->is_dealer) {
+                return $this->errorResponse(
+                    'Only verified dealers can create listings. Please complete dealer verification first.',
+                    403
+                );
+            }
+
             DB::beginTransaction();
 
             // Get validated data from request
@@ -53,9 +60,15 @@ class CarListingApiController extends Controller
             // Send to Odoo API
             $odooResponse = $this->sendToOdoo($odooData);
 
-            // Update local record with Odoo ID if successful
-            if ($odooResponse && isset($odooResponse['id'])) {
-                $carListing->update(['odoo_id' => $odooResponse['id']]);
+            if ($odooResponse) {
+                $odooId = $this->extractOdooListingId($odooResponse);
+                if ($odooId) {
+                    $carListing->update(['odoo_id' => $odooId]);
+                    Log::info('Saved Odoo ID to listing', [
+                        'listing_id' => $carListing->id,
+                        'odoo_id' => $odooId
+                    ]);
+                }
             }
 
             DB::commit();
@@ -113,8 +126,8 @@ class CarListingApiController extends Controller
             'status' => 'active',
             'views' => 0,
             'is_verified' => ($validatedData['seller_info']['type'] ?? '') === 'verified_seller',
-            'origin_country' => $carInfo['gcc_import'] ?? 'UAE', // Default to UAE if not provided
-            'location_id' => 1, // Default location - you may want to make this configurable
+            'origin_country' => $carInfo['gcc_import'] ?? 'UAE', 
+            'location_id' => 1, 
         ];
     }
 
@@ -276,8 +289,19 @@ class CarListingApiController extends Controller
             $odooBaseUrl = config('services.odoo.base_url', 'http://localhost:8069');
             $odooApiUrl = $odooBaseUrl . '/api/listing/create';
             
+            Log::info('Sending listing to Odoo', [
+                'url' => $odooApiUrl,
+                'payload' => $data
+            ]);
+            
             // Make HTTP request to Odoo
             $response = \Http::timeout(30)->post($odooApiUrl, $data);
+
+            Log::info('Odoo listing creation response', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'successful' => $response->successful()
+            ]);
 
             if ($response->successful()) {
                 return $response->json();
@@ -296,5 +320,31 @@ class CarListingApiController extends Controller
             ]);
             return null;
         }
+    }
+
+    private function extractOdooListingId(array $response): ?string
+    {
+        $possiblePaths = [
+            'result.data.listing_id',
+            'data.listing_id',
+            'listing_id',
+            'result.listing_id',
+            'id',
+            'result.data.id',
+            'data.id'
+        ];
+        
+        foreach ($possiblePaths as $path) {
+            $value = data_get($response, $path);
+            if ($value !== null && (is_numeric($value) || is_string($value))) {
+                return (string) $value;
+            }
+        }
+        
+        Log::warning('Could not extract Odoo listing ID from response', [
+            'response' => $response
+        ]);
+        
+        return null;
     }
 }
