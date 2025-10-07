@@ -18,8 +18,8 @@ class CarBrandService extends OdooCrudService
     {
         $brand = parent::create($data);
 
-        if (!empty($data['media'])) {
-            $this->handleMedia($brand, (string) $data['media']);
+        if (!empty($data['logo'])) {
+            $this->handleLogo($brand, (string) $data['logo']);
         }
 
         return $brand;
@@ -29,20 +29,20 @@ class CarBrandService extends OdooCrudService
     {
         $brand = parent::updateByOdooId($odooId, $data);
 
-        if (array_key_exists('media', $data)) {
+        if (array_key_exists('logo', $data)) {
             $brand->media()?->delete();
 
-            if (!empty($data['media'])) {
-                $this->handleMedia($brand, (string) $data['media']);
+            if (!empty($data['logo'])) {
+                $this->handleLogo($brand, (string) $data['logo']);
             }
         }
 
         return $brand;
     }
 
-    private function handleMedia(CarBrand $brand, string $base64Media): void
+    private function handleLogo(CarBrand $brand, string $base64Logo): void
     {
-        $clean = trim($base64Media);
+        $clean = trim($base64Logo);
         if (str_starts_with($clean, '+')) {
             $clean = urldecode($clean);
         }
@@ -53,7 +53,7 @@ class CarBrandService extends OdooCrudService
 
         $binary = base64_decode($clean);
         if ($binary === false) {
-            throw new \RuntimeException('Invalid base64 media data');
+            throw new \RuntimeException('Invalid base64 logo data');
         }
 
         $ext = 'png';
@@ -80,7 +80,7 @@ class CarBrandService extends OdooCrudService
         Media::create([
             'modelable_type' => CarBrand::class,
             'modelable_id' => $brand->id,
-            'media' => $clean,
+            'media' => 'odoo',
             'path_file_name' => $path,
             'file_type' => $mime,
             'info' => 'logo',

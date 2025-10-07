@@ -22,7 +22,7 @@ class UpdateCarBrandRequest extends FormRequest
                 Rule::unique('car_brands', 'odoo_id')->ignore($this->route('id') ?? $this->route('odooId'))
             ],
             'name' => 'sometimes|string|max:255',
-            'media' => 'sometimes|nullable|string',
+            'logo' => 'sometimes|nullable|string',
         ];
     }
 
@@ -31,7 +31,7 @@ class UpdateCarBrandRequest extends FormRequest
         return [
             'odoo_id.string' => 'Odoo id must be a string',
             'name.string' => 'Name must be a string',
-            'media.string' => 'Media must be a base64 string',
+            'logo.string' => 'Logo must be a base64 string',
         ];
     }
 
@@ -40,7 +40,7 @@ class UpdateCarBrandRequest extends FormRequest
         return [
             'odoo_id' => 'odoo id',
             'name' => 'name',
-            'media' => 'media',
+            'logo' => 'logo',
         ];
     }
 }

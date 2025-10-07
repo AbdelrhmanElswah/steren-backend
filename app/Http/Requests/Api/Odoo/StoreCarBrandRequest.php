@@ -16,7 +16,7 @@ class StoreCarBrandRequest extends FormRequest
         return [
             'odoo_id' => 'nullable|string|max:255|unique:car_brands,odoo_id',
             'name' => 'required|string|max:255',
-            'media' => 'nullable|string',
+            'logo' => 'nullable|string',
         ];
     }
 
@@ -25,7 +25,7 @@ class StoreCarBrandRequest extends FormRequest
         return [
             'odoo_id.required' => 'Odoo id is required',
             'name.required' => 'Name is required',
-            'media.string' => 'Media must be a base64 string',
+            'logo.string' => 'Logo must be a base64 string',
         ];
     }
 
@@ -34,7 +34,7 @@ class StoreCarBrandRequest extends FormRequest
         return [
             'odoo_id' => 'odoo id',
             'name' => 'name',
-            'media' => 'media',
+            'logo' => 'logo',
         ];
     }
 }
