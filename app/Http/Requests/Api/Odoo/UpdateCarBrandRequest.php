@@ -22,7 +22,7 @@ class UpdateCarBrandRequest extends FormRequest
                 Rule::unique('car_brands', 'odoo_id')->ignore($this->route('id') ?? $this->route('odooId'))
             ],
             'name' => 'sometimes|string|max:255',
-            'logo' => 'sometimes|nullable|string',
+            'media' => 'sometimes|nullable',
         ];
     }
 
@@ -31,8 +31,29 @@ class UpdateCarBrandRequest extends FormRequest
         return [
             'odoo_id.string' => 'Odoo id must be a string',
             'name.string' => 'Name must be a string',
-            'logo.string' => 'Logo must be a base64 string',
         ];
+    }
+    
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            if ($this->has('media') && $this->media !== null) {
+                $media = $this->media;
+                
+                if ($media instanceof \Illuminate\Http\UploadedFile) {
+                    if (!in_array($media->getMimeType(), ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'])) {
+                        $validator->errors()->add('media', 'Media must be an image file (jpeg, png, gif, bmp, webp)');
+                    }
+                    if ($media->getSize() > 5242880) { 
+                        $validator->errors()->add('media', 'Media file size must not exceed 5MB');
+                    }
+                }
+                elseif (is_string($media)) {
+                } else {
+                    $validator->errors()->add('media', 'Media must be either a file upload or a base64 string');
+                }
+            }
+        });
     }
 
     public function attributes(): array
@@ -40,7 +61,7 @@ class UpdateCarBrandRequest extends FormRequest
         return [
             'odoo_id' => 'odoo id',
             'name' => 'name',
-            'logo' => 'logo',
+            'media' => 'media',
         ];
     }
 }
