@@ -94,7 +94,7 @@ class CarBrandService extends OdooCrudService
         Media::create([
             'modelable_type' => CarBrand::class,
             'modelable_id' => $brand->id,
-            'media' => 'odoo',
+            'media' => $path,
             'path_file_name' => $path,
             'file_type' => $mime,
             'info' => 'logo',
@@ -151,7 +151,7 @@ class CarBrandService extends OdooCrudService
         Media::create([
             'modelable_type' => CarBrand::class,
             'modelable_id' => $brand->id,
-            'media' => 'odoo',
+            'media' => $path,
             'path_file_name' => $path,
             'file_type' => $mime,
             'info' => 'logo',
