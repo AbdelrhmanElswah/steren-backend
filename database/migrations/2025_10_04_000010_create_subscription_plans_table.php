@@ -13,19 +13,34 @@ return new class extends Migration
     {
         Schema::create('subscription_plans', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // e.g., "Basic", "Premium", "Pro"
+            $table->string('odoo_id')->unique()->nullable();
+            $table->string('name');
             $table->text('description')->nullable();
-            $table->decimal('price', 8, 2);
+            $table->decimal('price', 10, 2);
             $table->string('currency')->default('USD');
-            $table->string('billing_cycle'); // monthly, yearly
-            $table->json('features')->nullable(); // Array of features included
-            $table->integer('max_listings')->nullable(); // Maximum listings allowed
+            $table->string('currency_symbol')->nullable();
+            $table->string('billing_cycle');
+            $table->json('features')->nullable();
+            $table->integer('max_listings')->nullable();
+            $table->integer('max_photos')->nullable();
+            $table->integer('subscriber_count')->default(0);
             $table->boolean('is_active')->default(true);
-            $table->boolean('is_popular')->default(false); // Highlight popular plans
+            $table->boolean('is_popular')->default(false);
+            $table->boolean('is_featured')->default(false);
+            $table->boolean('is_whatsapp_phone')->default(false);
+            $table->boolean('is_badge')->default(false);
+            $table->boolean('is_search')->default(false);
+            $table->boolean('is_similar_cars')->default(false);
+            $table->boolean('is_dedicated_account_rep')->default(false);
+            $table->boolean('is_analytics')->default(false);
+            $table->boolean('is_top_picks')->default(false);
+            $table->boolean('is_priority_support')->default(false);
+            $table->boolean('is_you_may_also_like')->default(false);
             $table->integer('sort_order')->default(0);
             $table->timestamps();
             
             $table->index(['is_active', 'sort_order']);
+            $table->index('odoo_id');
         });
 
         Schema::create('user_subscriptions', function (Blueprint $table) {

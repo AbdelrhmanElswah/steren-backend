@@ -78,6 +78,11 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('body-types/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'updateByOdooId']);
     Route::post('body-types/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'deleteByOdooId']);
     Route::post('body-types/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'restoreByOdooId']);
+    
+    Route::post('subscription-plans', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'store']);
+    Route::post('subscription-plans/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'updateByOdooId']);
+    Route::post('subscription-plans/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'deleteByOdooId']);
+    Route::post('subscription-plans/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'restoreByOdooId']);
 });
 
 // Car Listing API Routes - Protected with Sanctum
@@ -93,6 +98,7 @@ Route::prefix('odoo')->group(function () {
     Route::get('car-models', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'getCarModels']);
     Route::get('locations', [App\Http\Controllers\Api\Odoo\LocationController::class, 'getLocations']);
     Route::get('studios', [App\Http\Controllers\Api\Odoo\StudioController::class, 'getStudios']);
+    Route::get('subscription-plans', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'getSubscriptionPlans']);
 
 });
 

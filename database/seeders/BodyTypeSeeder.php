@@ -34,12 +34,42 @@ class BodyTypeSeeder extends Seeder
             if ($response->successful()) {
                 $data = $response->json();
                 
+                // Log the response structure for debugging
+                $this->command->info('API Response structure: ' . json_encode(array_keys($data)));
+                if (isset($data['result'])) {
+                    $this->command->info('Result structure: ' . json_encode(array_keys($data['result'])));
+                    
+                    // If there's an error, log it and use fallback
+                    if (isset($data['result']['error'])) {
+                        $this->command->error('API Error: ' . $data['result']['error']);
+                        $this->command->info('Error code: ' . ($data['result']['error_code'] ?? 'N/A'));
+                        $this->command->info('Using fallback body types...');
+                        $this->seedDefaultBodyTypes();
+                        return;
+                    }
+                }
+                
+                // Try multiple possible response structures
+                $bodyTypes = null;
+                
                 if (isset($data['result']['data']) && is_array($data['result']['data'])) {
                     $bodyTypes = $data['result']['data'];
-                    
+                } elseif (isset($data['data']) && is_array($data['data'])) {
+                    $bodyTypes = $data['data'];
+                } elseif (isset($data['result']) && is_array($data['result'])) {
+                    $bodyTypes = $data['result'];
+                }
+                
+                if ($bodyTypes && is_array($bodyTypes)) {
                     $this->command->info("Found " . count($bodyTypes) . " body types to seed");
                     
                     foreach ($bodyTypes as $bodyTypeData) {
+                        // Check if we have required fields
+                        if (!isset($bodyTypeData['id']) || !isset($bodyTypeData['name'])) {
+                            $this->command->warn("Skipping invalid body type data");
+                            continue;
+                        }
+                        
                         $bodyType = BodyType::updateOrCreate(
                             ['odoo_id' => $bodyTypeData['id']], 
                             [
@@ -56,6 +86,7 @@ class BodyTypeSeeder extends Seeder
                     $this->command->info('Body types seeded successfully!');
                 } else {
                     $this->command->error('Invalid response format from Odoo API');
+                    $this->command->info('Full response: ' . json_encode($data));
                     Log::error('BodyTypeSeeder: Invalid response format', ['response' => $data]);
                 }
             } else {
@@ -71,7 +102,38 @@ class BodyTypeSeeder extends Seeder
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+            
+            $this->command->info('Using fallback body types...');
+            $this->seedDefaultBodyTypes();
         }
+    }
+    
+    /**
+     * Seed default body types as fallback when API fails
+     */
+    private function seedDefaultBodyTypes(): void
+    {
+        $defaultBodyTypes = [
+            ['odoo_id' => '1', 'name' => 'Sedan'],
+            ['odoo_id' => '2', 'name' => 'SUV'],
+            ['odoo_id' => '3', 'name' => 'Hatchback'],
+            ['odoo_id' => '4', 'name' => 'Coupe'],
+            ['odoo_id' => '5', 'name' => 'Convertible'],
+            ['odoo_id' => '6', 'name' => 'Wagon'],
+            ['odoo_id' => '7', 'name' => 'Truck'],
+            ['odoo_id' => '8', 'name' => 'Van'],
+            ['odoo_id' => '9', 'name' => 'Minivan'],
+        ];
+        
+        foreach ($defaultBodyTypes as $bodyTypeData) {
+            BodyType::updateOrCreate(
+                ['odoo_id' => $bodyTypeData['odoo_id']],
+                $bodyTypeData
+            );
+            $this->command->info('✓ Seeded default: ' . $bodyTypeData['name']);
+        }
+        
+        $this->command->info('Successfully seeded ' . count($defaultBodyTypes) . ' default body types!');
     }
     
     /**
