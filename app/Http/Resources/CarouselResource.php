@@ -4,9 +4,12 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Traits\ResourceMediaTrait;
 
 class CarouselResource extends JsonResource
 {
+    use ResourceMediaTrait;
+
     /**
      * Transform the resource into an array.
      *
@@ -14,10 +17,8 @@ class CarouselResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $imageUrl = null;
-        if ($this->relationLoaded('medias') && $this->medias->isNotEmpty()) {
-            $imageUrl = $this->medias->first()->media_link;
-        }
+        $useTemporaryUrl = $this->shouldUseTemporaryUrls($request);
+        $expirationMinutes = $this->getExpirationMinutes($request);
 
         return [
             'id' => $this->odoo_id,
@@ -29,7 +30,10 @@ class CarouselResource extends JsonResource
             'is_active' => $this->is_active,
             'is_currently_active' => $this->isCurrentlyActive(),
             'sort_order' => $this->sort_order,
-            'img' => $imageUrl,
+            'media' => $this->when(
+                $this->relationLoaded('medias') && $this->medias->isNotEmpty(),
+                $this->getStandardMedia($this->medias->first(), $request, $useTemporaryUrl, $expirationMinutes)
+            ),
             'image_alt' => $this->medias->first()->alt_text ?? null,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

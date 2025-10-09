@@ -21,48 +21,36 @@ class CarBrandSeeder extends Seeder
         $this->command->info('Fetching car brands from Odoo API...');
         
         try {
+            $this->command->info("Fetching all car brands from Odoo API...");
+            
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
+                'User-Agent' => 'PostmanRuntime/7.48.0',
             ])->post(config('services.odoo.base_url') . '/api/brands', [
-                'jsonrpc' => '2.0',
-                'id' => null,
-                'method' => 'call',
-                'params' => []
+                'limit' => 0,
+                'offset' => 0
             ]);
             
             if ($response->successful()) {
                 $data = $response->json();
                 
-                if (isset($data['result']['data']) && is_array($data['result']['data'])) {
-                    $brands = $data['result']['data'];
-                    
-                    $this->command->info("Found " . count($brands) . " car brands to seed");
-                    
-                    foreach ($brands as $brand) {
-                        $this->command->info("Processing brand: " . $brand['name']);
-                        
-                        // Create or update the car brand
-                        $carBrand = CarBrand::updateOrCreate(
-                            ['odoo_id' => $brand['id']],
-                            [
-                                'name' => $brand['name'],
-                                'odoo_id' => $brand['id']
-                            ]
-                        );
-                        
-                        // Handle image if present and not null/empty
-                        if (isset($brand['image']) && !empty(trim($brand['image'])) && $brand['image'] !== null) {
-                            $this->handleBrandImage($carBrand, $brand['image']);
-                        } else {
-                            $this->command->info("No image found for brand: " . $brand['name']);
-                        }
+                // Debug: Log the full response structure
+                $this->command->info("API Response structure: " . json_encode(array_keys($data)));
+                if (isset($data['result'])) {
+                    $this->command->info("Result structure: " . json_encode(array_keys($data['result'])));
+                    if (isset($data['result']['meta'])) {
+                        $this->command->info("Meta data: " . json_encode($data['result']['meta']));
                     }
-                    
-                    $this->command->info('Car brands seeded successfully!');
+                }
+                
+                if (isset($data['result']['data']) && is_array($data['result']['data'])) {
+                    $allBrands = $data['result']['data'];
+                    $this->command->info("Successfully fetched " . count($allBrands) . " car brands from Odoo API");
                 } else {
                     $this->command->error('Invalid response format from Odoo API');
                     Log::error('CarBrandSeeder: Invalid response format', ['response' => $data]);
+                    $allBrands = [];
                 }
             } else {
                 $this->command->error('Failed to fetch car brands from Odoo API. Status: ' . $response->status());
@@ -70,7 +58,33 @@ class CarBrandSeeder extends Seeder
                     'status' => $response->status(),
                     'response' => $response->body()
                 ]);
+                $allBrands = [];
             }
+            
+            $this->command->info("Found " . count($allBrands) . " total car brands to seed");
+            
+            foreach ($allBrands as $brand) {
+                $this->command->info("Processing brand: " . $brand['name']);
+                
+                // Create or update the car brand
+                $carBrand = CarBrand::updateOrCreate(
+                    ['odoo_id' => $brand['id']],
+                    [
+                        'name' => $brand['name'],
+                        'odoo_id' => $brand['id']
+                    ]
+                );
+                
+                // Handle image if present and not null/empty
+                if (isset($brand['image']) && !empty(trim($brand['image'])) && $brand['image'] !== null) {
+                    $this->handleBrandImage($carBrand, $brand['image']);
+                } else {
+                    $this->command->info("No image found for brand: " . $brand['name']);
+                }
+            }
+            
+            $this->command->info('Car brands seeded successfully!');
+            
         } catch (\Exception $e) {
             $this->command->error('Error fetching car brands: ' . $e->getMessage());
             Log::error('CarBrandSeeder: Exception occurred', [
@@ -89,36 +103,30 @@ class CarBrandSeeder extends Seeder
             // Remove existing media if any
             $carBrand->media()->delete();
             
-            // Check if base64 string is valid and not empty
             if (empty(trim($base64Image)) || $base64Image === null) {
                 $this->command->warn("Empty or null base64 image for brand: " . $carBrand->name);
                 return;
             }
             
-            // Decode base64 image
-            $imageData = base64_decode($base64Image, true); // strict mode
+                $imageData = base64_decode($base64Image, true);
             
             if ($imageData === false) {
                 $this->command->warn("Failed to decode base64 image for brand: " . $carBrand->name . " (invalid base64 format)");
                 return;
             }
             
-            // Check if decoded data is actually an image
             if (empty($imageData)) {
                 $this->command->warn("Decoded image data is empty for brand: " . $carBrand->name);
                 return;
             }
             
-            // Generate unique filename
             $filename = 'brand_' . $carBrand->id . '_' . Str::slug($carBrand->name) . '_' . time() . '.png';
             
-            // Store the image file
             $stored = Storage::disk('public')->put('brands/' . $filename, $imageData);
             
             if ($stored) {
-                // Create media record
                 $media = new Media([
-                    'media' => 'brands/' . $filename, // Store the file path as media reference
+                    'media' => 'brands/' . $filename, 
                     'path_file_name' => 'brands/' . $filename,
                     'file_type' => 'image/png',
                     'info' => 'logo'

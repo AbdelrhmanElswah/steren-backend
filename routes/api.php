@@ -93,11 +93,7 @@ Route::prefix('odoo')->group(function () {
     Route::get('car-models', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'getCarModels']);
     Route::get('locations', [App\Http\Controllers\Api\Odoo\LocationController::class, 'getLocations']);
     Route::get('studios', [App\Http\Controllers\Api\Odoo\StudioController::class, 'getStudios']);
-Route::prefix('carousels')->group(function () {
-    Route::get('/', [App\Http\Controllers\Data\CarouselController::class, 'getCarousels']);
-    Route::get('/all', [App\Http\Controllers\Data\CarouselController::class, 'getAllCarousels']);
-    Route::get('/{id}', [App\Http\Controllers\Data\CarouselController::class, 'getCarouselById']);
-});
+
 });
 
 // Client Routes
@@ -173,7 +169,11 @@ Route::prefix('car-listings')->group(function () {
 Route::prefix('contact-methods')->group(function () {
     Route::get('/', [App\Http\Controllers\Data\ContactMethodController::class, 'getContactMethods']);
 });
-
+Route::prefix('carousels')->group(function () {
+    Route::get('/', [App\Http\Controllers\Data\CarouselController::class, 'getCarousels']);
+    Route::get('/all', [App\Http\Controllers\Data\CarouselController::class, 'getAllCarousels']);
+    Route::get('/{id}', [App\Http\Controllers\Data\CarouselController::class, 'getCarouselById']);
+});
 
 // Data Options Routes - GET only (Separated by category)
 Route::prefix('options')->group(function () {
@@ -252,4 +252,42 @@ Route::prefix('dealer')->middleware('auth:sanctum')->group(function () {
     Route::post('/subscription/complete-payment', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'completePayment']);
     Route::post('/subscription/renew', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'renew']);
     Route::get('/subscription/billing-history', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'billingHistory']);
+});
+
+// Dealer Verification Routes
+Route::prefix('verification')->group(function () {
+    // Public routes for Odoo integration
+    Route::post('/submit', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'submit']);
+    Route::post('/update-status', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'updateStatus']);
+    
+    // Protected routes for authenticated users
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/status', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'status']);
+    });
+});
+
+// Dealer Application Management Routes (Admin/Staff)
+Route::prefix('dealer-applications')->middleware('auth:sanctum')->group(function () {
+    // Routes by application ID
+    Route::post('/{applicationId}/approve', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'approve']);
+    Route::post('/{applicationId}/reject', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'reject']);
+    Route::post('/{applicationId}/process', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'processApplication']);
+    
+    // Routes by Odoo ID (for Odoo integration)
+    Route::post('/odoo/{odooId}/approve', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'approveByOdooId']);
+    Route::post('/odoo/{odooId}/reject', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'rejectByOdooId']);
+    Route::post('/odoo/{odooId}/process', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'processByOdooId']);
+});
+
+// Listing Approval Routes (Operator/Admin)
+Route::prefix('listings')->middleware('auth:sanctum')->group(function () {
+    // Routes by listing ID
+    Route::post('/{listingId}/approve', [App\Http\Controllers\Api\Listing\ListingApprovalController::class, 'approve']);
+    Route::post('/{listingId}/reject', [App\Http\Controllers\Api\Listing\ListingApprovalController::class, 'reject']);
+    Route::post('/{listingId}/process', [App\Http\Controllers\Api\Listing\ListingApprovalController::class, 'process']);
+    
+    // Routes by Odoo ID (for Odoo integration)
+    Route::post('/odoo/{odooId}/approve', [App\Http\Controllers\Api\Listing\ListingApprovalController::class, 'approveByOdooId']);
+    Route::post('/odoo/{odooId}/reject', [App\Http\Controllers\Api\Listing\ListingApprovalController::class, 'rejectByOdooId']);
+    Route::post('/odoo/{odooId}/process', [App\Http\Controllers\Api\Listing\ListingApprovalController::class, 'processByOdooId']);
 });

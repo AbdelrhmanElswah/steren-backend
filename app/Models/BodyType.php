@@ -23,5 +23,13 @@ class BodyType extends Model
     public function carSubmissions() {
         return $this->hasMany(CarSubmission::class, 'car_body_type_id');
     }
+
+    public function media() {
+        return $this->morphOne(Media::class, 'modelable')->where('info', 'main');
+    }
+
+    public function medias() {
+        return $this->morphMany(Media::class, 'modelable');
+    }
 }
 

@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('body_types', function (Blueprint $table) {
-            $table->string('odoo_id')->nullable()->unique()->after('name');
+        Schema::table('users', function (Blueprint $table) {
+            $table->boolean('is_dealer')->default(0);
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('body_types', function (Blueprint $table) {
-            $table->dropColumn('odoo_id');
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('is_dealer');
         });
     }
 };

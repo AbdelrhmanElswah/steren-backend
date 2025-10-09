@@ -114,7 +114,7 @@
       "name": "Car Brands",
       "item": [
         {
-          "name": "Create Car Brand",
+          "name": "Create Car Brand (JSON)",
           "request": {
             "method": "POST",
             "header": [
@@ -143,7 +143,80 @@
           }
         },
         {
-          "name": "Update Car Brand by Odoo ID",
+          "name": "Create Car Brand with Logo (Form-Data)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "odoo_id",
+                  "value": "odoo_brand_123",
+                  "type": "text"
+                },
+                {
+                  "key": "name",
+                  "value": "Toyota",
+                  "type": "text"
+                },
+                {
+                  "key": "media",
+                  "type": "file",
+                  "src": "",
+                  "description": "Upload brand media image (jpeg, png, gif, bmp, webp - max 5MB)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/odoo/car-brands",
+              "host": ["{{base_url}}"],
+              "path": ["api", "odoo", "car-brands"]
+            },
+            "description": "Create a car brand with logo upload via form-data. The logo field accepts image files up to 5MB."
+          }
+        },
+        {
+          "name": "Create Car Brand with Base64 Logo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"odoo_id\": \"odoo_brand_124\",\n  \"name\": \"Honda\",\n  \"media\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA...\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/odoo/car-brands",
+              "host": ["{{base_url}}"],
+              "path": ["api", "odoo", "car-brands"]
+            },
+            "description": "Create a car brand with base64-encoded logo. Legacy method, still supported."
+          }
+        },
+        {
+          "name": "Update Car Brand (JSON)",
           "request": {
             "method": "POST",
             "header": [
@@ -169,6 +242,44 @@
               "host": ["{{base_url}}"],
               "path": ["api", "odoo", "car-brands", "odoo", "odoo_brand_123", "update"]
             }
+          }
+        },
+        {
+          "name": "Update Car Brand with Logo (Form-Data)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Toyota Motors",
+                  "type": "text"
+                },
+                {
+                  "key": "media",
+                  "type": "file",
+                  "src": "",
+                  "description": "Upload new brand media (optional)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/odoo/car-brands/odoo/odoo_brand_123/update",
+              "host": ["{{base_url}}"],
+              "path": ["api", "odoo", "car-brands", "odoo", "odoo_brand_123", "update"]
+            },
+            "description": "Update a car brand with new logo via form-data. Old logo will be automatically deleted."
           }
         },
         {

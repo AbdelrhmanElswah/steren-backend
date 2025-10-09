@@ -320,4 +320,187 @@ class OdooService
             throw new OdooConnectionException('Unable to create client in Odoo: ' . $e->getMessage(), 0, $e);
         }
     }
+
+    public function createListing(array $listingData): array
+    {
+        try {
+            $response = Http::timeout(30)->withHeaders([
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer ' . $this->apiKey,
+            ])->post($this->baseUrl . '/api/listing/create', $listingData);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                Log::info('Listing created in Odoo', [
+                    'partner_id' => $listingData['partner_id'] ?? null,
+                    'response' => $data
+                ]);
+
+                if (isset($data['success']) && $data['success']) {
+                    return [
+                        'success' => true,
+                        'odoo_listing_id' => $data['listing_id'] ?? $data['id'] ?? null,
+                        'message' => $data['message'] ?? 'Listing created successfully',
+                        'data' => $data['data'] ?? $data
+                    ];
+                }
+
+                return [
+                    'success' => false,
+                    'message' => $data['message'] ?? 'Failed to create listing in Odoo'
+                ];
+            }
+
+            if ($response->status() >= 500) {
+                throw new OdooConnectionException('Odoo service is temporarily unavailable');
+            }
+
+            $errorResponse = $response->json();
+            $errorMessage = $errorResponse['error'] ?? $errorResponse['message'] ?? 'Unknown Odoo API error';
+
+            Log::error('Odoo listing creation failed', [
+                'listing_data' => $listingData,
+                'error' => $errorMessage,
+                'status' => $response->status(),
+                'response' => $errorResponse
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $errorMessage
+            ];
+
+        } catch (OdooConnectionException $e) {
+            throw $e;
+        } catch (Exception $e) {
+            Log::error('Odoo listing creation failed', [
+                'listing_data' => $listingData,
+                'error' => $e->getMessage()
+            ]);
+
+            throw new OdooConnectionException('Unable to create listing in Odoo: ' . $e->getMessage(), 0, $e);
+        }
+    }
+
+    public function approveListing(string $odooListingId, int $listingId): array
+    {
+        try {
+            $payload = [
+                'odoo_listing_id' => $odooListingId,
+                'listing_id' => $listingId,
+                'action' => 'approve',
+                'status' => 'approved',
+                'approved_at' => now()->toISOString()
+            ];
+
+            Log::info('Sending listing approval to Odoo', [
+                'url' => $this->baseUrl . '/api/listing/approve',
+                'payload' => $payload
+            ]);
+
+            $response = Http::timeout(30)->withHeaders([
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer ' . $this->apiKey,
+            ])->post($this->baseUrl . '/api/listing/approve', $payload);
+
+            Log::info('Odoo listing approval response', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'successful' => $response->successful()
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                Log::info('Listing approved in Odoo', [
+                    'odoo_listing_id' => $odooListingId,
+                    'listing_id' => $listingId
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => $data['message'] ?? 'Listing approved successfully'
+                ];
+            }
+
+            $errorResponse = $response->json();
+            Log::error('Odoo listing approval failed', [
+                'odoo_listing_id' => $odooListingId,
+                'status' => $response->status(),
+                'error' => $errorResponse,
+                'body' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $errorResponse['message'] ?? 'Failed to approve listing in Odoo'
+            ];
+
+        } catch (Exception $e) {
+            Log::error('Odoo listing approval failed', [
+                'odoo_listing_id' => $odooListingId,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Failed to approve listing in Odoo: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function rejectListing(string $odooListingId, int $listingId, string $reason): array
+    {
+        try {
+            $response = Http::timeout(30)->withHeaders([
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer ' . $this->apiKey,
+            ])->post($this->baseUrl . '/api/listing/reject', [
+                'odoo_listing_id' => $odooListingId,
+                'listing_id' => $listingId,
+                'action' => 'reject',
+                'status' => 'rejected',
+                'rejected_at' => now()->toISOString(),
+                'rejection_reason' => $reason
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                Log::info('Listing rejected in Odoo', [
+                    'odoo_listing_id' => $odooListingId,
+                    'listing_id' => $listingId,
+                    'reason' => $reason
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => $data['message'] ?? 'Listing rejected successfully'
+                ];
+            }
+
+            $errorResponse = $response->json();
+            Log::error('Odoo listing rejection failed', [
+                'odoo_listing_id' => $odooListingId,
+                'error' => $errorResponse
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $errorResponse['message'] ?? 'Failed to reject listing in Odoo'
+            ];
+
+        } catch (Exception $e) {
+            Log::error('Odoo listing rejection failed', [
+                'odoo_listing_id' => $odooListingId,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Failed to reject listing in Odoo: ' . $e->getMessage()
+            ];
+        }
+    }
 }

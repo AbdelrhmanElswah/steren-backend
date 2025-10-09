@@ -25,6 +25,7 @@ class CarBrandController extends Controller
     {
         try {
             $carBrand = $this->carBrandService->create($request->validated());
+            $carBrand->load('media');
 
             return $this->createdResponse(
                 new CarBrandResource($carBrand),
@@ -45,6 +46,7 @@ class CarBrandController extends Controller
     {
         try {
             $carBrand = $this->carBrandService->updateByOdooId($odooId, $request->validated());
+            $carBrand->load('media');
 
             return $this->successResponse(
                 new CarBrandResource($carBrand),
