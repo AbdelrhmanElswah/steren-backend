@@ -45,7 +45,21 @@ class CarListingCreateRequest extends FormRequest
             'seller_info.type' => 'required|string|in:verified_seller,private_seller,dealer',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
-            'images' => 'nullable|array|max:10',
+            'images' => [
+                'nullable',
+                'array',
+                function ($attribute, $value, $fail) {
+                    // Dynamic validation based on user's subscription plan
+                    if ($this->user()) {
+                        $subscriptionService = app(\App\Services\SubscriptionService::class);
+                        $plan = $subscriptionService->getSubscriptionPlan($this->user());
+                        
+                        if ($plan && $plan->max_photos !== null && count($value) > $plan->max_photos) {
+                            $fail("You can upload a maximum of {$plan->max_photos} photos per listing with your current subscription plan.");
+                        }
+                    }
+                }
+            ],
             'images.*' => 'string', // base64 encoded images
         ];
     }

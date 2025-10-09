@@ -144,7 +144,13 @@ class User extends Authenticatable
 
     public function activeSubscription()
     {
-        return $this->hasOne(UserSubscription::class)->active()->latest();
+        return $this->hasOne(UserSubscription::class)
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            })
+            ->latest();
     }
 
     public function analytics()
@@ -227,6 +233,119 @@ class User extends Authenticatable
     public function getCurrentPlanAttribute()
     {
         return $this->activeSubscription?->subscriptionPlan;
+    }
+
+    /**
+     * Check if user can create more listings
+     */
+    public function canCreateListing()
+    {
+        if (!$this->hasActiveSubscription()) {
+            return false;
+        }
+
+        $plan = $this->current_plan;
+        if (!$plan || $plan->max_listings === null) {
+            return true; // Unlimited
+        }
+
+        $currentListingsCount = $this->carListings()
+            ->whereIn('status', ['active', 'pending'])
+            ->count();
+
+        return $currentListingsCount < $plan->max_listings;
+    }
+
+    /**
+     * Get remaining listing slots
+     */
+    public function getRemainingListingsAttribute()
+    {
+        if (!$this->hasActiveSubscription()) {
+            return 0;
+        }
+
+        $plan = $this->current_plan;
+        if (!$plan || $plan->max_listings === null) {
+            return null; // Unlimited
+        }
+
+        $currentListingsCount = $this->carListings()
+            ->whereIn('status', ['active', 'pending'])
+            ->count();
+
+        return max(0, $plan->max_listings - $currentListingsCount);
+    }
+
+    /**
+     * Get maximum photos allowed per listing
+     */
+    public function getMaxPhotosAttribute()
+    {
+        if (!$this->hasActiveSubscription()) {
+            return 0;
+        }
+
+        $plan = $this->current_plan;
+        return $plan ? $plan->max_photos : 0;
+    }
+
+    /**
+     * Check if user can upload specified number of photos
+     */
+    public function canUploadPhotos(int $photoCount): bool
+    {
+        if (!$this->hasActiveSubscription()) {
+            return false;
+        }
+
+        $plan = $this->current_plan;
+        if (!$plan) {
+            return false;
+        }
+
+        // Null means unlimited
+        if ($plan->max_photos === null) {
+            return true;
+        }
+
+        return $photoCount <= $plan->max_photos;
+    }
+
+    /**
+     * Check if subscription is expiring soon (within 7 days)
+     */
+    public function isSubscriptionExpiringSoon()
+    {
+        $subscription = $this->activeSubscription;
+        
+        if (!$subscription || !$subscription->expires_at) {
+            return false;
+        }
+
+        return $subscription->expires_at->diffInDays(now()) <= 7 && $subscription->expires_at->isFuture();
+    }
+
+    /**
+     * Get subscription status
+     */
+    public function getSubscriptionStatusAttribute()
+    {
+        if (!$this->hasActiveSubscription()) {
+            return 'no_subscription';
+        }
+
+        $subscription = $this->activeSubscription;
+
+        if ($subscription->isExpired()) {
+            return 'expired';
+        }
+
+        if ($this->isSubscriptionExpiringSoon()) {
+            return 'expiring_soon';
+        }
+
+        return 'active';
     }
 
     /**

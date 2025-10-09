@@ -42,6 +42,7 @@ class DatabaseSeeder extends Seeder
             CarBrandSeeder::class,
             CarModelSeeder::class,
             BodyTypeSeeder::class,
+            BudgetSeeder::class,
             CarouselSeeder::class,
         ]);
     }

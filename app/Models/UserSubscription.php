@@ -68,11 +68,22 @@ class UserSubscription extends Model
 
     /**
      * Check if subscription is active
+     * Real-time validation based on expires_at date
      */
     public function isActive()
     {
-        return $this->status === 'active' && 
-               ($this->expires_at === null || $this->expires_at->isFuture());
+        // Check status first
+        if ($this->status !== 'active') {
+            return false;
+        }
+        
+        // If no expiry date, subscription is active indefinitely
+        if ($this->expires_at === null) {
+            return true;
+        }
+        
+        // Check if subscription has expired based on expires_at date
+        return $this->expires_at->isFuture();
     }
 
     /**

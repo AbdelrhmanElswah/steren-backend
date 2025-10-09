@@ -7,6 +7,7 @@ use App\Http\Requests\Api\CarListingCreateRequest;
 use App\Models\CarListing;
 use App\Models\Media;
 use App\Services\Odoo\CarListingService;
+use App\Services\SubscriptionService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,8 @@ class CarListingApiController extends Controller
     use ApiResponse;
 
     public function __construct(
-        private CarListingService $carListingService
+        private CarListingService $carListingService,
+        private SubscriptionService $subscriptionService
     ) {}
 
     /**
@@ -28,10 +30,18 @@ class CarListingApiController extends Controller
     public function store(CarListingCreateRequest $request)
     {
         try {
-            if (!$request->user()->is_dealer) {
+            // Check if user can create listing based on subscription or free tier
+            $canCreate = $this->subscriptionService->canCreateListing($request->user());
+            
+            if (!$canCreate['can_create']) {
                 return $this->errorResponse(
-                    'Only verified dealers can create listings. Please complete dealer verification first.',
-                    403
+                    $canCreate['reason'],
+                    403,
+                    [
+                        'code' => $canCreate['code'],
+                        'current_listings' => $canCreate['current_listings'] ?? 0,
+                        'max_listings' => $canCreate['max_listings'] ?? 0
+                    ]
                 );
             }
 
@@ -42,6 +52,24 @@ class CarListingApiController extends Controller
 
             // Add authenticated user_id to the data
             $validatedData['user_id'] = $request->user()->id;
+
+            // Validate photo count if images are provided
+            if ($request->has('images') && is_array($request->images)) {
+                $photoCount = count($request->images);
+                $canUpload = $this->subscriptionService->canUploadPhotos($request->user(), $photoCount);
+                
+                if (!$canUpload['can_upload']) {
+                    return $this->errorResponse(
+                        $canUpload['reason'],
+                        403,
+                        [
+                            'code' => $canUpload['code'],
+                            'max_photos' => $canUpload['max_photos'],
+                            'attempted_photos' => $canUpload['attempted_photos'] ?? $photoCount
+                        ]
+                    );
+                }
+            }
 
             // Map nested data to flat database structure
             $carListingData = $this->mapToCarListingData($validatedData);
@@ -73,10 +101,19 @@ class CarListingApiController extends Controller
 
             DB::commit();
 
+            // Get subscription info for response
+            $subscriptionInfo = $this->subscriptionService->canCreateListing($request->user());
+
             return $this->createdResponse([
-                'car_listing' => $carListing,
+                'car_listing' => $carListing->load(['brand', 'carModel', 'bodyType', 'media']),
+                'status' => 'pending',
+                'message' => 'Car listing created successfully and is pending approval from our team.',
+                'subscription_info' => [
+                    'remaining_listings' => $subscriptionInfo['remaining_listings'],
+                    'max_listings' => $subscriptionInfo['max_listings']
+                ],
                 'odoo_response' => $odooResponse
-            ], 'Car listing created successfully');
+            ], 'Car listing created successfully and is pending approval');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -123,7 +160,7 @@ class CarListingApiController extends Controller
             'mileage_type_id' => $this->getMileageTypeId($carInfo['mileage_type'] ?? 'KM'),
             'mileage' => $carInfo['mileage'],
             'plate_status' => $carInfo['plate_status'] ?? null,
-            'status' => 'active',
+            'status' => 'pending', // All new listings start as pending until approved by Odoo
             'views' => 0,
             'is_verified' => ($validatedData['seller_info']['type'] ?? '') === 'verified_seller',
             'origin_country' => $carInfo['gcc_import'] ?? 'UAE', 

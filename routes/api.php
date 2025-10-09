@@ -83,6 +83,11 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('subscription-plans/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'updateByOdooId']);
     Route::post('subscription-plans/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'deleteByOdooId']);
     Route::post('subscription-plans/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'restoreByOdooId']);
+    
+    Route::post('budgets', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'store']);
+    Route::post('budgets/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'updateByOdooId']);
+    Route::post('budgets/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'deleteByOdooId']);
+    Route::post('budgets/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'restoreByOdooId']);
 });
 
 // Car Listing API Routes - Protected with Sanctum
@@ -99,7 +104,7 @@ Route::prefix('odoo')->group(function () {
     Route::get('locations', [App\Http\Controllers\Api\Odoo\LocationController::class, 'getLocations']);
     Route::get('studios', [App\Http\Controllers\Api\Odoo\StudioController::class, 'getStudios']);
     Route::get('subscription-plans', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'getSubscriptionPlans']);
-
+    Route::get('budgets', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'getBudgets']);
 });
 
 // Client Routes
@@ -239,6 +244,18 @@ Route::prefix('analytics')->middleware('auth:sanctum')->group(function () {
 // Payment Processing Routes - GET only
 Route::prefix('payments')->middleware('auth:sanctum')->group(function () {
     Route::get('/status/{paymentId}', [App\Http\Controllers\Data\PaymentController::class, 'getPaymentStatus']);
+});
+
+// Subscription Management Routes
+Route::prefix('subscriptions')->middleware('auth:sanctum')->group(function () {
+    Route::get('/plans', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'getPlans']);
+    Route::get('/current', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'getCurrentSubscription']);
+    Route::get('/limits', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'getLimits']);
+    Route::get('/history', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'getHistory']);
+    Route::post('/subscribe', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'subscribe']);
+    Route::post('/cancel', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'cancel']);
+    Route::post('/renew', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'renew']);
+    Route::post('/change-plan', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'changePlan']);
 });
 
 // Dealer Application Routes
