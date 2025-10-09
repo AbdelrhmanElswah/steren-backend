@@ -22,6 +22,9 @@ class StatusOptionsController extends Controller
                 ['value' => 'sold', 'label' => 'Sold'],
                 ['value' => 'pending', 'label' => 'Pending'],
                 ['value' => 'expired', 'label' => 'Expired'],
+                ['value' => 'boosted', 'label' => 'Boosted'],
+                ['value' => 'archive', 'label' => 'Archived'],
+                ['value' => 'suspend', 'label' => 'Suspended'],
             ];
 
             return $this->successResponse($options, 'Status options retrieved successfully');

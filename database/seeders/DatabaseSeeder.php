@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            StatusSeeder::class,
             CarConditionSeeder::class,
             MileageTypeSeeder::class,
             ImportTypeSeeder::class,
@@ -39,6 +40,7 @@ class DatabaseSeeder extends Seeder
             CarListingAnalyticsSeeder::class,
             IraqStatesSeeder::class,
             CarBrandSeeder::class,
+            CarModelSeeder::class,
             BodyTypeSeeder::class,
             CarouselSeeder::class,
         ]);

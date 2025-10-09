@@ -58,6 +58,7 @@ class CarListing extends Model
         'width',
         'height',
         'status',
+        'status_id',
         'is_featured',
         'is_new_arrival',
         'description',
@@ -163,6 +164,10 @@ class CarListing extends Model
 
     public function carTrim() {
         return $this->belongsTo(CarTrim::class);
+    }
+
+    public function status() {
+        return $this->belongsTo(Status::class);
     }
 
     public function features() {
