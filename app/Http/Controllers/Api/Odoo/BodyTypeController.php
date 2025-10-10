@@ -105,7 +105,7 @@ class BodyTypeController extends Controller
     public function getBodyTypes(GetBodyTypesRequest $request): JsonResponse
     {
         try {
-            $bodyTypes = \App\Models\BodyType::with('media')
+            $bodyTypes = \App\Models\BodyType::with('medias')
                 ->when($request->filled('search'), function ($query) use ($request) {
                     $query->where('name', 'like', '%' . $request->search . '%');
                 })
