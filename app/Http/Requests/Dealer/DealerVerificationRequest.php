@@ -21,7 +21,7 @@ class DealerVerificationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'partner_id' => 'required|integer',
+            'partner_id' => 'required|exists:users,partner_id',
             'seller_type' => ['required', 'string', Rule::in(['authorized', 'independent'])],
             'dealership_name' => 'required|string|max:255',
             'owner_manager_name' => 'required|string|max:255',

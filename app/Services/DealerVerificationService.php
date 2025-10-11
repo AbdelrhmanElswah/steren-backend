@@ -26,18 +26,20 @@ class DealerVerificationService
         $this->apiKey = config('services.odoo.api_key');
     }
 
-    public function submitVerification(array $data): array
+    public function submitVerification(array $data, ?User $authenticatedUser = null): array
     {
         try {
-            $user = User::where('partner_id', $data['partner_id'])->first();
+            $user = $authenticatedUser ?? User::where('partner_id', $data['partner_id'])->first();
             
             if (!$user) {
-                throw new OdooServiceException('User not found for partner ID: ' . $data['partner_id']);
+                throw new OdooServiceException('User not found for partner ID: ' . ($data['partner_id'] ?? 'N/A'));
             }
 
             if ($user->is_dealer) {
                 throw new OdooServiceException('User is already a verified dealer');
             }
+            
+            $data['partner_id'] = $user->partner_id;
 
             DB::beginTransaction();
 

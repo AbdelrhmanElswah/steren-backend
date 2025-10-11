@@ -29,8 +29,9 @@ class DealerVerificationController extends Controller
     {
         try {
             $data = $request->validated();
+            $user = $request->user();
             
-            $result = $this->dealerVerificationService->submitVerification($data);
+            $result = $this->dealerVerificationService->submitVerification($data, $user);
 
             return $this->successResponse($result, 'Dealer verification submitted successfully', 201);
 
