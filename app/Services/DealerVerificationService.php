@@ -8,6 +8,7 @@ use App\Models\SubscriptionPlan;
 use App\Models\Status;
 use App\Exceptions\OdooConnectionException;
 use App\Exceptions\OdooServiceException;
+use App\Services\FirebaseService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -18,12 +19,14 @@ class DealerVerificationService
     protected $baseUrl;
     protected $database;
     protected $apiKey;
+    protected FirebaseService $firebaseService;
 
-    public function __construct()
+    public function __construct(FirebaseService $firebaseService)
     {
         $this->baseUrl = config('services.odoo.base_url');
         $this->database = config('services.odoo.database');
         $this->apiKey = config('services.odoo.api_key');
+        $this->firebaseService = $firebaseService;
     }
 
     public function submitVerification(array $data, ?User $authenticatedUser = null): array
@@ -76,7 +79,6 @@ class DealerVerificationService
                         'synced_with_odoo' => true
                     ];
                 } else {
-                    // Odoo returned error but we keep the local record
                     Log::warning('Dealer application saved locally but Odoo sync failed', [
                         'application_id' => $dealerApplication->id,
                         'odoo_error' => $odooResponse['message'] ?? 'Unknown error',
@@ -87,13 +89,12 @@ class DealerVerificationService
                         'message' => 'Application saved locally. Odoo sync pending.',
                         'application_id' => $dealerApplication->id,
                         'odoo_id' => (string) $user->partner_id,
-                        'status' => 'pending',
+                        'status' => 'application_applied',
                         'synced_with_odoo' => false,
                         'sync_error' => $odooResponse['message'] ?? 'Failed to sync with Odoo'
                     ];
                 }
             } catch (OdooConnectionException $e) {
-                // Network/connection issue with Odoo - keep local record
                 Log::error('Odoo connection failed, application saved locally', [
                     'application_id' => $dealerApplication->id,
                     'error' => $e->getMessage(),
@@ -104,7 +105,7 @@ class DealerVerificationService
                     'message' => 'Application saved locally. Will sync with Odoo later.',
                     'application_id' => $dealerApplication->id,
                     'odoo_id' => (string) $user->partner_id,
-                    'status' => 'pending',
+                    'status' => 'application_applied',
                     'synced_with_odoo' => false,
                     'sync_error' => 'Odoo connection failed'
                 ];
@@ -125,7 +126,7 @@ class DealerVerificationService
 
     protected function createDealerApplication(User $user, array $data, SubscriptionPlan $subscriptionPlan): DealerApplication
     {
-            $pendingStatus = Status::findByNameAndType('pending', 'dealer_application');
+            $applicationAppliedStatus = Status::findByNameAndType('application_applied', 'dealer_application');
             
             $applicationData = [
                 'user_id' => $user->id,
@@ -139,7 +140,7 @@ class DealerVerificationService
                 'years_in_business' => $data['years_in_business'] ?? null,
                 'city_address' => $data['city_address'],
                 'subscription_plan_id' => $subscriptionPlan->id,
-                'status_id' => $pendingStatus?->id,
+                'status_id' => $applicationAppliedStatus?->id,
                 'terms_accepted' => true,
                 'information_confirmed' => true,
             ];
@@ -163,7 +164,24 @@ class DealerVerificationService
             }
         }
 
-        return DealerApplication::create($applicationData);
+        $dealerApplication = DealerApplication::create($applicationData);
+
+        $this->firebaseService->syncDealerApplicationToFirebase(
+            $dealerApplication->id,
+            (string) $user->partner_id,
+            [
+                'application_id' => $dealerApplication->id,
+                'status' => 'application_applied',
+                'dealership_name' => $dealerApplication->dealership_company_name,
+                'seller_type' => $dealerApplication->seller_type,
+                'owner_name' => $dealerApplication->owner_manager_name,
+                'vehicles_in_stock' => $dealerApplication->vehicles_in_stock,
+                'years_in_business' => $dealerApplication->years_in_business,
+                'created_at' => $dealerApplication->created_at->toISOString(),
+            ]
+        );
+
+        return $dealerApplication;
     }
 
     protected function submitToOdoo(array $data, DealerApplication $dealerApplication): array
@@ -389,7 +407,8 @@ class DealerVerificationService
         try {
             $application = DealerApplication::findOrFail($applicationId);
             
-            if (!$application->isPending() && !$application->isUnderReview()) {
+            $allowedStatuses = ['application_applied', 'pending', 'under_review'];
+            if (!in_array($application->status?->name, $allowedStatuses)) {
                 throw new OdooServiceException('Application cannot be approved. Current status: ' . ($application->status?->display_name ?? 'Unknown'));
             }
 
@@ -419,6 +438,12 @@ class DealerVerificationService
             ]);
 
             DB::commit();
+
+            $this->firebaseService->updateDealerApplicationStatus(
+                $application->odoo_id,
+                $applicationId,
+                'approved'
+            );
 
             Log::info('Dealer application approved', [
                 'application_id' => $applicationId,
@@ -454,7 +479,8 @@ class DealerVerificationService
         try {
             $application = DealerApplication::findOrFail($applicationId);
             
-            if (!$application->isPending() && !$application->isUnderReview()) {
+            $allowedStatuses = ['application_applied', 'pending', 'under_review'];
+            if (!in_array($application->status?->name, $allowedStatuses)) {
                 throw new OdooServiceException('Application cannot be rejected. Current status: ' . ($application->status?->display_name ?? 'Unknown'));
             }
 
@@ -484,6 +510,13 @@ class DealerVerificationService
             ]);
 
             DB::commit();
+
+            $this->firebaseService->updateDealerApplicationStatus(
+                $application->odoo_id,
+                $applicationId,
+                'rejected',
+                $reason
+            );
 
             Log::info('Dealer application rejected', [
                 'application_id' => $applicationId,
