@@ -35,7 +35,20 @@ class DealerVerificationController extends Controller
 
             return $this->successResponse($result, 'Dealer verification submitted successfully', 201);
 
+        } catch (\App\Exceptions\OdooServiceException $e) {
+            // Return 409 Conflict if there's a duplicate or business logic error
+            return $this->errorResponse(
+                $e->getMessage(),
+                409
+            );
+        } catch (\App\Exceptions\OdooConnectionException $e) {
+            // Return 503 Service Unavailable if Odoo is down
+            return $this->errorResponse(
+                'Odoo service is temporarily unavailable. Please try again later.',
+                503
+            );
         } catch (Exception $e) {
+            // Return 500 for other errors
             return $this->errorResponse(
                 'Failed to submit dealer verification: ' . $e->getMessage(),
                 500

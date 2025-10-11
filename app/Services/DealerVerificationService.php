@@ -69,7 +69,19 @@ class DealerVerificationService
                     'status' => 'under_review'
                 ];
             } else {
-                throw new OdooServiceException($odooResponse['message'] ?? 'Failed to submit to Odoo');
+                // Include detailed error information from Odoo
+                $errorMessage = $odooResponse['message'] ?? 'Failed to submit to Odoo';
+                
+                if (isset($odooResponse['error_code'])) {
+                    $errorMessage .= ' (Code: ' . $odooResponse['error_code'] . ')';
+                }
+                
+                if (isset($odooResponse['details']) && is_array($odooResponse['details'])) {
+                    $detailsStr = json_encode($odooResponse['details']);
+                    $errorMessage .= ' - Details: ' . $detailsStr;
+                }
+                
+                throw new OdooServiceException($errorMessage);
             }
 
         } catch (Exception $e) {
@@ -182,13 +194,30 @@ class DealerVerificationService
                 ];
             }
 
+            $responseData = $response->json();
+            
             if ($response->status() >= 500) {
                 throw new OdooConnectionException('Odoo service is temporarily unavailable');
             }
 
+            $errorMessage = $responseData['error'] ?? 'Failed to submit verification to Odoo';
+            $errorCode = $responseData['error_code'] ?? null;
+            $errorDetails = $responseData['details'] ?? null;
+
+            Log::warning('Odoo API Error Response', [
+                'status' => $response->status(),
+                'error' => $errorMessage,
+                'error_code' => $errorCode,
+                'details' => $errorDetails,
+                'partner_id' => $data['partner_id'] ?? null
+            ]);
+
             return [
                 'success' => false,
-                'message' => 'Failed to submit verification to Odoo'
+                'message' => $errorMessage,
+                'error_code' => $errorCode,
+                'details' => $errorDetails,
+                'status' => $response->status()
             ];
 
         } catch (OdooConnectionException $e) {
@@ -218,11 +247,9 @@ class DealerVerificationService
             'subscription_plan_id' => $data['subscription_plan_id'],
         ];
 
-        // Add authorized seller specific fields
         if ($data['seller_type'] === 'authorized') {
             $payload['automotive_brand'] = $data['automotive_brand'] ?? null;
             
-            // Convert uploaded files to base64 for Odoo API
             if (isset($data['authorization_letter']) && $data['authorization_letter'] instanceof \Illuminate\Http\UploadedFile) {
                 $payload['authorization_letter'] = base64_encode(file_get_contents($data['authorization_letter']->getRealPath()));
                 $payload['authorization_letter_filename'] = $data['authorization_letter']->getClientOriginalName();
