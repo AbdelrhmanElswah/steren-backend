@@ -75,6 +75,13 @@ class CarListing extends Model
         'seller_email',
         'sold_at',
         'featured_at',
+        // Promotion fields
+        'listing_promotion_id',
+        'promotion_price_paid',
+        'promotion_currency',
+        'promotion_expires_at',
+        'is_promoted',
+        'promotion_started_at',
     ];
 
     protected $casts = [
@@ -98,10 +105,19 @@ class CarListing extends Model
         'specifications' => 'array',
         'sold_at' => 'datetime',
         'featured_at' => 'datetime',
+        // Promotion casts
+        'promotion_price_paid' => 'decimal:2',
+        'promotion_expires_at' => 'datetime',
+        'is_promoted' => 'boolean',
+        'promotion_started_at' => 'datetime',
     ];
 
     public function user() {
         return $this->belongsTo(User::class);
+    }
+
+    public function listingPromotion() {
+        return $this->belongsTo(ListingPromotion::class);
     }
 
     public function brand() {

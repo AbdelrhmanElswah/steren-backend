@@ -95,6 +95,15 @@ Route::prefix('car-listings')->middleware('auth:sanctum')->group(function () {
     Route::post('/', [App\Http\Controllers\Api\CarListingApiController::class, 'store']);
 });
 
+// Listing Promotion API Routes - Public (for pricing info)
+Route::prefix('listing-promotions')->group(function () {
+    Route::get('/', [App\Http\Controllers\Api\ListingPromotionController::class, 'index']);
+    Route::get('/pricing', [App\Http\Controllers\Api\ListingPromotionController::class, 'pricing']);
+    Route::get('/default', [App\Http\Controllers\Api\ListingPromotionController::class, 'default']);
+    Route::get('/compare', [App\Http\Controllers\Api\ListingPromotionController::class, 'compare']);
+    Route::get('/{id}', [App\Http\Controllers\Api\ListingPromotionController::class, 'show']);
+});
+
 // Odoo Data Fetch Routes (GET requests to fetch from regular database)
 Route::prefix('odoo')->group(function () {
     Route::get('brands', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'getBrands']);

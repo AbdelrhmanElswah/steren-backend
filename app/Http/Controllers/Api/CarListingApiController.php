@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\CarListingCreateRequest;
 use App\Models\CarListing;
+use App\Models\ListingPromotion;
 use App\Models\Media;
 use App\Services\Odoo\CarListingService;
 use App\Services\SubscriptionService;
@@ -73,6 +74,10 @@ class CarListingApiController extends Controller
 
             // Map nested data to flat database structure
             $carListingData = $this->mapToCarListingData($validatedData);
+
+            // Handle promotion selection
+            $promotionData = $this->handlePromotionSelection($validatedData, $request->user());
+            $carListingData = array_merge($carListingData, $promotionData);
 
             // Create the car listing in local database
             $carListing = CarListing::create($carListingData);
@@ -387,5 +392,60 @@ class CarListingApiController extends Controller
         ]);
         
         return null;
+    }
+
+    /**
+     * Handle promotion selection for car listing
+     */
+    private function handlePromotionSelection(array $validatedData, $user)
+    {
+        $promotionData = [
+            'listing_promotion_id' => null,
+            'promotion_price_paid' => null,
+            'promotion_currency' => 'IQD',
+            'promotion_expires_at' => null,
+            'is_promoted' => false,
+            'promotion_started_at' => null,
+        ];
+
+        // Check if promotion is selected in the request
+        $selectedPromotionType = $validatedData['promotion_type'] ?? 'free';
+        
+        // Get the promotion based on type
+        $promotion = ListingPromotion::where('type', $selectedPromotionType)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$promotion) {
+            // Fallback to default promotion if requested type not found
+            $promotion = ListingPromotion::getDefault();
+        }
+
+        if ($promotion) {
+            $promotionData['listing_promotion_id'] = $promotion->id;
+            $promotionData['promotion_currency'] = $promotion->currency;
+            $promotionData['is_promoted'] = $promotion->isSponsored();
+            $promotionData['promotion_started_at'] = now();
+
+            // Set expiration date based on promotion duration
+            $promotionData['promotion_expires_at'] = $promotion->calculateExpirationDate();
+
+            // If it's a sponsored promotion, record the price paid
+            if ($promotion->isSponsored() && $promotion->price > 0) {
+                $promotionData['promotion_price_paid'] = $promotion->price;
+                
+                // Log promotion purchase for analytics
+                Log::info('Sponsored listing promotion selected', [
+                    'user_id' => $user->id,
+                    'promotion_id' => $promotion->id,
+                    'promotion_name' => $promotion->name,
+                    'price_paid' => $promotion->price,
+                    'currency' => $promotion->currency,
+                    'expires_at' => $promotionData['promotion_expires_at'],
+                ]);
+            }
+        }
+
+        return $promotionData;
     }
 }
