@@ -163,14 +163,15 @@ class DealerVerificationService
             if ($response->successful()) {
                 $responseData = $response->json();
                 
-                Log::info('Odoo API Response', [
+                Log::info('Odoo API Success Response - Full Details', [
+                    'http_status' => $response->status(),
                     'response_data' => $responseData,
+                    'success_field' => $responseData['success'] ?? 'NOT SET',
                     'partner_id' => $data['partner_id'] ?? null,
                     'application_id' => $dealerApplication->id ?? null
                 ]);
                 
-                // Handle direct API response format (not JSON-RPC)
-                if (isset($responseData['success']) && $responseData['success']) {
+                if (isset($responseData['success']) && $responseData['success'] === true) {
                     $odooId = $this->extractOdooId($responseData);
                     
                     if (!$odooId) {
@@ -188,6 +189,12 @@ class DealerVerificationService
                     ];
                 }
 
+                Log::warning('Odoo API returned 200 but success=false', [
+                    'response_data' => $responseData,
+                    'partner_id' => $data['partner_id'] ?? null,
+                    'application_id' => $dealerApplication->id ?? null
+                ]);
+                
                 return [
                     'success' => false,
                     'message' => $responseData['message'] ?? 'Failed to submit verification'
