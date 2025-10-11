@@ -107,7 +107,6 @@ class DealerVerificationService
             $applicationData['automotive_brand_represented'] = $data['automotive_brand'];
             $applicationData['business_license_number'] = $data['business_license_name'] ?? null;
             
-            // Handle authorization letter file upload
             if (isset($data['authorization_letter']) && $data['authorization_letter'] instanceof \Illuminate\Http\UploadedFile) {
                 $applicationData['authorization_letter_path'] = $this->storeUploadedFile(
                     $data['authorization_letter'],
@@ -115,7 +114,6 @@ class DealerVerificationService
                 );
             }
             
-            // Handle business license file upload
             if (isset($data['business_license']) && $data['business_license'] instanceof \Illuminate\Http\UploadedFile) {
                 $applicationData['business_license_path'] = $this->storeUploadedFile(
                     $data['business_license'],
