@@ -41,51 +41,77 @@ class DealerVerificationService
             
             $data['partner_id'] = $user->partner_id;
 
-            DB::beginTransaction();
-
             $subscriptionPlan = SubscriptionPlan::findOrFail($data['subscription_plan_id']);
 
             $dealerApplication = $this->createDealerApplication($user, $data, $subscriptionPlan);
+            
+            Log::info('Dealer application created locally', [
+                'application_id' => $dealerApplication->id,
+                'partner_id' => $data['partner_id'],
+            ]);
 
-            $odooResponse = $this->submitToOdoo($data, $dealerApplication);
+            try {
+                $odooResponse = $this->submitToOdoo($data, $dealerApplication);
 
-            if ($odooResponse['success']) {
-                $underReviewStatus = Status::findByNameAndType('under_review', 'dealer_application');
-                
-                $odooId = (string) $data['partner_id'];
-                
-                $dealerApplication->update([
-                    'status_id' => $underReviewStatus?->id,
-                    'odoo_id' => $odooId,
+                if ($odooResponse['success']) {
+                    $underReviewStatus = Status::findByNameAndType('under_review', 'dealer_application');
+                    $odooId = (string) $data['partner_id'];
+                    
+                    $dealerApplication->update([
+                        'status_id' => $underReviewStatus?->id,
+                        'odoo_id' => $odooId,
+                    ]);
+
+                    Log::info('Dealer application synced with Odoo', [
+                        'application_id' => $dealerApplication->id,
+                        'odoo_id' => $odooId,
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'message' => 'Dealer verification submitted successfully',
+                        'application_id' => $dealerApplication->id,
+                        'odoo_id' => $odooId,
+                        'status' => 'under_review',
+                        'synced_with_odoo' => true
+                    ];
+                } else {
+                    // Odoo returned error but we keep the local record
+                    Log::warning('Dealer application saved locally but Odoo sync failed', [
+                        'application_id' => $dealerApplication->id,
+                        'odoo_error' => $odooResponse['message'] ?? 'Unknown error',
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'message' => 'Application saved locally. Odoo sync pending.',
+                        'application_id' => $dealerApplication->id,
+                        'odoo_id' => (string) $user->partner_id,
+                        'status' => 'pending',
+                        'synced_with_odoo' => false,
+                        'sync_error' => $odooResponse['message'] ?? 'Failed to sync with Odoo'
+                    ];
+                }
+            } catch (OdooConnectionException $e) {
+                // Network/connection issue with Odoo - keep local record
+                Log::error('Odoo connection failed, application saved locally', [
+                    'application_id' => $dealerApplication->id,
+                    'error' => $e->getMessage(),
                 ]);
-
-                DB::commit();
 
                 return [
                     'success' => true,
-                    'message' => 'Dealer verification submitted successfully',
+                    'message' => 'Application saved locally. Will sync with Odoo later.',
                     'application_id' => $dealerApplication->id,
-                    'odoo_id' => $odooId,
-                    'status' => 'under_review'
+                    'odoo_id' => (string) $user->partner_id,
+                    'status' => 'pending',
+                    'synced_with_odoo' => false,
+                    'sync_error' => 'Odoo connection failed'
                 ];
-            } else {
-                // Include detailed error information from Odoo
-                $errorMessage = $odooResponse['message'] ?? 'Failed to submit to Odoo';
-                
-                if (isset($odooResponse['error_code'])) {
-                    $errorMessage .= ' (Code: ' . $odooResponse['error_code'] . ')';
-                }
-                
-                if (isset($odooResponse['details']) && is_array($odooResponse['details'])) {
-                    $detailsStr = json_encode($odooResponse['details']);
-                    $errorMessage .= ' - Details: ' . $detailsStr;
-                }
-                
-                throw new OdooServiceException($errorMessage);
             }
 
         } catch (Exception $e) {
-            DB::rollBack();
+            // Only rollback if the local save itself failed
             
             Log::error('Dealer verification submission failed', [
                 'partner_id' => $data['partner_id'] ?? null,
@@ -103,6 +129,7 @@ class DealerVerificationService
             
             $applicationData = [
                 'user_id' => $user->id,
+                'odoo_id' => (string) $user->partner_id,
                 'seller_type' => $data['seller_type'],
                 'owner_manager_name' => $data['owner_manager_name'],
                 'phone_number' => $data['phone_number'],
