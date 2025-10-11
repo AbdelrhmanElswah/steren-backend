@@ -107,11 +107,19 @@ class DealerVerificationService
             $applicationData['automotive_brand_represented'] = $data['automotive_brand'];
             $applicationData['business_license_number'] = $data['business_license_name'] ?? null;
             
-            if (isset($data['authorization_letter'])) {
-                $applicationData['authorization_letter_path'] = $this->storeBase64File(
+            // Handle authorization letter file upload
+            if (isset($data['authorization_letter']) && $data['authorization_letter'] instanceof \Illuminate\Http\UploadedFile) {
+                $applicationData['authorization_letter_path'] = $this->storeUploadedFile(
                     $data['authorization_letter'],
-                    $data['authorization_letter_filename'] ?? 'authorization_letter.pdf',
                     'dealer-applications/authorization-letters'
+                );
+            }
+            
+            // Handle business license file upload
+            if (isset($data['business_license']) && $data['business_license'] instanceof \Illuminate\Http\UploadedFile) {
+                $applicationData['business_license_path'] = $this->storeUploadedFile(
+                    $data['business_license'],
+                    'dealer-applications/business-licenses'
                 );
             }
         }
@@ -213,22 +221,35 @@ class DealerVerificationService
         // Add authorized seller specific fields
         if ($data['seller_type'] === 'authorized') {
             $payload['automotive_brand'] = $data['automotive_brand'] ?? null;
-            $payload['authorization_letter'] = $data['authorization_letter'] ?? null;
-            $payload['authorization_letter_filename'] = $data['authorization_letter_filename'] ?? null;
-            $payload['business_license'] = $data['business_license'] ?? null;
-            $payload['business_license_filename'] = $data['business_license_filename'] ?? null;
+            
+            // Convert uploaded files to base64 for Odoo API
+            if (isset($data['authorization_letter']) && $data['authorization_letter'] instanceof \Illuminate\Http\UploadedFile) {
+                $payload['authorization_letter'] = base64_encode(file_get_contents($data['authorization_letter']->getRealPath()));
+                $payload['authorization_letter_filename'] = $data['authorization_letter']->getClientOriginalName();
+            }
+            
+            if (isset($data['business_license']) && $data['business_license'] instanceof \Illuminate\Http\UploadedFile) {
+                $payload['business_license'] = base64_encode(file_get_contents($data['business_license']->getRealPath()));
+                $payload['business_license_filename'] = $data['business_license']->getClientOriginalName();
+            }
+            
             $payload['business_license_name'] = $data['business_license_name'] ?? null;
         }
 
         return $payload;
     }
 
-    protected function storeBase64File(string $base64Data, string $filename, string $directory): string
+    /**
+     * Store an uploaded file
+     * 
+     * @param \Illuminate\Http\UploadedFile $file
+     * @param string $directory
+     * @return string
+     */
+    protected function storeUploadedFile(\Illuminate\Http\UploadedFile $file, string $directory): string
     {
-        $fileData = base64_decode($base64Data);
-        $path = $directory . '/' . uniqid() . '_' . $filename;
-        
-        \Storage::disk('public')->put($path, $fileData);
+        $filename = time() . '_' . uniqid() . '_' . $file->getClientOriginalName();
+        $path = $file->storeAs($directory, $filename, 'public');
         
         return $path;
     }

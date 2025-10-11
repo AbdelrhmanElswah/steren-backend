@@ -32,7 +32,7 @@ class DealerVerificationRequest extends FormRequest
             'city_address' => 'required|string|max:500',
             'subscription_plan_id' => 'required|exists:subscription_plans,id',
             
-            // For authorized sellers only
+            // For authorized sellers only - file uploads
             'automotive_brand' => [
                 'nullable',
                 'string',
@@ -41,24 +41,16 @@ class DealerVerificationRequest extends FormRequest
             ],
             'authorization_letter' => [
                 'nullable',
-                'string',
-                Rule::requiredIf($this->input('seller_type') === 'authorized')
-            ],
-            'authorization_letter_filename' => [
-                'nullable',
-                'string',
-                'max:255',
+                'file',
+                'mimes:pdf,jpg,jpeg,png',
+                'max:10240', // 10MB max
                 Rule::requiredIf($this->input('seller_type') === 'authorized')
             ],
             'business_license' => [
                 'nullable',
-                'string',
-                Rule::requiredIf($this->input('seller_type') === 'authorized')
-            ],
-            'business_license_filename' => [
-                'nullable',
-                'string',
-                'max:255',
+                'file',
+                'mimes:pdf,jpg,jpeg,png',
+                'max:10240', // 10MB max
                 Rule::requiredIf($this->input('seller_type') === 'authorized')
             ],
             'business_license_name' => [
@@ -89,10 +81,14 @@ class DealerVerificationRequest extends FormRequest
             'subscription_plan_id.required' => 'Please select a subscription plan.',
             'subscription_plan_id.exists' => 'Selected subscription plan is invalid.',
             'automotive_brand.required' => 'Automotive brand is required for authorized sellers.',
-            'authorization_letter.required' => 'Authorization letter is required for authorized sellers.',
-            'authorization_letter_filename.required' => 'Authorization letter filename is required for authorized sellers.',
-            'business_license.required' => 'Business license is required for authorized sellers.',
-            'business_license_filename.required' => 'Business license filename is required for authorized sellers.',
+            'authorization_letter.required' => 'Authorization letter file is required for authorized sellers.',
+            'authorization_letter.file' => 'Authorization letter must be a valid file.',
+            'authorization_letter.mimes' => 'Authorization letter must be a PDF, JPG, JPEG, or PNG file.',
+            'authorization_letter.max' => 'Authorization letter must not exceed 10MB.',
+            'business_license.required' => 'Business license file is required for authorized sellers.',
+            'business_license.file' => 'Business license must be a valid file.',
+            'business_license.mimes' => 'Business license must be a PDF, JPG, JPEG, or PNG file.',
+            'business_license.max' => 'Business license must not exceed 10MB.',
             'business_license_name.required' => 'Business license name is required for authorized sellers.',
         ];
     }
@@ -114,10 +110,8 @@ class DealerVerificationRequest extends FormRequest
             'city_address' => 'city & address',
             'subscription_plan_id' => 'subscription plan',
             'automotive_brand' => 'automotive brand',
-            'authorization_letter' => 'authorization letter',
-            'authorization_letter_filename' => 'authorization letter filename',
-            'business_license' => 'business license',
-            'business_license_filename' => 'business license filename',
+            'authorization_letter' => 'authorization letter file',
+            'business_license' => 'business license file',
             'business_license_name' => 'business license name',
         ];
     }
