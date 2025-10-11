@@ -231,6 +231,178 @@ class CarListing extends Model
         return $this->hasOne(CarInspection::class);
     }
 
+    /**
+     * Get the analytics for this car listing
+     */
+    public function analytics()
+    {
+        return $this->hasMany(CarListingAnalytics::class);
+    }
+
+    /**
+     * Get total views for this car listing
+     */
+    public function getTotalViewsAttribute()
+    {
+        return CarListingAnalytics::getTotalViews($this->id);
+    }
+
+    /**
+     * Get total shares for this car listing
+     */
+    public function getTotalSharesAttribute()
+    {
+        return CarListingAnalytics::getTotalShares($this->id);
+    }
+
+    /**
+     * Get total call taps for this car listing
+     */
+    public function getTotalCallTapsAttribute()
+    {
+        return CarListingAnalytics::getTotalCallTaps($this->id);
+    }
+
+    /**
+     * Get total WhatsApp clicks for this car listing
+     */
+    public function getTotalWhatsAppClicksAttribute()
+    {
+        return CarListingAnalytics::getTotalWhatsAppClicks($this->id);
+    }
+
+    /**
+     * Get total SMS clicks for this car listing
+     */
+    public function getTotalSmsClicksAttribute()
+    {
+        return CarListingAnalytics::getTotalSmsClicks($this->id);
+    }
+
+    /**
+     * Get total email clicks for this car listing
+     */
+    public function getTotalEmailClicksAttribute()
+    {
+        return CarListingAnalytics::getTotalEmailClicks($this->id);
+    }
+
+    /**
+     * Get total watchlist saves for this car listing
+     */
+    public function getTotalWatchlistSavesAttribute()
+    {
+        return CarListingAnalytics::getTotalWatchlistSaves($this->id);
+    }
+
+    /**
+     * Get days active for this car listing
+     */
+    public function getDaysActiveAttribute()
+    {
+        return CarListingAnalytics::getDaysActive($this->id);
+    }
+
+    /**
+     * Get full title for this car listing
+     */
+    public function getFullTitleAttribute()
+    {
+        $title = $this->title;
+        
+        if ($this->brand) {
+            $title = $this->brand->name . ' ' . $title;
+        }
+        
+        if ($this->year) {
+            $title = $this->year . ' ' . $title;
+        }
+        
+        return $title;
+    }
+
+    /**
+     * Get formatted price for this car listing
+     */
+    public function getFormattedPriceAttribute()
+    {
+        return '$ ' . number_format($this->price, 0, '.', ',');
+    }
+
+    /**
+     * Get active badges for this car listing
+     */
+    public function getActiveBadgesAttribute()
+    {
+        $badges = [];
+        
+        if ($this->has_warranty) {
+            $badges[] = [
+                'name' => 'Warranty',
+                'icon' => 'shield',
+                'color' => 'purple'
+            ];
+        }
+        
+        if ($this->is_inspected) {
+            $badges[] = [
+                'name' => 'Inspected',
+                'icon' => 'magnifying-glass',
+                'color' => 'green'
+            ];
+        }
+        
+        if ($this->is_verified) {
+            $badges[] = [
+                'name' => 'Verified',
+                'icon' => 'checkmark',
+                'color' => 'blue'
+            ];
+        }
+        
+        return $badges;
+    }
+
+    /**
+     * Get status label for this car listing
+     */
+    public function getStatusLabelAttribute()
+    {
+        return match ($this->status) {
+            'active' => 'Active',
+            'sold' => 'Sold',
+            'paused' => 'Paused',
+            'rejected' => 'Rejected',
+            'pending' => 'Pending',
+            default => ucfirst($this->status),
+        };
+    }
+
+    /**
+     * Get promotion type for this car listing
+     */
+    public function getPromotionTypeAttribute()
+    {
+        if (!$this->is_promoted) {
+            return null;
+        }
+
+        return match ($this->listing_promotion_id) {
+            1 => 'Sponsored',
+            2 => 'Featured',
+            3 => 'Premium',
+            default => 'Boosted',
+        };
+    }
+
+    /**
+     * Get active boosts for this car listing
+     */
+    public function activeBoosts()
+    {
+        return $this->hasMany(AdBoost::class)->where('expires_at', '>', now());
+    }
+
     public function carfaxReport() {
         return $this->hasOne(CarfaxReport::class);
     }

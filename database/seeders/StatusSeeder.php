@@ -115,6 +115,15 @@ class StatusSeeder extends Seeder
                 'sort_order' => 5,
                 'is_active' => true,
             ],
+            [
+                'name' => 'verified',
+                'display_name' => 'Verified',
+                'type' => 'dealer_application',
+                'description' => 'Dealer has completed payment and is verified',
+                'color' => '#059669',
+                'sort_order' => 6,
+                'is_active' => true,
+            ],
 
             // Car Listing Statuses
             [

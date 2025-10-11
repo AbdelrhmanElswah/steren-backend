@@ -104,16 +104,37 @@ class AnalyticsController extends Controller
                 ->get()
                 ->groupBy('metric_type');
 
-            // Calculate summary
+            // Calculate summary with trends
             $summary = [
-                'views' => CarListingAnalytics::getTotalViews($carListingId),
+                'views' => [
+                    'value' => CarListingAnalytics::getTotalViews($carListingId),
+                    'trend' => CarListingAnalytics::getMetricTrend($carListingId, 'views', $period)
+                ],
                 'days_active' => CarListingAnalytics::getDaysActive($carListingId),
-                'whatsapp_clicks' => CarListingAnalytics::getTotalWhatsAppClicks($carListingId),
-                'shares' => CarListingAnalytics::getTotalShares($carListingId),
-                'watchlist_saves' => CarListingAnalytics::getTotalWatchlistSaves($carListingId),
-                'call_taps' => CarListingAnalytics::getTotalCallTaps($carListingId),
-                'sms' => CarListingAnalytics::getTotalSmsClicks($carListingId),
-                'email' => CarListingAnalytics::getTotalEmailClicks($carListingId),
+                'whatsapp_clicks' => [
+                    'value' => CarListingAnalytics::getTotalWhatsAppClicks($carListingId),
+                    'trend' => CarListingAnalytics::getMetricTrend($carListingId, 'whatsapp_clicks', $period)
+                ],
+                'shares' => [
+                    'value' => CarListingAnalytics::getTotalShares($carListingId),
+                    'trend' => CarListingAnalytics::getMetricTrend($carListingId, 'shares', $period)
+                ],
+                'watchlist_saves' => [
+                    'value' => CarListingAnalytics::getTotalWatchlistSaves($carListingId),
+                    'trend' => CarListingAnalytics::getMetricTrend($carListingId, 'watchlist_saves', $period)
+                ],
+                'call_taps' => [
+                    'value' => CarListingAnalytics::getTotalCallTaps($carListingId),
+                    'trend' => CarListingAnalytics::getMetricTrend($carListingId, 'call_taps', $period)
+                ],
+                'sms' => [
+                    'value' => CarListingAnalytics::getTotalSmsClicks($carListingId),
+                    'trend' => CarListingAnalytics::getMetricTrend($carListingId, 'sms', $period)
+                ],
+                'email' => [
+                    'value' => CarListingAnalytics::getTotalEmailClicks($carListingId),
+                    'trend' => CarListingAnalytics::getMetricTrend($carListingId, 'email', $period)
+                ],
             ];
 
             // Get active boosts
@@ -211,6 +232,94 @@ class AnalyticsController extends Controller
             return $this->successResponse($boostOptions, 'Boost options retrieved successfully');
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to retrieve boost options: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get user's car listings (My Ads) with analytics
+     */
+    public function getMyAds(Request $request): JsonResponse
+    {
+        try {
+            $user = auth()->user();
+            $filter = $request->get('filter', 'all'); // all, posts, boosted, sold
+            $sort = $request->get('sort', 'latest'); // latest, oldest, views, price
+            
+            $query = $user->carListings()
+                ->with(['brand', 'carModel', 'media', 'status', 'listingPromotion'])
+                ->withCount('favorites');
+            
+            // Apply filters
+            switch ($filter) {
+                case 'posts':
+                    $query->where('is_promoted', false);
+                    break;
+                case 'boosted':
+                    $query->where('is_promoted', true);
+                    break;
+                case 'sold':
+                    $query->where('status', 'sold');
+                    break;
+                case 'all':
+                default:
+                    // No additional filter
+                    break;
+            }
+            
+            // Apply sorting
+            switch ($sort) {
+                case 'oldest':
+                    $query->orderBy('created_at', 'asc');
+                    break;
+                case 'views':
+                    $query->orderBy('views', 'desc');
+                    break;
+                case 'price':
+                    $query->orderBy('price', 'desc');
+                    break;
+                case 'latest':
+                default:
+                    $query->orderBy('created_at', 'desc');
+                    break;
+            }
+            
+            $listings = $query->get()->map(function ($listing) {
+                return [
+                    'id' => $listing->id,
+                    'title' => $listing->full_title,
+                    'price' => $listing->formatted_price,
+                    'status' => $listing->status,
+                    'status_label' => $listing->getStatusLabelAttribute(),
+                    'is_promoted' => $listing->is_promoted,
+                    'promotion_type' => $listing->is_promoted ? $listing->getPromotionTypeAttribute() : null,
+                    'image' => $listing->media->first()?->url,
+                    'views' => $listing->total_views,
+                    'days_active' => $listing->days_active,
+                    'badges' => $listing->active_badges,
+                    'seller_name' => $listing->seller_name,
+                    'created_at' => $listing->created_at->toISOString(),
+                    'updated_at' => $listing->updated_at->toISOString(),
+                ];
+            });
+            
+            // Get summary counts
+            $summary = [
+                'total_posts' => $user->carListings()->where('is_promoted', false)->count(),
+                'total_boosted' => $user->carListings()->where('is_promoted', true)->count(),
+                'total_sold' => $user->carListings()->where('status', 'sold')->count(),
+                'total_active' => $user->carListings()->where('status', 'active')->count(),
+            ];
+            
+            $data = [
+                'listings' => $listings,
+                'summary' => $summary,
+                'filter' => $filter,
+                'sort' => $sort,
+            ];
+            
+            return $this->successResponse($data, 'My ads retrieved successfully');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve my ads: ' . $e->getMessage(), 500);
         }
     }
 

@@ -95,6 +95,66 @@ class UserAnalytics extends Model
     }
 
     /**
+     * Get total shares for user
+     */
+    public static function getTotalShares($userId)
+    {
+        return static::where('user_id', $userId)
+            ->where('metric_type', 'shares')
+            ->sum('metric_value');
+    }
+
+    /**
+     * Get total call taps for user
+     */
+    public static function getTotalCallTaps($userId)
+    {
+        return static::where('user_id', $userId)
+            ->where('metric_type', 'call_taps')
+            ->sum('metric_value');
+    }
+
+    /**
+     * Get total WhatsApp clicks for user
+     */
+    public static function getTotalWhatsAppClicks($userId)
+    {
+        return static::where('user_id', $userId)
+            ->where('metric_type', 'whatsapp_clicks')
+            ->sum('metric_value');
+    }
+
+    /**
+     * Get total SMS clicks for user
+     */
+    public static function getTotalSmsClicks($userId)
+    {
+        return static::where('user_id', $userId)
+            ->where('metric_type', 'sms')
+            ->sum('metric_value');
+    }
+
+    /**
+     * Get total email clicks for user
+     */
+    public static function getTotalEmailClicks($userId)
+    {
+        return static::where('user_id', $userId)
+            ->where('metric_type', 'email')
+            ->sum('metric_value');
+    }
+
+    /**
+     * Get total watchlist saves for user
+     */
+    public static function getTotalWatchlistSaves($userId)
+    {
+        return static::where('user_id', $userId)
+            ->where('metric_type', 'watchlist_saves')
+            ->sum('metric_value');
+    }
+
+    /**
      * Get analytics summary for user
      */
     public static function getAnalyticsSummary($userId)
@@ -104,6 +164,33 @@ class UserAnalytics extends Model
             'total_favorites' => static::getTotalFavorites($userId),
             'total_inquiries' => static::getTotalInquiries($userId),
             'total_sales' => static::getTotalSales($userId),
+            'total_shares' => static::getTotalShares($userId),
+            'total_call_taps' => static::getTotalCallTaps($userId),
+            'total_whatsapp_clicks' => static::getTotalWhatsAppClicks($userId),
+            'total_sms' => static::getTotalSmsClicks($userId),
+            'total_email' => static::getTotalEmailClicks($userId),
+            'total_watchlist_saves' => static::getTotalWatchlistSaves($userId),
         ];
+    }
+
+    /**
+     * Increment a metric for a user
+     */
+    public static function incrementMetric($userId, $metricType, $additionalData = null)
+    {
+        $today = now()->toDateString();
+        
+        $analytics = static::firstOrCreate([
+            'user_id' => $userId,
+            'metric_type' => $metricType,
+            'date' => $today,
+        ], [
+            'metric_value' => 0,
+            'additional_data' => $additionalData,
+        ]);
+
+        $analytics->increment('metric_value');
+        
+        return $analytics;
     }
 }

@@ -228,6 +228,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's device permissions
+     */
+    public function devicePermissions()
+    {
+        return $this->hasOne(UserDevicePermission::class);
+    }
+
+    /**
      * Get user's display name
      */
     public function getDisplayNameAttribute()

@@ -166,11 +166,20 @@ class DealerApplication extends Model
     }
 
     /**
-     * Check if dealer status is active (approved and not expired)
+     * Check if application is verified (payment completed)
+     */
+    public function isVerified()
+    {
+        return $this->status && $this->status->name === 'verified' && $this->status->type === 'dealer_application';
+    }
+
+    /**
+     * Check if dealer status is active (verified and not expired)
+     * Only dealers with "verified" status can post listings
      */
     public function isActive()
     {
-        return $this->isApproved() && 
+        return $this->isVerified() && 
                $this->payment_completed &&
                ($this->expires_at === null || $this->expires_at->isFuture());
     }
@@ -251,12 +260,16 @@ class DealerApplication extends Model
 
     /**
      * Complete payment and activate dealer status
+     * Sets status to "verified" after payment
      */
     public function completePayment()
     {
+        $verifiedStatus = Status::findByNameAndType('verified', 'dealer_application');
+        
         $this->update([
             'payment_completed' => true,
             'approved_at' => now(),
+            'status_id' => $verifiedStatus?->id,
         ]);
 
         if ($this->subscriptionPlan) {

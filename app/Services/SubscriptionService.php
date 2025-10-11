@@ -57,6 +57,8 @@ class SubscriptionService
     /**
      * Check if user can create a new listing based on their subscription
      * FREE USERS: Use slot system (1 free slot per month + purchased slots)
+     * DEALERS WITH "VERIFIED" STATUS: Use max_listings from their subscription plan
+     * DEALERS WITH "APPROVED" STATUS: Cannot post yet (need to complete payment)
      * SUBSCRIBED USERS: Use max_listings from their subscription plan
      * SUSPENDED USERS: Cannot create listings even with available slots
      */
@@ -71,6 +73,24 @@ class SubscriptionService
                 'suspended_at' => $user->suspended_at,
                 'suspension_reason' => $user->suspension_reason,
             ];
+        }
+
+        // Check if user is a dealer
+        if ($user->is_dealer) {
+            $dealerApplication = $user->activeDealerApplication;
+            
+            // Dealer must have verified status (payment completed)
+            if (!$dealerApplication || !$dealerApplication->isVerified()) {
+                return [
+                    'can_create' => false,
+                    'reason' => $dealerApplication && $dealerApplication->isApproved() 
+                        ? 'Your dealer application is approved but you need to complete payment first to start posting listings.'
+                        : 'Your dealer account is not verified. Please complete the verification process.',
+                    'code' => 'DEALER_NOT_VERIFIED',
+                    'dealer_status' => $dealerApplication?->status?->name ?? 'no_application',
+                    'payment_completed' => $dealerApplication?->payment_completed ?? false,
+                ];
+            }
         }
 
         // Check if user has active subscription (including grace period)

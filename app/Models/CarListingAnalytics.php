@@ -178,4 +178,95 @@ class CarListingAnalytics extends Model
         
         return $analytics;
     }
+
+    /**
+     * Get trend for a metric (increase/decrease/no change)
+     */
+    public static function getMetricTrend($carListingId, $metricType, $period = 'this_month')
+    {
+        $currentPeriod = static::getMetricValueForPeriod($carListingId, $metricType, $period);
+        $previousPeriod = static::getMetricValueForPreviousPeriod($carListingId, $metricType, $period);
+        
+        if ($previousPeriod == 0) {
+            return $currentPeriod > 0 ? 'up' : 'neutral';
+        }
+        
+        $change = (($currentPeriod - $previousPeriod) / $previousPeriod) * 100;
+        
+        if ($change > 5) {
+            return 'up';
+        } elseif ($change < -5) {
+            return 'down';
+        } else {
+            return 'neutral';
+        }
+    }
+
+    /**
+     * Get metric value for a specific period
+     */
+    public static function getMetricValueForPeriod($carListingId, $metricType, $period)
+    {
+        $startDate = static::getStartDate($period);
+        
+        return static::where('car_listing_id', $carListingId)
+            ->where('metric_type', $metricType)
+            ->when($startDate, function ($query) use ($startDate) {
+                return $query->where('date', '>=', $startDate);
+            })
+            ->sum('metric_value');
+    }
+
+    /**
+     * Get metric value for the previous period
+     */
+    public static function getMetricValueForPreviousPeriod($carListingId, $metricType, $period)
+    {
+        $currentStartDate = static::getStartDate($period);
+        $currentEndDate = now()->toDateString();
+        
+        if (!$currentStartDate) {
+            return 0; // For 'all_time', there's no previous period
+        }
+        
+        $periodDuration = now()->parse($currentStartDate)->diffInDays(now()->parse($currentEndDate));
+        $previousEndDate = now()->parse($currentStartDate)->subDay()->toDateString();
+        $previousStartDate = now()->parse($previousEndDate)->subDays($periodDuration)->toDateString();
+        
+        return static::where('car_listing_id', $carListingId)
+            ->where('metric_type', $metricType)
+            ->whereBetween('date', [$previousStartDate, $previousEndDate])
+            ->sum('metric_value');
+    }
+
+    /**
+     * Get analytics with trends
+     */
+    public static function getAnalyticsWithTrends($carListingId, $period = 'this_month')
+    {
+        $metrics = ['views', 'shares', 'call_taps', 'whatsapp_clicks', 'sms', 'email', 'watchlist_saves'];
+        $analytics = [];
+        
+        foreach ($metrics as $metric) {
+            $analytics[$metric] = [
+                'value' => static::getMetricValueForPeriod($carListingId, $metric, $period),
+                'trend' => static::getMetricTrend($carListingId, $metric, $period),
+            ];
+        }
+        
+        return $analytics;
+    }
+
+    /**
+     * Get start date for a period
+     */
+    private static function getStartDate($period)
+    {
+        return match ($period) {
+            'last_7_days' => now()->subDays(7)->toDateString(),
+            'this_month' => now()->startOfMonth()->toDateString(),
+            'all_time' => null,
+            default => now()->startOfMonth()->toDateString(),
+        };
+    }
 }
