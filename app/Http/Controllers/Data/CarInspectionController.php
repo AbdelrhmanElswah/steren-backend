@@ -21,7 +21,7 @@ class CarInspectionController extends Controller
     public function getCarInspection($carListingId): JsonResponse
     {
         try {
-            $carListing = CarListing::with(['inspection.inspector'])->findOrFail($carListingId);
+            $carListing = CarListing::with(['inspection.documents'])->findOrFail($carListingId);
             
             if (!$carListing->inspection) {
                 return $this->notFoundResponse('No inspection report found for this car');
@@ -47,38 +47,19 @@ class CarInspectionController extends Controller
                 'in_progress_inspections' => CarInspection::where('status', 'in_progress')->count(),
                 'failed_inspections' => CarInspection::where('status', 'failed')->count(),
                 'verified_inspections' => CarInspection::verified()->count(),
-                'average_score' => CarInspection::whereNotNull('score')->avg('score'),
-                'inspections_by_score_range' => [
-                    'excellent' => CarInspection::where('score', '>=', 90)->count(),
-                    'good' => CarInspection::whereBetween('score', [70, 89])->count(),
-                    'fair' => CarInspection::whereBetween('score', [50, 69])->count(),
-                    'poor' => CarInspection::where('score', '<', 50)->count(),
+                // Inspection pass/fail statistics
+                'inspection_results' => [
+                    'right_side_pass' => CarInspection::where('right_side', true)->count(),
+                    'left_side_pass' => CarInspection::where('left_side', true)->count(),
+                    'roof_pass' => CarInspection::where('roof', true)->count(),
+                    'front_pass' => CarInspection::where('front', true)->count(),
+                    'back_pass' => CarInspection::where('back', true)->count(),
                 ]
             ];
 
             return $this->successResponse($statistics, 'Inspection statistics retrieved successfully');
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to retrieve inspection statistics: ' . $e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Get inspections by inspector
-     */
-    public function getInspectionsByInspector($inspectorId): AnonymousResourceCollection
-    {
-        try {
-            $inspections = CarInspection::where('inspector_id', $inspectorId)
-                ->with(['carListing.brand', 'carListing.carModel'])
-                ->orderBy('created_at', 'desc')
-                ->paginate(10);
-
-            return CarInspectionResource::collection($inspections);
-        } catch (\Exception $e) {
-            return CarInspectionResource::collection([])->additional([
-                'success' => false,
-                'message' => 'Failed to retrieve inspections by inspector: ' . $e->getMessage()
-            ]);
         }
     }
 }

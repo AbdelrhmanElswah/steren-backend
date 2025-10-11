@@ -112,4 +112,36 @@ class Report extends Model
     {
         $this->update(['is_confirmed' => true]);
     }
+
+    /**
+     * Get the documents for this report
+     */
+    public function documents()
+    {
+        return $this->morphMany(Document::class, 'documentable');
+    }
+
+    /**
+     * Get evidence documents
+     */
+    public function evidenceDocuments()
+    {
+        return $this->documents()->where('category', 'evidence');
+    }
+
+    /**
+     * Get all verified documents
+     */
+    public function verifiedDocuments()
+    {
+        return $this->documents()->where('is_verified', true);
+    }
+
+    /**
+     * Get all pending documents
+     */
+    public function pendingDocuments()
+    {
+        return $this->documents()->where('is_verified', false);
+    }
 }

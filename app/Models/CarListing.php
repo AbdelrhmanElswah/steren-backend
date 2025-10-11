@@ -32,9 +32,6 @@ class CarListing extends Model
         'location_id',
         'car_brand_id',
         'car_body_type_id',
-        'studio_id',
-        'is_sponsored',
-        'views',
         'car_model_id',
         'car_condition_id',
         'mileage_type_id',
@@ -70,9 +67,6 @@ class CarListing extends Model
         'description',
         'features',
         'specifications',
-        'seller_name',
-        'seller_phone',
-        'seller_email',
         'sold_at',
         'featured_at',
         // Promotion fields
@@ -237,6 +231,62 @@ class CarListing extends Model
     public function analytics()
     {
         return $this->hasMany(CarListingAnalytics::class);
+    }
+
+    /**
+     * Get the documents for this car listing
+     */
+    public function documents()
+    {
+        return $this->morphMany(Document::class, 'documentable');
+    }
+
+    /**
+     * Get inspection report document
+     */
+    public function inspectionReportDocument()
+    {
+        return $this->documents()->where('category', 'inspection_report')->first();
+    }
+
+    /**
+     * Get warranty document
+     */
+    public function warrantyDocument()
+    {
+        return $this->documents()->where('category', 'warranty_document')->first();
+    }
+
+    /**
+     * Get carfax report document
+     */
+    public function carfaxReportDocument()
+    {
+        return $this->documents()->where('category', 'carfax_report')->first();
+    }
+
+    /**
+     * Get insurance document
+     */
+    public function insuranceDocument()
+    {
+        return $this->documents()->where('category', 'insurance_document')->first();
+    }
+
+    /**
+     * Get all verified documents
+     */
+    public function verifiedDocuments()
+    {
+        return $this->documents()->where('is_verified', true);
+    }
+
+    /**
+     * Get all pending documents
+     */
+    public function pendingDocuments()
+    {
+        return $this->documents()->where('is_verified', false);
     }
 
     /**

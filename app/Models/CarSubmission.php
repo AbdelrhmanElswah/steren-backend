@@ -190,4 +190,44 @@ class CarSubmission extends Model
             'car_listing_id' => $carListingId,
         ]);
     }
+
+    /**
+     * Get the documents for this car submission
+     */
+    public function documents()
+    {
+        return $this->morphMany(Document::class, 'documentable');
+    }
+
+    /**
+     * Get technical specification document
+     */
+    public function technicalSpecificationDocument()
+    {
+        return $this->documents()->where('category', 'technical_specification')->first();
+    }
+
+    /**
+     * Get maintenance record document
+     */
+    public function maintenanceRecordDocument()
+    {
+        return $this->documents()->where('category', 'maintenance_record')->first();
+    }
+
+    /**
+     * Get all verified documents
+     */
+    public function verifiedDocuments()
+    {
+        return $this->documents()->where('is_verified', true);
+    }
+
+    /**
+     * Get all pending documents
+     */
+    public function pendingDocuments()
+    {
+        return $this->documents()->where('is_verified', false);
+    }
 }

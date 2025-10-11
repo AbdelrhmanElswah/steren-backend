@@ -7,9 +7,12 @@ use App\Http\Requests\Api\CarListingCreateRequest;
 use App\Models\CarListing;
 use App\Models\ListingPromotion;
 use App\Models\Media;
+use App\Models\Document;
+use App\Models\CarInspection;
 use App\Services\Odoo\CarListingService;
 use App\Services\SubscriptionService;
 use App\Traits\ApiResponse;
+use App\Traits\DocumentTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +21,7 @@ use Illuminate\Support\Str;
 
 class CarListingApiController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, DocumentTrait;
 
     public function __construct(
         private CarListingService $carListingService,
@@ -89,6 +92,11 @@ class CarListingApiController extends Controller
             // Handle images if provided
             if ($request->has('images') && is_array($request->images)) {
                 $this->handleImages($carListing, $request->images);
+            }
+
+            // Handle inspection data and file if provided
+            if ($request->has('inspection') || $request->has('inspection_file')) {
+                $this->handleInspectionData($carListing, $validatedData);
             }
 
             // Prepare data for Odoo API
@@ -282,6 +290,99 @@ class CarListingApiController extends Controller
     }
 
     /**
+     * Handle inspection data and file upload
+     */
+    private function handleInspectionData(CarListing $carListing, array $validatedData)
+    {
+        try {
+            $inspectionData = $validatedData['inspection'] ?? [];
+            
+            if (!empty($inspectionData)) {
+                // Create CarInspection record with foreign key to car_listing
+                $inspection = CarInspection::create([
+                    'car_listing_id' => $carListing->id,
+                    'inspection_number' => 'INS-' . $carListing->id . '-' . time(),
+                    'inspection_date' => now(),
+                    'status' => 'completed',
+                    'right_side' => $inspectionData['right_side'] ?? false,
+                    'left_side' => $inspectionData['left_side'] ?? false,
+                    'roof' => $inspectionData['roof'] ?? false,
+                    'front' => $inspectionData['front'] ?? false,
+                    'back' => $inspectionData['back'] ?? false,
+                ]);
+
+                Log::info('Inspection record created for car listing ' . $carListing->id, [
+                    'inspection_id' => $inspection->id
+                ]);
+
+                // Handle inspection file upload if provided
+                if (!empty($validatedData['inspection_file']) && !empty($validatedData['inspection_file_name'])) {
+                    $this->handleInspectionFileUpload($inspection, $validatedData);
+                }
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Failed to handle inspection data for car listing ' . $carListing->id . ': ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handle inspection file upload using DocumentTrait
+     */
+    private function handleInspectionFileUpload(CarInspection $inspection, array $validatedData)
+    {
+        try {
+            $base64Data = $validatedData['inspection_file'];
+            $filename = $validatedData['inspection_file_name'];
+
+            // Decode base64 data
+            $fileData = base64_decode($base64Data);
+            
+            if ($fileData === false) {
+                Log::warning('Invalid base64 data for inspection file in inspection ' . $inspection->id);
+                return;
+            }
+
+            // Create a temporary file to simulate UploadedFile
+            $tempPath = tempnam(sys_get_temp_dir(), 'inspection_');
+            file_put_contents($tempPath, $fileData);
+
+            // Create UploadedFile instance
+            $uploadedFile = new \Illuminate\Http\UploadedFile(
+                $tempPath,
+                $filename,
+                'application/pdf',
+                null,
+                true // test mode
+            );
+
+            // Use DocumentTrait to upload the document to CarInspection
+            $document = $this->uploadDocument(
+                $uploadedFile,
+                CarInspection::class,
+                $inspection->id,
+                'inspection_report',
+                'Vehicle inspection report'
+            );
+
+            if ($document) {
+                Log::info('Inspection file uploaded successfully for inspection ' . $inspection->id, [
+                    'document_id' => $document->id,
+                    'filename' => $filename
+                ]);
+            } else {
+                Log::warning('Failed to upload inspection file for inspection ' . $inspection->id);
+            }
+
+            // Clean up temp file
+            unlink($tempPath);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to upload inspection file for inspection ' . $inspection->id . ': ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Prepare data for Odoo API in the required format
      */
     private function prepareOdooData(CarListing $carListing, array $validatedData)
@@ -322,6 +423,9 @@ class CarListingApiController extends Controller
             'title' => $validatedData['title'],
             'description' => $validatedData['description'] ?? '',
             'images' => $validatedData['images'] ?? [],
+            'inspection' => $validatedData['inspection'] ?? null,
+            'inspection_file' => $validatedData['inspection_file'] ?? null,
+            'inspection_file_name' => $validatedData['inspection_file_name'] ?? null,
         ];
     }
 

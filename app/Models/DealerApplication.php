@@ -23,7 +23,6 @@ class DealerApplication extends Model
         'years_in_business',
         'city_address',
         'automotive_brand_represented',
-        'authorization_letter_path',
         'business_license_number',
         'status_id',
         'rejection_reason',
@@ -54,6 +53,63 @@ class DealerApplication extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the documents for this dealer application
+     */
+    public function documents()
+    {
+        return $this->morphMany(Document::class, 'documentable');
+    }
+
+    /**
+     * Get business license document
+     */
+    public function businessLicenseDocument()
+    {
+        return $this->documents()->where('category', 'business_license')->first();
+    }
+
+    /**
+     * Get authorization letter document
+     */
+    public function authorizationLetterDocument()
+    {
+        return $this->documents()->where('category', 'authorization_letter')->first();
+    }
+
+    /**
+     * Get all verified documents
+     */
+    public function verifiedDocuments()
+    {
+        return $this->documents()->where('is_verified', true);
+    }
+
+    /**
+     * Get all pending documents
+     */
+    public function pendingDocuments()
+    {
+        return $this->documents()->where('is_verified', false);
+    }
+
+    /**
+     * Check if all required documents are verified
+     */
+    public function hasAllDocumentsVerified()
+    {
+        $requiredCategories = ['business_license', 'authorization_letter'];
+        
+        foreach ($requiredCategories as $category) {
+            $document = $this->documents()->where('category', $category)->first();
+            if (!$document || !$document->is_verified) {
+                return false;
+            }
+        }
+        
+        return true;
     }
 
     /**

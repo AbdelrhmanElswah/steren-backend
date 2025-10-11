@@ -61,6 +61,18 @@ class CarListingCreateRequest extends FormRequest
                 }
             ],
             'images.*' => 'string', // base64 encoded images
+            
+            // Inspection data
+            'inspection' => 'nullable|array',
+            'inspection.right_side' => 'nullable|boolean',
+            'inspection.left_side' => 'nullable|boolean',
+            'inspection.roof' => 'nullable|boolean',
+            'inspection.front' => 'nullable|boolean',
+            'inspection.back' => 'nullable|boolean',
+            
+            // Inspection file
+            'inspection_file' => 'nullable|string', // base64 encoded PDF data
+            'inspection_file_name' => 'nullable|string|max:255',
         ];
     }
 
