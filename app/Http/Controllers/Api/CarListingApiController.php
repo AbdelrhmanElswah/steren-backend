@@ -77,6 +77,10 @@ class CarListingApiController extends Controller
             // Create the car listing in local database
             $carListing = CarListing::create($carListingData);
 
+            // Consume slot if user is free tier (no active subscription)
+            // This must happen after listing creation to ensure slot is consumed
+            $this->subscriptionService->consumeSlot($request->user());
+
             // Handle images if provided
             if ($request->has('images') && is_array($request->images)) {
                 $this->handleImages($carListing, $request->images);

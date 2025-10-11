@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\SubscriptionPlan;
 use App\Models\UserSubscription;
 use App\Models\CarListing;
+use App\Models\UserSlot;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -55,14 +56,27 @@ class SubscriptionService
 
     /**
      * Check if user can create a new listing based on their subscription
-     * Free users (no subscription) can create 1 listing per month
+     * FREE USERS: Use slot system (1 free slot per month + purchased slots)
+     * SUBSCRIBED USERS: Use max_listings from their subscription plan
+     * SUSPENDED USERS: Cannot create listings even with available slots
      */
     public function canCreateListing(User $user): array
     {
-        // Check if user has active subscription
+        // First check if account is suspended
+        if ($user->isSuspended()) {
+            return [
+                'can_create' => false,
+                'reason' => 'Your account is suspended. Please renew your subscription to reactivate your account.',
+                'code' => 'ACCOUNT_SUSPENDED',
+                'suspended_at' => $user->suspended_at,
+                'suspension_reason' => $user->suspension_reason,
+            ];
+        }
+
+        // Check if user has active subscription (including grace period)
         if (!$this->hasActiveSubscription($user)) {
-            // Free tier: 1 listing per month
-            return $this->checkFreeTierLimit($user);
+            // Free tier: Use slot system
+            return $this->checkFreeTierSlots($user);
         }
 
         $plan = $this->getSubscriptionPlan($user);
@@ -92,66 +106,141 @@ class SubscriptionService
             ];
         }
 
-        return [
+        // Check if subscription is in grace period
+        $subscription = $this->getActiveSubscription($user);
+        $inGracePeriod = $subscription && $subscription->isInGracePeriod();
+        $gracePeriodInfo = [];
+        
+        if ($inGracePeriod) {
+            $gracePeriodInfo = [
+                'in_grace_period' => true,
+                'grace_period_days_remaining' => $subscription->grace_period_days_remaining,
+                'grace_period_ends_at' => $subscription->grace_period_ends_at,
+                'warning' => "Your subscription has expired. You have {$subscription->grace_period_days_remaining} day(s) remaining to renew before your account is suspended.",
+            ];
+        }
+
+        return array_merge([
             'can_create' => true,
             'current_listings' => $currentListingsCount,
             'max_listings' => $plan->max_listings,
             'remaining_listings' => $plan->max_listings ? ($plan->max_listings - $currentListingsCount) : null,
             'plan_name' => $plan->name
-        ];
+        ], $gracePeriodInfo);
     }
 
     /**
-     * Check free tier limit (1 listing per month)
+     * Check free tier slots
+     * Free users get 1 slot per month + any purchased slots
+     * Slots are consumed when creating listings and stay consumed even if listing is deleted
      */
-    private function checkFreeTierLimit(User $user): array
+    private function checkFreeTierSlots(User $user): array
     {
-        // Count listings created this month (including deleted)
-        $currentMonth = Carbon::now()->startOfMonth();
-        $listingsThisMonth = CarListing::where('user_id', $user->id)
-            ->where('created_at', '>=', $currentMonth)
-            ->count();
+        // Get or create user slot record
+        $userSlot = $user->userSlot;
+        
+        if (!$userSlot) {
+            // Create initial slot record for new free user
+            $userSlot = UserSlot::create([
+                'user_id' => $user->id,
+                'total_slots' => 1,
+                'consumed_slots' => 0,
+                'available_slots' => 1,
+                'purchased_slots' => 0,
+                'has_monthly_free_slot' => true,
+                'last_free_slot_reset_at' => now(),
+                'next_free_slot_reset_at' => now()->addMonth()->startOfMonth(),
+            ]);
+        }
 
-        if ($listingsThisMonth >= 1) {
+        // Check if monthly free slot needs reset
+        if ($userSlot->shouldResetMonthlyFreeSlot()) {
+            $userSlot->resetMonthlyFreeSlot();
+            $userSlot->refresh();
+        }
+
+        // Check if user has available slots
+        if ($userSlot->available_slots <= 0) {
+            $daysUntilReset = $userSlot->days_until_next_free_slot;
+            $message = "You have used all your available slots. ";
+            
+            if ($daysUntilReset > 0) {
+                $message .= "Your free monthly slot will be available in {$daysUntilReset} day(s). ";
+            }
+            
+            $message .= "You can purchase additional slots or subscribe to a plan for more listings.";
+
             return [
                 'can_create' => false,
-                'reason' => 'Free users can create 1 listing per month. Please subscribe to a plan for more listings.',
-                'code' => 'FREE_TIER_LIMIT_REACHED',
-                'current_listings' => $listingsThisMonth,
-                'max_listings' => 1,
+                'reason' => $message,
+                'code' => 'NO_SLOTS_AVAILABLE',
+                'slots' => $userSlot->slot_breakdown,
                 'plan_name' => 'Free'
             ];
         }
 
         return [
             'can_create' => true,
-            'current_listings' => $listingsThisMonth,
-            'max_listings' => 1,
-            'remaining_listings' => 1 - $listingsThisMonth,
+            'slots' => $userSlot->slot_breakdown,
             'plan_name' => 'Free'
         ];
     }
 
     /**
+     * Consume a slot when free user creates a listing
+     * Should be called after listing is successfully created
+     */
+    public function consumeSlot(User $user): bool
+    {
+        // Only consume slots for free users (no active subscription)
+        if ($this->hasActiveSubscription($user)) {
+            return true; // Subscribed users don't use slots
+        }
+
+        $userSlot = $user->userSlot;
+        
+        if (!$userSlot) {
+            return false;
+        }
+
+        return $userSlot->consumeSlot();
+    }
+
+    /**
      * Get subscription limits for a user
-     * Includes free tier limits if no subscription
+     * Includes slot info for free tier
      */
     public function getSubscriptionLimits(User $user): array
     {
-        // Free tier
+        // Free tier - use slot system
         if (!$this->hasActiveSubscription($user)) {
-            $currentMonth = Carbon::now()->startOfMonth();
-            $listingsThisMonth = CarListing::where('user_id', $user->id)
-                ->where('created_at', '>=', $currentMonth)
-                ->count();
+            $userSlot = $user->userSlot;
+            
+            if (!$userSlot) {
+                // Create initial slot record
+                $userSlot = UserSlot::create([
+                    'user_id' => $user->id,
+                    'total_slots' => 1,
+                    'consumed_slots' => 0,
+                    'available_slots' => 1,
+                    'purchased_slots' => 0,
+                    'has_monthly_free_slot' => true,
+                    'last_free_slot_reset_at' => now(),
+                    'next_free_slot_reset_at' => now()->addMonth()->startOfMonth(),
+                ]);
+            }
+
+            // Check if monthly free slot needs reset
+            if ($userSlot->shouldResetMonthlyFreeSlot()) {
+                $userSlot->resetMonthlyFreeSlot();
+                $userSlot->refresh();
+            }
             
             return [
                 'has_subscription' => false,
                 'plan_name' => 'Free',
-                'max_listings' => 1,
-                'max_listings_period' => 'monthly',
-                'current_listings' => $listingsThisMonth,
-                'remaining_listings' => max(0, 1 - $listingsThisMonth),
+                'uses_slots' => true,
+                'slots' => $userSlot->slot_breakdown,
                 'max_photos' => 5,
                 'features' => []
             ];
@@ -163,10 +252,14 @@ class SubscriptionService
             return [
                 'has_subscription' => false,
                 'plan_name' => 'Free',
-                'max_listings' => 1,
-                'max_listings_period' => 'monthly',
-                'current_listings' => 0,
-                'remaining_listings' => 1,
+                'uses_slots' => true,
+                'slots' => [
+                    'monthly_free' => 1,
+                    'purchased' => 0,
+                    'total' => 1,
+                    'consumed' => 0,
+                    'available' => 1,
+                ],
                 'max_photos' => 5,
                 'features' => []
             ];
@@ -180,6 +273,7 @@ class SubscriptionService
         return [
             'has_subscription' => true,
             'plan_name' => $plan->name,
+            'uses_slots' => false,
             'max_listings' => $plan->max_listings,
             'max_listings_period' => 'total',
             'current_listings' => $currentListingsCount,
@@ -257,6 +351,7 @@ class SubscriptionService
 
     /**
      * Subscribe user to a plan
+     * Expiration date is calculated based on plan's billing_cycle from database
      */
     public function subscribe(User $user, int $subscriptionPlanId, ?array $paymentDetails = null): UserSubscription
     {
@@ -268,12 +363,13 @@ class SubscriptionService
             $existingSubscription->cancel();
         }
 
-        // Calculate expiry date based on billing cycle
-        $expiresAt = null;
-        if ($plan->billing_cycle === 'monthly') {
-            $expiresAt = Carbon::now()->addMonth();
-        } elseif ($plan->billing_cycle === 'yearly') {
-            $expiresAt = Carbon::now()->addYear();
+        // Calculate expiry date based on plan's billing_cycle from database
+        // Reads from subscription_plans.billing_cycle column (monthly/yearly)
+        $expiresAt = $plan->calculateExpirationDate();
+
+        // Unsuspend account if it was suspended
+        if ($user->isSuspended()) {
+            $user->unsuspend();
         }
 
         // Create new subscription
@@ -283,6 +379,7 @@ class SubscriptionService
             'status' => 'active',
             'started_at' => Carbon::now(),
             'expires_at' => $expiresAt,
+            'grace_period_days' => 15, // Default 15-day grace period
             'payment_details' => $paymentDetails,
         ]);
     }
@@ -304,6 +401,7 @@ class SubscriptionService
 
     /**
      * Renew user's subscription
+     * Expiration date is calculated based on plan's billing_cycle from database
      */
     public function renewSubscription(User $user, ?array $paymentDetails = null): ?UserSubscription
     {
@@ -315,17 +413,22 @@ class SubscriptionService
 
         $plan = $currentSubscription->subscriptionPlan;
 
-        // Calculate new expiry date
-        $expiresAt = null;
-        if ($plan->billing_cycle === 'monthly') {
-            $expiresAt = Carbon::now()->addMonth();
-        } elseif ($plan->billing_cycle === 'yearly') {
-            $expiresAt = Carbon::now()->addYear();
+        // Calculate new expiry date based on plan's billing_cycle from database
+        // Reads from subscription_plans.billing_cycle column (monthly/yearly)
+        $expiresAt = $plan->calculateExpirationDate();
+
+        // Unsuspend account if it was suspended
+        if ($user->isSuspended()) {
+            $user->unsuspend();
         }
 
         // Update current subscription
         $currentSubscription->update([
             'expires_at' => $expiresAt,
+            'status' => 'active',
+            'is_in_grace_period' => false,
+            'grace_period_ends_at' => null,
+            'grace_period_days' => 15, // Reset grace period
             'payment_details' => $paymentDetails ? array_merge($currentSubscription->payment_details ?? [], $paymentDetails) : $currentSubscription->payment_details,
         ]);
 

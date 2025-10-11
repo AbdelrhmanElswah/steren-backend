@@ -123,4 +123,60 @@ class SubscriptionPlan extends Model
     {
         return $this->currency . ' ' . number_format($this->price_per_month, 2);
     }
+
+    /**
+     * Get subscription duration in days based on billing cycle
+     * Reads from database billing_cycle column
+     */
+    public function getDurationInDays(): int
+    {
+        return match($this->billing_cycle) {
+            'monthly' => 30,
+            'yearly' => 365,
+            default => 30, // fallback to monthly
+        };
+    }
+
+    /**
+     * Calculate expiration date from start date based on billing cycle
+     * Reads from database billing_cycle column
+     */
+    public function calculateExpirationDate(\DateTime|string $startDate = 'now'): \Carbon\Carbon
+    {
+        $start = $startDate === 'now' ? \Carbon\Carbon::now() : \Carbon\Carbon::parse($startDate);
+        
+        return match($this->billing_cycle) {
+            'monthly' => $start->addMonth(),
+            'yearly' => $start->addYear(),
+            default => $start->addMonth(), // fallback to monthly
+        };
+    }
+
+    /**
+     * Get billing cycle display name
+     */
+    public function getBillingCycleDisplayAttribute(): string
+    {
+        return match($this->billing_cycle) {
+            'monthly' => 'Monthly',
+            'yearly' => 'Yearly',
+            default => ucfirst($this->billing_cycle),
+        };
+    }
+
+    /**
+     * Check if plan is yearly
+     */
+    public function isYearly(): bool
+    {
+        return $this->billing_cycle === 'yearly';
+    }
+
+    /**
+     * Check if plan is monthly
+     */
+    public function isMonthly(): bool
+    {
+        return $this->billing_cycle === 'monthly';
+    }
 }

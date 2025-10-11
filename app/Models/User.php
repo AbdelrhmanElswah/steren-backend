@@ -21,6 +21,9 @@ class User extends Authenticatable
         'theme',
         'is_verified',
         'is_dealer',
+        'is_suspended',
+        'suspended_at',
+        'suspension_reason',
         'email_verified_at',
         'phone_verified_at',
         'social_provider',
@@ -43,6 +46,8 @@ class User extends Authenticatable
     protected $casts = [
         'is_verified' => 'boolean',
         'is_dealer' => 'boolean',
+        'is_suspended' => 'boolean',
+        'suspended_at' => 'datetime',
         'email_verified_at' => 'datetime',
         'phone_verified_at' => 'datetime',
         'birthday' => 'date',
@@ -172,6 +177,30 @@ class User extends Authenticatable
     public function paymentProcessing()
     {
         return $this->hasMany(PaymentProcessing::class);
+    }
+
+    /**
+     * Get user's slot record (for free users)
+     */
+    public function userSlot()
+    {
+        return $this->hasOne(UserSlot::class);
+    }
+
+    /**
+     * Get user's slot purchases
+     */
+    public function slotPurchases()
+    {
+        return $this->hasMany(SlotPurchase::class);
+    }
+
+    /**
+     * Get completed slot purchases
+     */
+    public function completedSlotPurchases()
+    {
+        return $this->hasMany(SlotPurchase::class)->completed();
     }
 
     /**
@@ -470,5 +499,67 @@ class User extends Authenticatable
         }
 
         return $latestApp->status;
+    }
+
+    /**
+     * Check if account is suspended
+     */
+    public function isSuspended(): bool
+    {
+        return $this->is_suspended;
+    }
+
+    /**
+     * Suspend the account
+     */
+    public function suspend(string $reason = null)
+    {
+        $this->update([
+            'is_suspended' => true,
+            'suspended_at' => now(),
+            'suspension_reason' => $reason ?? 'Subscription expired without renewal after grace period',
+        ]);
+
+        return $this;
+    }
+
+    /**
+     * Unsuspend the account
+     */
+    public function unsuspend()
+    {
+        $this->update([
+            'is_suspended' => false,
+            'suspended_at' => null,
+            'suspension_reason' => null,
+        ]);
+
+        return $this;
+    }
+
+    /**
+     * Get account status for display
+     */
+    public function getAccountStatusAttribute()
+    {
+        if ($this->is_suspended) {
+            return 'suspended';
+        }
+
+        $subscription = $this->activeSubscription;
+        
+        if (!$subscription) {
+            return 'free';
+        }
+
+        if ($subscription->isInGracePeriod()) {
+            return 'grace_period';
+        }
+
+        if ($subscription->isActive()) {
+            return 'active';
+        }
+
+        return 'free';
     }
 }
