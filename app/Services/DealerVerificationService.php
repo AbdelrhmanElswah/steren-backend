@@ -8,6 +8,7 @@ use App\Models\SubscriptionPlan;
 use App\Models\Status;
 use App\Exceptions\OdooConnectionException;
 use App\Exceptions\OdooServiceException;
+use App\Services\FirebaseService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -18,60 +19,100 @@ class DealerVerificationService
     protected $baseUrl;
     protected $database;
     protected $apiKey;
+    protected FirebaseService $firebaseService;
 
-    public function __construct()
+    public function __construct(FirebaseService $firebaseService)
     {
         $this->baseUrl = config('services.odoo.base_url');
         $this->database = config('services.odoo.database');
         $this->apiKey = config('services.odoo.api_key');
+        $this->firebaseService = $firebaseService;
     }
 
-    public function submitVerification(array $data): array
+    public function submitVerification(array $data, ?User $authenticatedUser = null): array
     {
         try {
-            $user = User::where('partner_id', $data['partner_id'])->first();
+            $user = $authenticatedUser ?? User::where('partner_id', $data['partner_id'])->first();
             
             if (!$user) {
-                throw new OdooServiceException('User not found for partner ID: ' . $data['partner_id']);
+                throw new OdooServiceException('User not found for partner ID: ' . ($data['partner_id'] ?? 'N/A'));
             }
 
             if ($user->is_dealer) {
                 throw new OdooServiceException('User is already a verified dealer');
             }
-
-            DB::beginTransaction();
+            
+            $data['partner_id'] = $user->partner_id;
 
             $subscriptionPlan = SubscriptionPlan::findOrFail($data['subscription_plan_id']);
 
             $dealerApplication = $this->createDealerApplication($user, $data, $subscriptionPlan);
+            
+            Log::info('Dealer application created locally', [
+                'application_id' => $dealerApplication->id,
+                'partner_id' => $data['partner_id'],
+            ]);
 
-            $odooResponse = $this->submitToOdoo($data, $dealerApplication);
+            try {
+                $odooResponse = $this->submitToOdoo($data, $dealerApplication);
 
-            if ($odooResponse['success']) {
-                $underReviewStatus = Status::findByNameAndType('under_review', 'dealer_application');
-                
-                $odooId = (string) $data['partner_id'];
-                
-                $dealerApplication->update([
-                    'status_id' => $underReviewStatus?->id,
-                    'odoo_id' => $odooId,
+                if ($odooResponse['success']) {
+                    $underReviewStatus = Status::findByNameAndType('under_review', 'dealer_application');
+                    $odooId = (string) $data['partner_id'];
+                    
+                    $dealerApplication->update([
+                        'status_id' => $underReviewStatus?->id,
+                        'odoo_id' => $odooId,
+                    ]);
+
+                    Log::info('Dealer application synced with Odoo', [
+                        'application_id' => $dealerApplication->id,
+                        'odoo_id' => $odooId,
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'message' => 'Dealer verification submitted successfully',
+                        'application_id' => $dealerApplication->id,
+                        'odoo_id' => $odooId,
+                        'status' => 'under_review',
+                        'synced_with_odoo' => true
+                    ];
+                } else {
+                    Log::warning('Dealer application saved locally but Odoo sync failed', [
+                        'application_id' => $dealerApplication->id,
+                        'odoo_error' => $odooResponse['message'] ?? 'Unknown error',
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'message' => 'Application saved locally. Odoo sync pending.',
+                        'application_id' => $dealerApplication->id,
+                        'odoo_id' => (string) $user->partner_id,
+                        'status' => 'application_applied',
+                        'synced_with_odoo' => false,
+                        'sync_error' => $odooResponse['message'] ?? 'Failed to sync with Odoo'
+                    ];
+                }
+            } catch (OdooConnectionException $e) {
+                Log::error('Odoo connection failed, application saved locally', [
+                    'application_id' => $dealerApplication->id,
+                    'error' => $e->getMessage(),
                 ]);
-
-                DB::commit();
 
                 return [
                     'success' => true,
-                    'message' => 'Dealer verification submitted successfully',
+                    'message' => 'Application saved locally. Will sync with Odoo later.',
                     'application_id' => $dealerApplication->id,
-                    'odoo_id' => $odooId,
-                    'status' => 'under_review'
+                    'odoo_id' => (string) $user->partner_id,
+                    'status' => 'application_applied',
+                    'synced_with_odoo' => false,
+                    'sync_error' => 'Odoo connection failed'
                 ];
-            } else {
-                throw new OdooServiceException($odooResponse['message'] ?? 'Failed to submit to Odoo');
             }
 
         } catch (Exception $e) {
-            DB::rollBack();
+            // Only rollback if the local save itself failed
             
             Log::error('Dealer verification submission failed', [
                 'partner_id' => $data['partner_id'] ?? null,
@@ -85,10 +126,11 @@ class DealerVerificationService
 
     protected function createDealerApplication(User $user, array $data, SubscriptionPlan $subscriptionPlan): DealerApplication
     {
-            $pendingStatus = Status::findByNameAndType('pending', 'dealer_application');
+            $applicationAppliedStatus = Status::findByNameAndType('application_applied', 'dealer_application');
             
             $applicationData = [
                 'user_id' => $user->id,
+                'odoo_id' => (string) $user->partner_id,
                 'seller_type' => $data['seller_type'],
                 'owner_manager_name' => $data['owner_manager_name'],
                 'phone_number' => $data['phone_number'],
@@ -98,7 +140,7 @@ class DealerVerificationService
                 'years_in_business' => $data['years_in_business'] ?? null,
                 'city_address' => $data['city_address'],
                 'subscription_plan_id' => $subscriptionPlan->id,
-                'status_id' => $pendingStatus?->id,
+                'status_id' => $applicationAppliedStatus?->id,
                 'terms_accepted' => true,
                 'information_confirmed' => true,
             ];
@@ -107,16 +149,39 @@ class DealerVerificationService
             $applicationData['automotive_brand_represented'] = $data['automotive_brand'];
             $applicationData['business_license_number'] = $data['business_license_name'] ?? null;
             
-            if (isset($data['authorization_letter'])) {
-                $applicationData['authorization_letter_path'] = $this->storeBase64File(
+            if (isset($data['authorization_letter']) && $data['authorization_letter'] instanceof \Illuminate\Http\UploadedFile) {
+                $applicationData['authorization_letter_path'] = $this->storeUploadedFile(
                     $data['authorization_letter'],
-                    $data['authorization_letter_filename'] ?? 'authorization_letter.pdf',
                     'dealer-applications/authorization-letters'
+                );
+            }
+            
+            if (isset($data['business_license']) && $data['business_license'] instanceof \Illuminate\Http\UploadedFile) {
+                $applicationData['business_license_path'] = $this->storeUploadedFile(
+                    $data['business_license'],
+                    'dealer-applications/business-licenses'
                 );
             }
         }
 
-        return DealerApplication::create($applicationData);
+        $dealerApplication = DealerApplication::create($applicationData);
+
+        $this->firebaseService->syncDealerApplicationToFirebase(
+            $dealerApplication->id,
+            (string) $user->partner_id,
+            [
+                'application_id' => $dealerApplication->id,
+                'status' => 'application_applied',
+                'dealership_name' => $dealerApplication->dealership_company_name,
+                'seller_type' => $dealerApplication->seller_type,
+                'owner_name' => $dealerApplication->owner_manager_name,
+                'vehicles_in_stock' => $dealerApplication->vehicles_in_stock,
+                'years_in_business' => $dealerApplication->years_in_business,
+                'created_at' => $dealerApplication->created_at->toISOString(),
+            ]
+        );
+
+        return $dealerApplication;
     }
 
     protected function submitToOdoo(array $data, DealerApplication $dealerApplication): array
@@ -143,14 +208,15 @@ class DealerVerificationService
             if ($response->successful()) {
                 $responseData = $response->json();
                 
-                Log::info('Odoo API Response', [
+                Log::info('Odoo API Success Response - Full Details', [
+                    'http_status' => $response->status(),
                     'response_data' => $responseData,
+                    'success_field' => $responseData['success'] ?? 'NOT SET',
                     'partner_id' => $data['partner_id'] ?? null,
                     'application_id' => $dealerApplication->id ?? null
                 ]);
                 
-                // Handle direct API response format (not JSON-RPC)
-                if (isset($responseData['success']) && $responseData['success']) {
+                if (isset($responseData['success']) && $responseData['success'] === true) {
                     $odooId = $this->extractOdooId($responseData);
                     
                     if (!$odooId) {
@@ -168,19 +234,42 @@ class DealerVerificationService
                     ];
                 }
 
+                Log::warning('Odoo API returned 200 but success=false', [
+                    'response_data' => $responseData,
+                    'partner_id' => $data['partner_id'] ?? null,
+                    'application_id' => $dealerApplication->id ?? null
+                ]);
+                
                 return [
                     'success' => false,
                     'message' => $responseData['message'] ?? 'Failed to submit verification'
                 ];
             }
 
+            $responseData = $response->json();
+            
             if ($response->status() >= 500) {
                 throw new OdooConnectionException('Odoo service is temporarily unavailable');
             }
 
+            $errorMessage = $responseData['error'] ?? 'Failed to submit verification to Odoo';
+            $errorCode = $responseData['error_code'] ?? null;
+            $errorDetails = $responseData['details'] ?? null;
+
+            Log::warning('Odoo API Error Response', [
+                'status' => $response->status(),
+                'error' => $errorMessage,
+                'error_code' => $errorCode,
+                'details' => $errorDetails,
+                'partner_id' => $data['partner_id'] ?? null
+            ]);
+
             return [
                 'success' => false,
-                'message' => 'Failed to submit verification to Odoo'
+                'message' => $errorMessage,
+                'error_code' => $errorCode,
+                'details' => $errorDetails,
+                'status' => $response->status()
             ];
 
         } catch (OdooConnectionException $e) {
@@ -210,25 +299,36 @@ class DealerVerificationService
             'subscription_plan_id' => $data['subscription_plan_id'],
         ];
 
-        // Add authorized seller specific fields
         if ($data['seller_type'] === 'authorized') {
             $payload['automotive_brand'] = $data['automotive_brand'] ?? null;
-            $payload['authorization_letter'] = $data['authorization_letter'] ?? null;
-            $payload['authorization_letter_filename'] = $data['authorization_letter_filename'] ?? null;
-            $payload['business_license'] = $data['business_license'] ?? null;
-            $payload['business_license_filename'] = $data['business_license_filename'] ?? null;
+            
+            if (isset($data['authorization_letter']) && $data['authorization_letter'] instanceof \Illuminate\Http\UploadedFile) {
+                $payload['authorization_letter'] = base64_encode(file_get_contents($data['authorization_letter']->getRealPath()));
+                $payload['authorization_letter_filename'] = $data['authorization_letter']->getClientOriginalName();
+            }
+            
+            if (isset($data['business_license']) && $data['business_license'] instanceof \Illuminate\Http\UploadedFile) {
+                $payload['business_license'] = base64_encode(file_get_contents($data['business_license']->getRealPath()));
+                $payload['business_license_filename'] = $data['business_license']->getClientOriginalName();
+            }
+            
             $payload['business_license_name'] = $data['business_license_name'] ?? null;
         }
 
         return $payload;
     }
 
-    protected function storeBase64File(string $base64Data, string $filename, string $directory): string
+    /**
+     * Store an uploaded file
+     * 
+     * @param \Illuminate\Http\UploadedFile $file
+     * @param string $directory
+     * @return string
+     */
+    protected function storeUploadedFile(\Illuminate\Http\UploadedFile $file, string $directory): string
     {
-        $fileData = base64_decode($base64Data);
-        $path = $directory . '/' . uniqid() . '_' . $filename;
-        
-        \Storage::disk('public')->put($path, $fileData);
+        $filename = time() . '_' . uniqid() . '_' . $file->getClientOriginalName();
+        $path = $file->storeAs($directory, $filename, 'public');
         
         return $path;
     }
@@ -307,7 +407,8 @@ class DealerVerificationService
         try {
             $application = DealerApplication::findOrFail($applicationId);
             
-            if (!$application->isPending() && !$application->isUnderReview()) {
+            $allowedStatuses = ['application_applied', 'pending', 'under_review'];
+            if (!in_array($application->status?->name, $allowedStatuses)) {
                 throw new OdooServiceException('Application cannot be approved. Current status: ' . ($application->status?->display_name ?? 'Unknown'));
             }
 
@@ -337,6 +438,12 @@ class DealerVerificationService
             ]);
 
             DB::commit();
+
+            $this->firebaseService->updateDealerApplicationStatus(
+                $application->odoo_id,
+                $applicationId,
+                'approved'
+            );
 
             Log::info('Dealer application approved', [
                 'application_id' => $applicationId,
@@ -372,7 +479,8 @@ class DealerVerificationService
         try {
             $application = DealerApplication::findOrFail($applicationId);
             
-            if (!$application->isPending() && !$application->isUnderReview()) {
+            $allowedStatuses = ['application_applied', 'pending', 'under_review'];
+            if (!in_array($application->status?->name, $allowedStatuses)) {
                 throw new OdooServiceException('Application cannot be rejected. Current status: ' . ($application->status?->display_name ?? 'Unknown'));
             }
 
@@ -402,6 +510,13 @@ class DealerVerificationService
             ]);
 
             DB::commit();
+
+            $this->firebaseService->updateDealerApplicationStatus(
+                $application->odoo_id,
+                $applicationId,
+                'rejected',
+                $reason
+            );
 
             Log::info('Dealer application rejected', [
                 'application_id' => $applicationId,

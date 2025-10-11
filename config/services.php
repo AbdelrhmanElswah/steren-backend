@@ -45,6 +45,7 @@ return [
 
     'firebase' => [
         'project_id' => env('FIREBASE_PROJECT_ID'),
+        'database_url' => env('FIREBASE_DATABASE_URL'),
         'web_api_key' => env('FIREBASE_WEB_API_KEY'),
         'auth_domain' => env('FIREBASE_AUTH_DOMAIN'),
         'storage_bucket' => env('FIREBASE_STORAGE_BUCKET'),

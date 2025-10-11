@@ -144,4 +144,99 @@ class FirebaseService
             'firebase_claims' => $payload,
         ];
     }
+
+    public function syncDealerApplicationToFirebase(int $applicationId, string $partnerId, array $data): void
+    {
+        try {
+            $firebaseUrl = config('services.firebase.database_url');
+            $webApiKey = config('services.firebase.web_api_key');
+            
+            if (empty($firebaseUrl)) {
+                Log::warning('Firebase database URL not configured, skipping sync');
+                return;
+            }
+
+            $path = "/dealer_applications/{$partnerId}/{$applicationId}.json";
+            
+            if ($webApiKey) {
+                $url = rtrim($firebaseUrl, '/') . $path . '?auth=' . $webApiKey;
+            } else {
+                $url = rtrim($firebaseUrl, '/') . $path;
+            }
+
+            $response = Http::timeout(10)->put($url, $data);
+
+            if ($response->successful()) {
+                Log::info('Dealer application synced to Firebase', [
+                    'application_id' => $applicationId,
+                    'partner_id' => $partnerId,
+                    'firebase_path' => $path,
+                ]);
+            } else {
+                Log::error('Failed to sync dealer application to Firebase', [
+                    'application_id' => $applicationId,
+                    'partner_id' => $partnerId,
+                    'status' => $response->status(),
+                    'response' => $response->body(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Firebase sync error', [
+                'application_id' => $applicationId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function updateDealerApplicationStatus(string $partnerId, int $applicationId, string $status, ?string $reason = null): void
+    {
+        try {
+            $firebaseUrl = config('services.firebase.database_url');
+            $webApiKey = config('services.firebase.web_api_key');
+            
+            if (empty($firebaseUrl)) {
+                Log::warning('Firebase database URL not configured, skipping status update');
+                return;
+            }
+
+            $path = "/dealer_applications/{$partnerId}/{$applicationId}/status.json";
+            
+            if ($webApiKey) {
+                $url = rtrim($firebaseUrl, '/') . $path . '?auth=' . $webApiKey;
+            } else {
+                $url = rtrim($firebaseUrl, '/') . $path;
+            }
+
+            $data = [
+                'status' => $status,
+                'updated_at' => now()->toISOString(),
+            ];
+
+            if ($reason) {
+                $data['rejection_reason'] = $reason;
+            }
+
+            $response = Http::timeout(10)->put($url, $data);
+
+            if ($response->successful()) {
+                Log::info('Dealer application status updated in Firebase', [
+                    'application_id' => $applicationId,
+                    'partner_id' => $partnerId,
+                    'status' => $status,
+                    'firebase_path' => $path,
+                ]);
+            } else {
+                Log::error('Failed to update dealer application status in Firebase', [
+                    'application_id' => $applicationId,
+                    'status' => $response->status(),
+                    'response' => $response->body(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Firebase status update error', [
+                'application_id' => $applicationId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 }

@@ -71,12 +71,21 @@ class StatusSeeder extends Seeder
 
             // Dealer Application Statuses
             [
+                'name' => 'application_applied',
+                'display_name' => 'Application Applied',
+                'type' => 'dealer_application',
+                'description' => 'Dealer application has been submitted',
+                'color' => '#8B5CF6',
+                'sort_order' => 1,
+                'is_active' => true,
+            ],
+            [
                 'name' => 'pending',
                 'display_name' => 'Pending',
                 'type' => 'dealer_application',
                 'description' => 'Dealer application is pending review',
                 'color' => '#F59E0B',
-                'sort_order' => 1,
+                'sort_order' => 2,
                 'is_active' => true,
             ],
             [
@@ -85,7 +94,7 @@ class StatusSeeder extends Seeder
                 'type' => 'dealer_application',
                 'description' => 'Dealer application is under review',
                 'color' => '#3B82F6',
-                'sort_order' => 2,
+                'sort_order' => 3,
                 'is_active' => true,
             ],
             [
@@ -94,7 +103,7 @@ class StatusSeeder extends Seeder
                 'type' => 'dealer_application',
                 'description' => 'Dealer application has been approved',
                 'color' => '#10B981',
-                'sort_order' => 3,
+                'sort_order' => 4,
                 'is_active' => true,
             ],
             [
@@ -103,7 +112,7 @@ class StatusSeeder extends Seeder
                 'type' => 'dealer_application',
                 'description' => 'Dealer application has been rejected',
                 'color' => '#EF4444',
-                'sort_order' => 4,
+                'sort_order' => 5,
                 'is_active' => true,
             ],
 

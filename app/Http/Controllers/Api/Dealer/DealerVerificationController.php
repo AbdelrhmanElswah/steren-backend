@@ -29,14 +29,19 @@ class DealerVerificationController extends Controller
     {
         try {
             $data = $request->validated();
+            $user = $request->user();
             
-            $result = $this->dealerVerificationService->submitVerification($data);
+            $result = $this->dealerVerificationService->submitVerification($data, $user);
 
-            return $this->successResponse($result, 'Dealer verification submitted successfully', 201);
+            $message = $result['synced_with_odoo'] ?? false 
+                ? 'Dealer verification submitted and synced successfully'
+                : 'Application saved. Sync with Odoo pending.';
+
+            return $this->successResponse($result, $message, 201);
 
         } catch (Exception $e) {
             return $this->errorResponse(
-                'Failed to submit dealer verification: ' . $e->getMessage(),
+                'Failed to save dealer application: ' . $e->getMessage(),
                 500
             );
         }

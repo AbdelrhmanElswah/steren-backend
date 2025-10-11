@@ -227,7 +227,6 @@ Route::prefix('account')->middleware('auth:sanctum')->group(function () {
     Route::get('/wallet', [App\Http\Controllers\Data\AccountController::class, 'getWallet']);
     Route::get('/wallet/transactions', [App\Http\Controllers\Data\AccountController::class, 'getWalletTransactions']);
     Route::get('/payment-methods', [App\Http\Controllers\Data\AccountController::class, 'getPaymentMethods']);
-    Route::get('/subscription-plans', [App\Http\Controllers\Data\AccountController::class, 'getSubscriptionPlans']);
     Route::get('/my-subscription', [App\Http\Controllers\Data\AccountController::class, 'getMySubscription']);
     Route::get('/language-options', [App\Http\Controllers\Data\AccountController::class, 'getLanguageOptions']);
     Route::get('/theme-options', [App\Http\Controllers\Data\AccountController::class, 'getThemeOptions']);
@@ -279,14 +278,16 @@ Route::prefix('dealer')->middleware('auth:sanctum')->group(function () {
 
 // Dealer Verification Routes
 Route::prefix('verification')->group(function () {
-    // Public routes for Odoo integration
-    Route::post('/submit', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'submit']);
+    // Public route for Odoo webhook
     Route::post('/update-status', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'updateStatus']);
     
     // Protected routes for authenticated users
     Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/submit', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'submit']);
         Route::get('/status', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'status']);
     });
+    
+    Route::get('/subscription-plans', [App\Http\Controllers\Data\AccountController::class, 'getSubscriptionPlans']);
 });
 
 // Dealer Application Management Routes (Admin/Staff)
