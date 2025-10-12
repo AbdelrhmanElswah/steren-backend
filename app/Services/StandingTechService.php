@@ -211,7 +211,19 @@ class StandingTechService
 
             // Get detailed error information
             $responseBody = $response->json();
-            $errorMessage = $responseBody['message'] ?? $responseBody['error'] ?? 'Failed to send message';
+            
+            // Handle different error response formats
+            $errorMessage = 'Failed to send message';
+            if (isset($responseBody['message'])) {
+                $errorMessage = is_array($responseBody['message']) 
+                    ? json_encode($responseBody['message']) 
+                    : $responseBody['message'];
+            } elseif (isset($responseBody['error'])) {
+                $errorMessage = is_array($responseBody['error']) 
+                    ? json_encode($responseBody['error']) 
+                    : $responseBody['error'];
+            }
+            
             $errorDetails = $responseBody['errors'] ?? $responseBody['details'] ?? null;
             
             // Build detailed error message
@@ -239,11 +251,19 @@ class StandingTechService
         } catch (\Exception $e) {
             Log::error('StandingTech service exception', [
                 'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
+                'trace' => $e->getTraceAsString(),
                 'data' => $data,
             ]);
 
+            // Get a cleaner error message
+            $errorMsg = $e->getMessage();
+            if (strpos($errorMsg, 'Array to string conversion') !== false) {
+                $errorMsg = 'Invalid response format from API. Check logs for details.';
+            }
+
             throw new StandingTechException(
-                'Failed to send message: ' . $e->getMessage(),
+                'Failed to send message: ' . $errorMsg,
                 500,
                 $e
             );
