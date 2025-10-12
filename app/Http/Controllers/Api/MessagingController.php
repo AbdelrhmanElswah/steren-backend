@@ -271,5 +271,47 @@ class MessagingController extends Controller
             );
         }
     }
+
+    /**
+     * Test connection to StandingTech API
+     *
+     * @return JsonResponse
+     */
+    public function testConnection(): JsonResponse
+    {
+        try {
+            // Get service status
+            $status = $this->messagingService->getStatus();
+            
+            if (!$status['configured']) {
+                return $this->errorResponse(
+                    'Service not configured. Please check your .env file.',
+                    500,
+                    $status
+                );
+            }
+
+            // Try to send a test message to a dummy number
+            $testData = [
+                'recipient' => '9647502171212',
+                'message' => 'Test connection from Steren App',
+                'type' => 'sms',
+                'lang' => 'en'
+            ];
+
+            return $this->successResponse([
+                'status' => $status,
+                'test_data' => $testData,
+                'message' => 'Ready to send. Use /api/messaging/sms/send to actually send messages.',
+                'note' => 'This endpoint does not send real messages, it just checks configuration.'
+            ], 'Connection test completed');
+            
+        } catch (\Exception $e) {
+            return $this->errorResponse(
+                $e->getMessage(),
+                500
+            );
+        }
+    }
 }
 

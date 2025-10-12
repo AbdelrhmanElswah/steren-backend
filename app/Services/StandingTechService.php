@@ -209,16 +209,29 @@ class StandingTechService
                 ];
             }
 
-            $errorMessage = $response->json('message', 'Failed to send message');
+            // Get detailed error information
+            $responseBody = $response->json();
+            $errorMessage = $responseBody['message'] ?? $responseBody['error'] ?? 'Failed to send message';
+            $errorDetails = $responseBody['errors'] ?? $responseBody['details'] ?? null;
+            
+            // Build detailed error message
+            $fullErrorMessage = $errorMessage;
+            if ($errorDetails) {
+                $fullErrorMessage .= ' | Details: ' . json_encode($errorDetails);
+            }
             
             Log::error('StandingTech API error', [
                 'status' => $response->status(),
-                'response' => $response->json(),
-                'data' => $data,
+                'response' => $responseBody,
+                'request_data' => $data,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . substr($this->apiToken ?? '', 0, 20) . '...',
+                    'api_url' => $this->apiUrl,
+                ],
             ]);
 
             throw new StandingTechException(
-                $errorMessage,
+                $fullErrorMessage . ' (HTTP ' . $response->status() . ')',
                 $response->status()
             );
         } catch (StandingTechException $e) {

@@ -403,5 +403,6 @@ Route::prefix('messaging')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/bulk/send', [MessagingController::class, 'sendBulk']);
         Route::get('/status', [MessagingController::class, 'getStatus']);
+        Route::get('/test-connection', [MessagingController::class, 'testConnection']);
     });
 });
