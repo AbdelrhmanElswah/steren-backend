@@ -38,13 +38,20 @@ class StandingTechService
      */
     public function sendSMS(string $recipient, string $message, ?string $senderId = null, string $lang = 'en'): array
     {
-        return $this->send([
+        $data = [
             'recipient' => $this->formatPhoneNumber($recipient),
-            'sender_id' => $senderId ?? $this->defaultSenderId,
             'type' => 'sms',
             'message' => $message,
             'lang' => $lang,
-        ]);
+        ];
+
+        // Only include sender_id if explicitly provided or if default is set
+        $senderIdToUse = $senderId ?? $this->defaultSenderId;
+        if (!empty($senderIdToUse)) {
+            $data['sender_id'] = $senderIdToUse;
+        }
+
+        return $this->send($data);
     }
 
     /**
@@ -59,13 +66,20 @@ class StandingTechService
      */
     public function sendWhatsApp(string $recipient, string $message, ?string $senderId = null, string $lang = 'en'): array
     {
-        return $this->send([
+        $data = [
             'recipient' => $this->formatPhoneNumber($recipient),
-            'sender_id' => $senderId ?? $this->defaultSenderId,
             'type' => 'whatsapp',
             'message' => $message,
             'lang' => $lang,
-        ]);
+        ];
+
+        // Only include sender_id if explicitly provided or if default is set
+        $senderIdToUse = $senderId ?? $this->defaultSenderId;
+        if (!empty($senderIdToUse)) {
+            $data['sender_id'] = $senderIdToUse;
+        }
+
+        return $this->send($data);
     }
 
     /**
