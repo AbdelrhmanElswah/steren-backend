@@ -8,8 +8,8 @@ use App\Exceptions\StandingTechException;
 
 class StandingTechService
 {
-    protected string $apiUrl;
-    protected string $apiToken;
+    protected ?string $apiUrl;
+    protected ?string $apiToken;
     protected string $defaultSenderId;
     protected int $timeout;
 
@@ -19,6 +19,11 @@ class StandingTechService
         $this->apiToken = config('services.standingtech.api_token');
         $this->defaultSenderId = config('services.standingtech.sender_id', 'SterenApp');
         $this->timeout = config('services.standingtech.timeout', 30);
+
+        // Validate configuration
+        if (empty($this->apiToken)) {
+            Log::warning('StandingTech API token is not configured. Set STANDINGTECH_API_TOKEN in your .env file.');
+        }
     }
 
     /**
@@ -174,6 +179,14 @@ class StandingTechService
      */
     protected function send(array $data): array
     {
+        // Check if service is configured
+        if (!$this->isConfigured()) {
+            throw new StandingTechException(
+                'StandingTech service is not configured. Please set STANDINGTECH_API_TOKEN in your .env file.',
+                500
+            );
+        }
+
         try {
             $response = Http::timeout($this->timeout)
                 ->withHeaders([
