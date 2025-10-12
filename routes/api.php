@@ -2,6 +2,9 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\SimilarCarsController;
+use App\Http\Controllers\Api\Subscription\SubscriptionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -349,38 +352,38 @@ Route::prefix('listings')->middleware('auth:sanctum')->group(function () {
 // Search Routes
 Route::prefix('search')->group(function () {
     // Public search routes
-    Route::get('/brands-models', [App\Http\Controllers\SearchController::class, 'searchBrandsAndModels']);
-    Route::get('/brand-suggestions', [App\Http\Controllers\SearchController::class, 'getBrandSuggestions']);
-    Route::get('/listings', [App\Http\Controllers\SearchController::class, 'searchListings']);
-    Route::get('/sponsored-listings', [App\Http\Controllers\SearchController::class, 'getSponsoredListings']);
-    Route::get('/brands', [App\Http\Controllers\SearchController::class, 'getAllBrands']);
-    Route::get('/filter-options', [App\Http\Controllers\SearchController::class, 'getFilterOptions']);
+    Route::get('/brands-models', [SearchController::class, 'searchBrandsAndModels']);
+    Route::get('/brand-suggestions', [SearchController::class, 'getBrandSuggestions']);
+    Route::get('/listings', [SearchController::class, 'searchListings']);
+    Route::get('/sponsored-listings', [SearchController::class, 'getSponsoredListings']);
+    Route::get('/brands', [SearchController::class, 'getAllBrands']);
+    Route::get('/filter-options', [SearchController::class, 'getFilterOptions']);
     
     // Authenticated search routes
     Route::middleware('auth:sanctum')->group(function () {
-        Route::get('/recent-searches', [App\Http\Controllers\SearchController::class, 'getRecentSearches']);
-        Route::post('/save-search', [App\Http\Controllers\SearchController::class, 'saveSearchHistory']);
+        Route::get('/recent-searches', [SearchController::class, 'getRecentSearches']);
+        Route::post('/save-search', [SearchController::class, 'saveSearchHistory']);
     });
     
     // Admin routes
     Route::middleware('auth:sanctum')->group(function () {
-        Route::post('/clear-cache', [App\Http\Controllers\SearchController::class, 'clearSearchCache']);
+        Route::post('/clear-cache', [SearchController::class, 'clearSearchCache']);
     });
 });
 
 // Similar Cars Routes
 Route::prefix('similar-cars')->group(function () {
     // Public similar cars routes
-    Route::get('/car/{carListingId}', [App\Http\Controllers\SimilarCarsController::class, 'getSimilarCars']);
-    Route::get('/brand-model', [App\Http\Controllers\SimilarCarsController::class, 'getSimilarCarsByBrandModel']);
-    Route::get('/price', [App\Http\Controllers\SimilarCarsController::class, 'getSimilarCarsByPrice']);
-    Route::get('/year', [App\Http\Controllers\SimilarCarsController::class, 'getSimilarCarsByYear']);
-    Route::get('/body-type/{bodyTypeId}', [App\Http\Controllers\SimilarCarsController::class, 'getSimilarCarsByBodyType']);
-    Route::get('/advanced', [App\Http\Controllers\SimilarCarsController::class, 'getSimilarCarsAdvanced']);
-    Route::get('/recommendations', [App\Http\Controllers\SimilarCarsController::class, 'getSimilarCarsRecommendations']);
+    Route::get('/car/{carListingId}', [SimilarCarsController::class, 'getSimilarCars']);
+    Route::get('/brand-model', [SimilarCarsController::class, 'getSimilarCarsByBrandModel']);
+    Route::get('/price', [SimilarCarsController::class, 'getSimilarCarsByPrice']);
+    Route::get('/year', [SimilarCarsController::class, 'getSimilarCarsByYear']);
+    Route::get('/body-type/{bodyTypeId}', [SimilarCarsController::class, 'getSimilarCarsByBodyType']);
+    Route::get('/advanced', [SimilarCarsController::class, 'getSimilarCarsAdvanced']);
+    Route::get('/recommendations', [SimilarCarsController::class, 'getSimilarCarsRecommendations']);
     
     // Admin routes
     Route::middleware('auth:sanctum')->group(function () {
-        Route::post('/clear-cache', [App\Http\Controllers\SimilarCarsController::class, 'clearSimilarCarsCache']);
+        Route::post('/clear-cache', [SimilarCarsController::class, 'clearSimilarCarsCache']);
     });
 });
