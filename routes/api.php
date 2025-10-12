@@ -275,15 +275,16 @@ Route::prefix('payments')->middleware('auth:sanctum')->group(function () {
 });
 
 // Subscription Management Routes
+Route::get('/subscriptions/plans', [SubscriptionController::class, 'getPlans']);
+
 Route::prefix('subscriptions')->middleware('auth:sanctum')->group(function () {
-    Route::get('/plans', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'getPlans']);
-    Route::get('/current', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'getCurrentSubscription']);
-    Route::get('/limits', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'getLimits']);
-    Route::get('/history', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'getHistory']);
-    Route::post('/subscribe', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'subscribe']);
-    Route::post('/cancel', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'cancel']);
-    Route::post('/renew', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'renew']);
-    Route::post('/change-plan', [App\Http\Controllers\Api\Subscription\SubscriptionController::class, 'changePlan']);
+    Route::get('/current', [SubscriptionController::class, 'getCurrentSubscription']);
+    Route::get('/limits', [SubscriptionController::class, 'getLimits']);
+    Route::get('/history', [SubscriptionController::class, 'getHistory']);
+    Route::post('/subscribe', [SubscriptionController::class, 'subscribe']);
+    Route::post('/cancel', [SubscriptionController::class, 'cancel']);
+    Route::post('/renew', [SubscriptionController::class, 'renew']);
+    Route::post('/change-plan', [SubscriptionController::class, 'changePlan']);
 });
 
 // Dealer Application Routes
