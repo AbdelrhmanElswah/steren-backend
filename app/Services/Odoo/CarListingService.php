@@ -114,6 +114,7 @@ class CarListingService extends OdooCrudService
             ],
             'title' => $carListing->title,
             'description' => $carListing->description,
+            'location' => $this->getLocationOdooId($carListing->location_id),
             'images' => []
         ];
     }
@@ -182,5 +183,17 @@ class CarListingService extends OdooCrudService
         if (!$modelId) return null;
         $model = \App\Models\CarModel::find($modelId);
         return $model ? (int)$model->odoo_id : null;
+    }
+
+    private function getLocationOdooId($locationId): ?int
+    {
+        if (!$locationId) return null;
+        $location = \App\Models\Location::find($locationId);
+        if ($location && $location->odoo_id) {
+            return (int)$location->odoo_id;
+        }
+        
+        $city = \App\Models\City::where('name', 'like', '%' . $location->name . '%')->first();
+        return $city ? (int)$city->odoo_id : null;
     }
 }
