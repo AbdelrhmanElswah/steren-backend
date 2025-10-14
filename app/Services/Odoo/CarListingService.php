@@ -26,13 +26,9 @@ class CarListingService extends OdooCrudService
         return $carListing;
     }
 
-    /**
-     * Sync car listing to Odoo API
-     */
     private function syncToOdoo(CarListing $carListing): void
     {
         try {
-            // Get user's partner_id
             $user = User::find($carListing->user_id);
             if (!$user || !$user->partner_id) {
                 Log::warning('Cannot sync to Odoo: User or partner_id not found', [
@@ -42,19 +38,23 @@ class CarListingService extends OdooCrudService
                 return;
             }
 
-            // Prepare Odoo payload
             $odooPayload = $this->prepareOdooPayload($carListing, $user);
 
-            // Send to Odoo API
             $response = $this->odooService->createListing($odooPayload);
 
+            Log::info('Odoo API response received', [
+                'car_listing_id' => $carListing->id,
+                'response' => $response
+            ]);
+
             if ($response['success']) {
-                // Update local record with Odoo ID
-                $carListing->update(['odoo_id' => $response['odoo_listing_id']]);
+                $odooId = $response['odoo_listing_id'];
+                $carListing->update(['odoo_id' => $odooId]);
                 
                 Log::info('Car listing synced to Odoo successfully', [
                     'car_listing_id' => $carListing->id,
-                    'odoo_listing_id' => $response['odoo_listing_id']
+                    'odoo_listing_id' => $odooId,
+                    'updated_record' => $carListing->fresh()->toArray()
                 ]);
             } else {
                 Log::error('Failed to sync car listing to Odoo', [
