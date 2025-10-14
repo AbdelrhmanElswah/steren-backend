@@ -19,6 +19,39 @@ class CarListingService extends OdooCrudService
 
     public function create(array $data): CarListing
     {
+        // Ensure DB-required fields exist when using city-only input
+        if (!isset($data['origin_country'])) {
+            if (!empty($data['city_id'])) {
+                $city = \App\Models\City::find($data['city_id']);
+                $data['origin_country'] = $city?->name ?? 'Unknown';
+            } else {
+                $data['origin_country'] = 'Unknown';
+            }
+        }
+
+        if (!isset($data['location_id'])) {
+            $resolvedLocationId = null;
+            if (!empty($data['city_id'])) {
+                $city = $city ?? \App\Models\City::find($data['city_id']);
+                if ($city) {
+                    // Try to find or create a matching location using city name and odoo_id
+                    $location = \App\Models\Location::where('odoo_id', $city->odoo_id)->first();
+                    if (!$location) {
+                        $location = \App\Models\Location::firstOrCreate(
+                            ['name' => $city->name],
+                            ['odoo_id' => $city->odoo_id]
+                        );
+                    }
+                    $resolvedLocationId = $location->id;
+                }
+            }
+            // Fallback to first location if none resolved (to satisfy NOT NULL FK)
+            if (!$resolvedLocationId) {
+                $resolvedLocationId = \App\Models\Location::value('id');
+            }
+            $data['location_id'] = $resolvedLocationId;
+        }
+
         $carListing = parent::create($data);
 
         $this->syncToOdoo($carListing);
@@ -207,7 +240,6 @@ class CarListingService extends OdooCrudService
             }
         }
 
-        // If city_id is required and present, we shouldn't need location fallback anymore
         return null;
     }
 }
