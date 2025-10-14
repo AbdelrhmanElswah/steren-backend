@@ -393,7 +393,7 @@ class SubscriptionService
         }
 
         // Create new subscription
-        return UserSubscription::create([
+        $subscription = UserSubscription::create([
             'user_id' => $user->id,
             'subscription_plan_id' => $plan->id,
             'status' => 'active',
@@ -402,6 +402,17 @@ class SubscriptionService
             'grace_period_days' => 15, // Default 15-day grace period
             'payment_details' => $paymentDetails,
         ]);
+
+        // Auto-create default studio for dealers
+        if ($plan->name === 'Dealer') {
+            $this->createDefaultStudioForDealer($user);
+            
+            // Process existing listings for new dealers
+            $autoStudioService = app(\App\Services\AutoStudioService::class);
+            $autoStudioService->processExistingDealerListings($user);
+        }
+
+        return $subscription;
     }
 
     /**
@@ -471,6 +482,83 @@ class SubscriptionService
     public function getAvailablePlans(): \Illuminate\Database\Eloquent\Collection
     {
         return SubscriptionPlan::active()->ordered()->get();
+    }
+
+    /**
+     * Create default studio for dealer
+     */
+    protected function createDefaultStudioForDealer(User $user): void
+    {
+        // Check if dealer already has a default studio
+        $existingStudio = \App\Models\DealerStudio::where('dealer_id', $user->id)
+            ->where('name', 'Default Studio')
+            ->first();
+
+        if ($existingStudio) {
+            return;
+        }
+
+        // Create default studio
+        $studio = \App\Models\DealerStudio::create([
+            'dealer_id' => $user->id,
+            'name' => 'Default Studio',
+            'description' => 'Default studio for ' . $user->full_name,
+            'address' => $user->address ?? 'Address not provided',
+            'city_id' => $user->city_id ?? 1, // Default city or first city
+            'phone' => $user->phone,
+            'email' => $user->email,
+            'is_active' => true,
+            'is_verified' => true, // Auto-verify default studio
+            'verification_status' => 'verified',
+            'verified_at' => now(),
+            'settings' => [
+                'auto_assign_listings' => true,
+                'auto_featured' => true,
+                'is_default' => true,
+            ],
+            'business_hours' => [
+                'monday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                'tuesday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                'wednesday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                'thursday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                'friday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                'saturday' => ['is_open' => true, 'open' => '09:00', 'close' => '17:00'],
+                'sunday' => ['is_open' => false, 'open' => '09:00', 'close' => '17:00'],
+            ],
+            'amenities' => ['Showroom', 'Parking', 'Customer Service'],
+            'specialties' => ['All Vehicle Types'],
+        ]);
+
+        // Auto-associate existing car listings with default studio
+        $this->autoAssociateListingsWithStudio($user, $studio->id);
+
+        // Auto-promote dealer's listings to top picks
+        $this->autoPromoteDealerListings($user);
+    }
+
+    /**
+     * Auto-associate existing car listings with studio
+     */
+    protected function autoAssociateListingsWithStudio(User $user, int $studioId): void
+    {
+        \App\Models\CarListing::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->whereNull('studio_id')
+            ->update(['studio_id' => $studioId]);
+    }
+
+    /**
+     * Auto-promote dealer's listings to top picks
+     */
+    protected function autoPromoteDealerListings(User $user): void
+    {
+        \App\Models\CarListing::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where('is_featured', false)
+            ->update([
+                'is_featured' => true,
+                'featured_at' => now(),
+            ]);
     }
 
     /**

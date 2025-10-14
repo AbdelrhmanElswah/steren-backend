@@ -1,0 +1,417 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\User;
+use App\Models\CarListing;
+use App\Models\SubscriptionPlan;
+use App\Models\DealerStudio;
+use App\Services\SubscriptionService;
+use Illuminate\Support\Facades\DB;
+
+class SubscriptionBasedListingService
+{
+    protected SubscriptionService $subscriptionService;
+
+    public function __construct(SubscriptionService $subscriptionService)
+    {
+        $this->subscriptionService = $subscriptionService;
+    }
+
+    /**
+     * Get car listings based on user's subscription plan
+     */
+    public function getCarListingsForUser(User $user, array $filters = [])
+    {
+        $plan = $this->subscriptionService->getSubscriptionPlan($user);
+        
+        if (!$plan) {
+            return $this->getFreeTierListings($filters);
+        }
+
+        return match ($plan->name) {
+            'Start' => $this->getStartPlanListings($user, $filters),
+            'Pro' => $this->getProPlanListings($user, $filters),
+            'Dealer' => $this->getDealerPlanListings($user, $filters),
+            default => $this->getFreeTierListings($filters),
+        };
+    }
+
+    /**
+     * Get top picks for user based on subscription plan
+     */
+    public function getTopPicksForUser(User $user, int $limit = 10)
+    {
+        $plan = $this->subscriptionService->getSubscriptionPlan($user);
+        
+        if (!$plan || !$plan->is_top_picks) {
+            return collect();
+        }
+
+        if ($plan->name === 'Dealer') {
+            return $this->getDealerTopPicks($user, $limit);
+        }
+
+        return $this->getGeneralTopPicks($limit);
+    }
+
+    /**
+     * Get "You May Also Like" recommendations for user
+     */
+    public function getYouMayAlsoLikeForUser(User $user, CarListing $excludeListing, int $limit = 6)
+    {
+        $plan = $this->subscriptionService->getSubscriptionPlan($user);
+        
+        if (!$plan || !$plan->is_you_may_also_like) {
+            return collect();
+        }
+
+        if ($plan->name === 'Dealer') {
+            return $this->getDealerRecommendations($user, $excludeListing, $limit);
+        }
+
+        return $this->getGeneralRecommendations($excludeListing, $limit);
+    }
+
+    /**
+     * Get car listings for dealer's studio
+     */
+    public function getCarListingsForDealerStudio(User $dealer, int $studioId, array $filters = [])
+    {
+        $studio = DealerStudio::where('dealer_id', $dealer->id)
+            ->where('id', $studioId)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$studio) {
+            return collect();
+        }
+
+        $query = $studio->carListings()
+            ->with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+            ->where('status', 'active');
+
+        // Apply filters
+        if (isset($filters['brand_id'])) {
+            $query->where('car_brand_id', $filters['brand_id']);
+        }
+
+        if (isset($filters['model_id'])) {
+            $query->where('car_model_id', $filters['model_id']);
+        }
+
+        if (isset($filters['year_from'])) {
+            $query->where('year', '>=', $filters['year_from']);
+        }
+
+        if (isset($filters['year_to'])) {
+            $query->where('year', '<=', $filters['year_to']);
+        }
+
+        if (isset($filters['price_from'])) {
+            $query->where('price', '>=', $filters['price_from']);
+        }
+
+        if (isset($filters['price_to'])) {
+            $query->where('price', '<=', $filters['price_to']);
+        }
+
+        if (isset($filters['featured'])) {
+            $query->where('is_featured', $filters['featured']);
+        }
+
+        if (isset($filters['sort_by'])) {
+            switch ($filters['sort_by']) {
+                case 'price_low':
+                    $query->orderBy('price', 'asc');
+                    break;
+                case 'price_high':
+                    $query->orderBy('price', 'desc');
+                    break;
+                case 'newest':
+                    $query->orderBy('created_at', 'desc');
+                    break;
+                case 'oldest':
+                    $query->orderBy('created_at', 'asc');
+                    break;
+                case 'featured':
+                    $query->orderBy('is_featured', 'desc')
+                          ->orderBy('featured_at', 'desc');
+                    break;
+                default:
+                    $query->orderBy('created_at', 'desc');
+            }
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        return $query->paginate($filters['per_page'] ?? 20);
+    }
+
+    /**
+     * Get dealer's studios
+     */
+    public function getDealerStudios(User $dealer)
+    {
+        return DealerStudio::where('dealer_id', $dealer->id)
+            ->where('is_active', true)
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * Create a new studio for dealer
+     */
+    public function createStudio(User $dealer, array $data)
+    {
+        $plan = $this->subscriptionService->getSubscriptionPlan($dealer);
+        
+        if (!$plan || $plan->name !== 'Dealer') {
+            throw new \Exception('Only dealers can create studios');
+        }
+
+        return DealerStudio::create([
+            'dealer_id' => $dealer->id,
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+            'address' => $data['address'],
+            'city_id' => $data['city_id'],
+            'phone' => $data['phone'] ?? null,
+            'email' => $data['email'] ?? null,
+            'website' => $data['website'] ?? null,
+            'is_active' => true,
+            'verification_status' => 'pending',
+            'settings' => $data['settings'] ?? [],
+            'social_links' => $data['social_links'] ?? [],
+            'business_hours' => $data['business_hours'] ?? [],
+            'amenities' => $data['amenities'] ?? [],
+            'specialties' => $data['specialties'] ?? [],
+        ]);
+    }
+
+    /**
+     * Associate car listing with studio
+     */
+    public function associateListingWithStudio(CarListing $listing, int $studioId)
+    {
+        $studio = DealerStudio::find($studioId);
+        
+        if (!$studio || $studio->dealer_id !== $listing->user_id) {
+            throw new \Exception('Invalid studio or permission denied');
+        }
+
+        $listing->update(['studio_id' => $studioId]);
+        return $listing;
+    }
+
+    /**
+     * Get free tier listings (basic listings only)
+     */
+    protected function getFreeTierListings(array $filters = [])
+    {
+        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+            ->where('status', 'active')
+            ->where('is_featured', false)
+            ->where('is_sponsored', false);
+
+        return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 20);
+    }
+
+    /**
+     * Get Start plan listings
+     */
+    protected function getStartPlanListings(User $user, array $filters = [])
+    {
+        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+            ->where('status', 'active');
+
+        return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 20);
+    }
+
+    /**
+     * Get Pro plan listings
+     */
+    protected function getProPlanListings(User $user, array $filters = [])
+    {
+        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+            ->where('status', 'active');
+
+        return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 20);
+    }
+
+    /**
+     * Get Dealer plan listings
+     */
+    protected function getDealerPlanListings(User $user, array $filters = [])
+    {
+        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media', 'studio'])
+            ->where('status', 'active');
+
+        // If dealer has studios, prioritize their listings
+        $studios = $this->getDealerStudios($user);
+        if ($studios->isNotEmpty()) {
+            $studioIds = $studios->pluck('id');
+            $query->where(function ($q) use ($studioIds) {
+                $q->whereIn('studio_id', $studioIds)
+                  ->orWhere('user_id', $user->id);
+            });
+        }
+
+        return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 20);
+    }
+
+    /**
+     * Get dealer top picks
+     */
+    protected function getDealerTopPicks(User $user, int $limit)
+    {
+        $studios = $this->getDealerStudios($user);
+        
+        if ($studios->isEmpty()) {
+            return collect();
+        }
+
+        $studioIds = $studios->pluck('id');
+
+        return CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+            ->where('status', 'active')
+            ->whereIn('studio_id', $studioIds)
+            ->where(function ($query) {
+                $query->where('is_featured', true)
+                      ->orWhere('is_sponsored', true);
+            })
+            ->orderBy('featured_at', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Get general top picks
+     */
+    protected function getGeneralTopPicks(int $limit)
+    {
+        return CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+            ->where('status', 'active')
+            ->where('is_featured', true)
+            ->orderBy('featured_at', 'desc')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Get dealer recommendations
+     */
+    protected function getDealerRecommendations(User $user, CarListing $excludeListing, int $limit)
+    {
+        $studios = $this->getDealerStudios($user);
+        
+        if ($studios->isEmpty()) {
+            return collect();
+        }
+
+        $studioIds = $studios->pluck('id');
+
+        return CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+            ->where('status', 'active')
+            ->whereIn('studio_id', $studioIds)
+            ->where('id', '!=', $excludeListing->id)
+            ->where('car_brand_id', $excludeListing->car_brand_id)
+            ->where('car_model_id', $excludeListing->car_model_id)
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Get general recommendations
+     */
+    protected function getGeneralRecommendations(CarListing $excludeListing, int $limit)
+    {
+        return CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+            ->where('status', 'active')
+            ->where('id', '!=', $excludeListing->id)
+            ->where('car_brand_id', $excludeListing->car_brand_id)
+            ->where('car_model_id', $excludeListing->car_model_id)
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Apply filters to query
+     */
+    protected function applyFilters($query, array $filters)
+    {
+        if (isset($filters['brand_id'])) {
+            $query->where('car_brand_id', $filters['brand_id']);
+        }
+
+        if (isset($filters['model_id'])) {
+            $query->where('car_model_id', $filters['model_id']);
+        }
+
+        if (isset($filters['body_type_id'])) {
+            $query->where('car_body_type_id', $filters['body_type_id']);
+        }
+
+        if (isset($filters['year_from'])) {
+            $query->where('year', '>=', $filters['year_from']);
+        }
+
+        if (isset($filters['year_to'])) {
+            $query->where('year', '<=', $filters['year_to']);
+        }
+
+        if (isset($filters['price_from'])) {
+            $query->where('price', '>=', $filters['price_from']);
+        }
+
+        if (isset($filters['price_to'])) {
+            $query->where('price', '<=', $filters['price_to']);
+        }
+
+        if (isset($filters['mileage_from'])) {
+            $query->where('mileage', '>=', $filters['mileage_from']);
+        }
+
+        if (isset($filters['mileage_to'])) {
+            $query->where('mileage', '<=', $filters['mileage_to']);
+        }
+
+        if (isset($filters['featured'])) {
+            $query->where('is_featured', $filters['featured']);
+        }
+
+        if (isset($filters['location_id'])) {
+            $query->where('location_id', $filters['location_id']);
+        }
+
+        if (isset($filters['sort_by'])) {
+            switch ($filters['sort_by']) {
+                case 'price_low':
+                    $query->orderBy('price', 'asc');
+                    break;
+                case 'price_high':
+                    $query->orderBy('price', 'desc');
+                    break;
+                case 'newest':
+                    $query->orderBy('created_at', 'desc');
+                    break;
+                case 'oldest':
+                    $query->orderBy('created_at', 'asc');
+                    break;
+                case 'featured':
+                    $query->orderBy('is_featured', 'desc')
+                          ->orderBy('featured_at', 'desc');
+                    break;
+                default:
+                    $query->orderBy('created_at', 'desc');
+            }
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        return $query;
+    }
+}

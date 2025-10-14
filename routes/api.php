@@ -419,3 +419,23 @@ Route::prefix('vin')->group(function () {
     Route::post('/ocr', [App\Http\Controllers\VinOcrAuctionController::class, 'ocrOnly']);
     Route::get('/auction/{vin}', [App\Http\Controllers\VinOcrAuctionController::class, 'auctionOnly']);
 });
+
+// Subscription-Based Car Listing Routes
+Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getCarListings']);
+    Route::get('/top-picks', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getTopPicks']);
+    Route::get('/you-may-also-like/{listingId}', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getYouMayAlsoLike']);
+    Route::get('/plan-features', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getPlanFeatures']);
+    
+    // Dealer-specific routes
+    Route::prefix('dealer')->group(function () {
+        Route::get('/studios', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getDealerStudios']);
+        Route::post('/studios', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'createStudio']);
+        Route::get('/studios/{studioId}/listings', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getStudioListings']);
+        Route::post('/listings/{listingId}/associate-studio', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'associateListingWithStudio']);
+        
+        // Auto-studio routes
+        Route::get('/auto-studio/status', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getAutoStudioStatus']);
+        Route::post('/auto-studio/process', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'processAutoStudio']);
+    });
+});

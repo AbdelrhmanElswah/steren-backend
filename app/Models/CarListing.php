@@ -30,6 +30,7 @@ class CarListing extends Model
         'has_insurance',
         'user_id',
         'location_id',
+        'studio_id',
         'car_brand_id',
         'car_body_type_id',
         'car_model_id',
@@ -127,7 +128,7 @@ class CarListing extends Model
     }
 
     public function studio() {
-        return $this->belongsTo(Studio::class);
+        return $this->belongsTo(DealerStudio::class, 'studio_id');
     }
 
     public function media() {
