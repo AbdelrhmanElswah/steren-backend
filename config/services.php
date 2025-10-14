@@ -62,4 +62,12 @@ return [
         'enabled' => env('STANDINGTECH_ENABLED', true),
     ],
 
+    'vehicledatabases' => [
+        'api_url' => env('VEHICLEDATABASES_API_URL', 'https://api.vehicledatabases.com/advanced-vin-decode/v2/{vin}'),
+        'api_key' => env('VEHICLEDATABASES_API_KEY'),
+        'timeout' => env('VEHICLEDATABASES_TIMEOUT', 30),
+        'cache_expiry' => env('VEHICLEDATABASES_CACHE_EXPIRY', 24), // hours
+        'enabled' => env('VEHICLEDATABASES_ENABLED', true),
+    ],
+
 ];

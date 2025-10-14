@@ -406,3 +406,11 @@ Route::prefix('messaging')->group(function () {
         Route::get('/test-connection', [MessagingController::class, 'testConnection']);
     });
 });
+
+// VIN Decoder Routes (Vehicle Databases Integration)
+Route::prefix('vin')->group(function () {
+    // Public VIN decode routes
+    Route::post('/decode', [App\Http\Controllers\VinDecoderController::class, 'decode']);
+    Route::get('/info', [App\Http\Controllers\VinDecoderController::class, 'getVinInfo']);
+    Route::get('/status', [App\Http\Controllers\VinDecoderController::class, 'status']);
+});
