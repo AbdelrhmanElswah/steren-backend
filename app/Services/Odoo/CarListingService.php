@@ -114,7 +114,7 @@ class CarListingService extends OdooCrudService
             ],
             'title' => $carListing->title,
             'description' => $carListing->description,
-            'location' => $this->getLocationOdooId($carListing->location_id),
+            'location' => $this->getPreferredOdooLocationId($carListing),
             'images' => []
         ];
     }
@@ -195,5 +195,19 @@ class CarListingService extends OdooCrudService
         
         $city = \App\Models\City::where('name', 'like', '%' . $location->name . '%')->first();
         return $city ? (int)$city->odoo_id : null;
+    }
+
+    private function getPreferredOdooLocationId(\App\Models\CarListing $carListing): ?int
+    {
+        $cityId = request()->input('city_id');
+        if ($cityId) {
+            $city = \App\Models\City::find($cityId);
+            if ($city && $city->odoo_id) {
+                return (int)$city->odoo_id;
+            }
+        }
+
+        // If city_id is required and present, we shouldn't need location fallback anymore
+        return null;
     }
 }

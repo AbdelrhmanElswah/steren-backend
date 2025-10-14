@@ -24,8 +24,7 @@ class StoreCarListingRequest extends FormRequest
             // Database required fields
             'year' => 'required|integer|min:1900|max:' . (date('Y') + 1),
             'mileage' => 'required|integer|min:0',
-            'origin_country' => 'required|string|max:255',
-            'location_id' => 'required|exists:locations,id',
+            'city_id' => 'required|exists:cities,id',
             'car_brand_id' => 'required|exists:car_brands,id',
             'car_body_type_id' => 'required|exists:body_types,id',
             
@@ -84,8 +83,7 @@ class StoreCarListingRequest extends FormRequest
             'user_id.required' => 'User id is required',
             'year.required' => 'Year is required',
             'mileage.required' => 'Mileage is required',
-            'origin_country.required' => 'Origin country is required',
-            'location_id.required' => 'Location id is required',
+            'city_id.required' => 'City id is required',
             'car_brand_id.required' => 'Car brand id is required',
             'car_body_type_id.required' => 'Car body type id is required',
         ];
