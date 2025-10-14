@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Api\Odoo;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Odoo\StoreCarModelRequest;
 use App\Http\Requests\Api\Odoo\UpdateCarModelRequest;
+use App\Http\Requests\Api\Odoo\GetCarModelsRequest;
 use App\Http\Resources\Api\Odoo\CarModelResource;
+use App\Http\Resources\Api\Odoo\CarBrandResource;
 use App\Services\Odoo\CarModelService;
 use App\Traits\ApiResponse;
 use App\Traits\OdooFetchTrait;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class CarModelController extends Controller
 {
@@ -51,19 +55,45 @@ class CarModelController extends Controller
         );
     }
 
-    /**
-     * Fetch car models from regular database for user end
-     */
-    public function getCarModels(\Illuminate\Http\Request $request)
+    public function getCarModels(GetCarModelsRequest $request): JsonResponse
     {
-        return $this->fetchModelData(
-            \App\Models\CarModel::class,
-            'car_models',
-            $request,
-            [
-                'with' => ['carBrand'],
-                'customFields' => ['car_brand_id'],
-            ]
-        );
+        try {
+            $brandsWithModels = $this->CarModelService->getBrandsWithModels($request->validated());
+            
+            $formattedBrands = $brandsWithModels->map(function ($brand) use ($request) {
+                $brandResource = new CarBrandResource($brand);
+                $brandData = $brandResource->toArray($request);
+                
+                $brandData['models'] = $brand->carModels->map(function ($model) {
+                    return [
+                        'id' => $model->id,
+                        'odoo_id' => $model->odoo_id,
+                        'name' => $model->name,
+                        'car_brand_id' => $model->car_brand_id,
+                        'created_at' => $model->created_at?->toISOString(),
+                        'updated_at' => $model->updated_at?->toISOString(),
+                        'deleted_at' => $model->deleted_at?->toISOString(),
+                    ];
+                });
+                
+                return $brandData;
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Car models retrieved successfully',
+                'data' => $formattedBrands,
+                'total' => $formattedBrands->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('CarModelController: Error fetching car models', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
+            ]);
+
+            return $this->errorResponse('Failed to fetch car models: ' . $e->getMessage(), 500);
+        }
     }
 }
