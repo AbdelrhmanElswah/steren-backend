@@ -68,6 +68,8 @@ return [
         'timeout' => env('VEHICLEDATABASES_TIMEOUT', 30),
         'cache_expiry' => env('VEHICLEDATABASES_CACHE_EXPIRY', 24), // hours
         'enabled' => env('VEHICLEDATABASES_ENABLED', true),
+        'ocr_endpoint' => env('VEHICLEDATABASES_OCR_ENDPOINT', 'https://api.vehicledatabases.com/vin-ocr'),
+        'auction_endpoint' => env('VEHICLEDATABASES_AUCTION_ENDPOINT', 'https://api.vehicledatabases.com/auction'),
     ],
 
 ];

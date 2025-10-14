@@ -413,4 +413,9 @@ Route::prefix('vin')->group(function () {
     Route::post('/decode', [App\Http\Controllers\VinDecoderController::class, 'decode']);
     Route::get('/info', [App\Http\Controllers\VinDecoderController::class, 'getVinInfo']);
     Route::get('/status', [App\Http\Controllers\VinDecoderController::class, 'status']);
+    
+    // VIN OCR and Auction Routes
+    Route::post('/ocr-and-auction', [App\Http\Controllers\VinOcrAuctionController::class, 'ocrAndAuction']);
+    Route::post('/ocr', [App\Http\Controllers\VinOcrAuctionController::class, 'ocrOnly']);
+    Route::get('/auction/{vin}', [App\Http\Controllers\VinOcrAuctionController::class, 'auctionOnly']);
 });
