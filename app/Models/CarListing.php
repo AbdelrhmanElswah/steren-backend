@@ -467,22 +467,6 @@ class CarListing extends Model
     }
 
     /**
-     * Get analytics for this car listing
-     */
-    public function analytics()
-    {
-        return $this->hasMany(CarListingAnalytics::class);
-    }
-
-    /**
-     * Get active boosts for this car listing
-     */
-    public function activeBoosts()
-    {
-        return $this->hasMany(AdBoost::class)->active();
-    }
-
-    /**
      * Get all boosts for this car listing
      */
     public function boosts()
@@ -490,34 +474,11 @@ class CarListing extends Model
         return $this->hasMany(AdBoost::class);
     }
 
-    // Helper methods for UI
-    public function getFormattedPriceAttribute() {
-        return '$' . number_format($this->price, 0);
-    }
-
     public function getFormattedViewsAttribute() {
         if ($this->views >= 1000) {
             return number_format($this->views / 1000, 1) . 'K Views';
         }
         return $this->views . ' Views';
-    }
-
-    public function getFullTitleAttribute() {
-        $parts = [$this->year, $this->brand->name, $this->carModel->name ?? ''];
-        if ($this->trim) {
-            $parts[] = $this->trim;
-        }
-        if ($this->doors) {
-            $parts[] = $this->doors . 'dr';
-        }
-        if ($this->driveType) {
-            $parts[] = $this->driveType->name;
-        }
-        if ($this->transmission) {
-            $parts[] = $this->transmission->name;
-        }
-        
-        return implode(' ', array_filter($parts));
     }
 
     public function scopeByVin($query, $vin) {
@@ -535,49 +496,6 @@ class CarListing extends Model
         }
         
         return $query;
-    }
-
-    // Badge helper methods
-    public function getActiveBadgesAttribute() {
-        $badges = [];
-        
-        if ($this->has_warranty) {
-            $badges[] = [
-                'text' => 'Warranty',
-                'color' => 'purple',
-                'icon' => 'shield',
-                'description' => 'Manufacturer coverage protects against post-purchase defects.'
-            ];
-        }
-        
-        if ($this->is_verified) {
-            $badges[] = [
-                'text' => 'Verified',
-                'color' => 'blue',
-                'icon' => 'person',
-                'description' => 'Awarded to trusted, long-term, active dealerships only.'
-            ];
-        }
-        
-        if ($this->has_insurance) {
-            $badges[] = [
-                'text' => 'Insurance',
-                'color' => 'blue',
-                'icon' => 'circular_arrow',
-                'description' => 'Drive with confidence, this vehicle is insured, offering added protection and peace of mind after purchase.'
-            ];
-        }
-        
-        if ($this->is_inspected) {
-            $badges[] = [
-                'text' => 'Inspected',
-                'color' => 'green',
-                'icon' => 'eye',
-                'description' => 'This badge means the seller uploaded an inspection.'
-            ];
-        }
-        
-        return $badges;
     }
 
     public function getDamageStatusAttribute() {
