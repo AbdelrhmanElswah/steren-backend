@@ -81,12 +81,12 @@ class CarListingService extends OdooCrudService
             'partner_id' => $user->partner_id,
             'car_info' => [
                 'vin' => $carListing->vin,
-                'brand' => $carListing->car_brand_id,
-                'model' => $carListing->car_model_id,
+                'brand' => $this->getCarBrandOdooId($carListing->car_brand_id),
+                'model' => $this->getCarModelOdooId($carListing->car_model_id),
                 'condition' => $carListing->condition_type ?? 'used',
                 'year' => $carListing->year,
                 'gcc_import' => $carListing->gcc_import ? 'GCC-' . $carListing->gcc_import : null,
-                'body_type' => $carListing->car_body_type_id,
+                'body_type' => $this->getBodyTypeOdooId($carListing->car_body_type_id),
                 'engine_size' => $carListing->engine_size,
                 'fuel_type' => $this->getFuelTypeName($carListing->fuel_type_id),
                 'cylinders' => $this->getCylinderCount($carListing->cylinder_id),
@@ -161,5 +161,26 @@ class CarListingService extends OdooCrudService
         if (!$mileageTypeId) return 'KM';
         $mileageType = \App\Models\MileageType::find($mileageTypeId);
         return $mileageType ? strtoupper($mileageType->name) : 'KM';
+    }
+
+    private function getBodyTypeOdooId($bodyTypeId): ?int
+    {
+        if (!$bodyTypeId) return null;
+        $bodyType = \App\Models\BodyType::find($bodyTypeId);
+        return $bodyType ? (int)$bodyType->odoo_id : null;
+    }
+
+    private function getCarBrandOdooId($brandId): ?int
+    {
+        if (!$brandId) return null;
+        $brand = \App\Models\CarBrand::find($brandId);
+        return $brand ? (int)$brand->odoo_id : null;
+    }
+
+    private function getCarModelOdooId($modelId): ?int
+    {
+        if (!$modelId) return null;
+        $model = \App\Models\CarModel::find($modelId);
+        return $model ? (int)$model->odoo_id : null;
     }
 }
