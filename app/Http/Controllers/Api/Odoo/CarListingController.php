@@ -21,10 +21,14 @@ class CarListingController extends Controller
     {
         $CarListing = $this->CarListingService->create($request->validated());
 
-        return $this->createdResponse(
-            new CarListingResource($CarListing),
-            'CarListing created successfully'
-        );
+        return $this->createdResponse([
+            'car_listing' => new CarListingResource($CarListing),
+            'odoo_sync' => [
+                'status' => $CarListing->odoo_id ? 'success' : 'pending',
+                'odoo_id' => $CarListing->odoo_id,
+                'message' => $CarListing->odoo_id ? 'Successfully synced to Odoo' : 'Odoo sync pending or failed'
+            ]
+        ], 'CarListing created successfully and synced to Odoo');
     }public function updateByOdooId(UpdateCarListingRequest $request, string $odooId)
     {
         $CarListing = $this->CarListingService->updateByOdooId($odooId, $request->validated());

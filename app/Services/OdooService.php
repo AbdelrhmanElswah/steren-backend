@@ -337,12 +337,14 @@ class OdooService
                     'response' => $data
                 ]);
 
-                if (isset($data['success']) && $data['success']) {
+                $result = $data['result'] ?? $data;
+                
+                if (isset($result['success']) && $result['success']) {
                     return [
                         'success' => true,
-                        'odoo_listing_id' => $data['listing_id'] ?? $data['id'] ?? null,
-                        'message' => $data['message'] ?? 'Listing created successfully',
-                        'data' => $data['data'] ?? $data
+                        'odoo_listing_id' => $result['data']['listing_id'] ?? $result['listing_id'] ?? $result['id'] ?? null,
+                        'message' => $result['message'] ?? 'Listing created successfully',
+                        'data' => $result['data'] ?? $result
                     ];
                 }
 
