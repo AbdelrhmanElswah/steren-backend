@@ -1,0 +1,451 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\CarListing;
+use App\Traits\ApiResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class CarListingDetailsController extends Controller
+{
+    use ApiResponse;
+
+    /**
+     * Get all data related to car listing by its ID
+     */
+    public function getCarListingDetails($id): JsonResponse
+    {
+        try {
+            $listing = CarListing::with([
+                // Basic relationships
+                'brand', 'carModel', 'carTrim', 'bodyType', 'location', 'studio',
+                'carCondition', 'fuelType', 'transmission', 'exteriorColor', 
+                'driveType', 'cylinder', 'mileageType', 'importType', 'warrantyStatus',
+                
+                // User and contact info
+                'user',
+                
+                // Media and visual content
+                'media',
+                
+                // Features and specifications
+                'features' => function($query) {
+                    $query->orderBy('category')->orderBy('name');
+                },
+                'specifications' => function($query) {
+                    $query->orderBy('specification_type')->orderBy('name');
+                },
+                
+                // Badges and promotions
+                'badges',
+                'listingPromotion',
+                
+                // Documents and reports
+                'documents',
+                'inspection',
+                'carfaxReport',
+                'carDamages',
+                
+                // Analytics
+                'analytics',
+                
+                // Favorites (if user is authenticated)
+                'favorites',
+                
+                // Reports
+                'reports',
+                
+                // Boosts
+                'boosts',
+                'activeBoosts'
+            ])->findOrFail($id);
+
+            // Group features by category
+            $featuresByCategory = $listing->features->groupBy('category')->map(function ($features) {
+                return $features->map(function ($feature) {
+                    return [
+                        'id' => $feature->id,
+                        'name' => $feature->name,
+                        'description' => $feature->description,
+                        'icon' => $feature->icon,
+                        'category' => $feature->category,
+                        'is_included' => $feature->pivot->is_included ?? false,
+                        'notes' => $feature->pivot->notes,
+                    ];
+                });
+            });
+
+            // Group specifications by type
+            $specificationsByType = $listing->specifications->groupBy('specification_type')->map(function ($specs) {
+                return $specs->map(function ($spec) {
+                    return [
+                        'id' => $spec->id,
+                        'name' => $spec->name,
+                        'value' => $spec->value,
+                        'unit' => $spec->unit,
+                        'formatted_value' => $spec->formatted_value,
+                        'description' => $spec->description,
+                        'is_highlighted' => $spec->is_highlighted,
+                    ];
+                });
+            });
+
+            // Group documents by category
+            $documentsByCategory = $listing->documents->groupBy('category')->map(function ($docs) {
+                return $docs->map(function ($doc) {
+                    return [
+                        'id' => $doc->id,
+                        'name' => $doc->name,
+                        'file_path' => $doc->file_path,
+                        'file_type' => $doc->file_type,
+                        'file_size' => $doc->file_size,
+                        'is_verified' => $doc->is_verified,
+                        'uploaded_at' => $doc->created_at,
+                    ];
+                });
+            });
+
+            // Get analytics summary
+            $analyticsSummary = [
+                'total_views' => $listing->total_views,
+                'total_shares' => $listing->total_shares,
+                'total_call_taps' => $listing->total_call_taps,
+                'total_whatsapp_clicks' => $listing->total_whatsapp_clicks,
+                'total_sms_clicks' => $listing->total_sms_clicks,
+                'total_email_clicks' => $listing->total_email_clicks,
+                'total_watchlist_saves' => $listing->total_watchlist_saves,
+                'days_active' => $listing->days_active,
+            ];
+
+            // Get damage status and details
+            $damageDetails = [
+                'status' => $listing->damage_status,
+                'damages' => $listing->carDamages->map(function ($damage) {
+                    return [
+                        'id' => $damage->id,
+                        'part_name' => $damage->part_name,
+                        'condition' => $damage->condition,
+                        'description' => $damage->description,
+                        'severity' => $damage->severity,
+                        'repair_cost' => $damage->repair_cost,
+                        'is_repaired' => $damage->is_repaired,
+                    ];
+                })
+            ];
+
+            // Get inspection details
+            $inspectionDetails = null;
+            if ($listing->inspection) {
+                $inspectionDetails = [
+                    'id' => $listing->inspection->id,
+                    'inspector_name' => $listing->inspection->inspector_name,
+                    'inspection_date' => $listing->inspection->inspection_date,
+                    'overall_condition' => $listing->inspection->overall_condition,
+                    'mechanical_condition' => $listing->inspection->mechanical_condition,
+                    'exterior_condition' => $listing->inspection->exterior_condition,
+                    'interior_condition' => $listing->inspection->interior_condition,
+                    'notes' => $listing->inspection->notes,
+                    'recommendations' => $listing->inspection->recommendations,
+                ];
+            }
+
+            // Get Carfax report details
+            $carfaxDetails = null;
+            if ($listing->carfaxReport) {
+                $carfaxDetails = [
+                    'id' => $listing->carfaxReport->id,
+                    'vin' => $listing->carfaxReport->vin,
+                    'accident_history' => $listing->carfaxReport->accident_history,
+                    'service_history' => $listing->carfaxReport->service_history,
+                    'ownership_history' => $listing->carfaxReport->ownership_history,
+                    'title_issues' => $listing->carfaxReport->title_issues,
+                    'flood_damage' => $listing->carfaxReport->flood_damage,
+                    'lemon_title' => $listing->carfaxReport->lemon_title,
+                    'reported_at' => $listing->carfaxReport->created_at,
+                ];
+            }
+
+            // Get promotion details
+            $promotionDetails = null;
+            if ($listing->listingPromotion) {
+                $promotionDetails = [
+                    'id' => $listing->listingPromotion->id,
+                    'name' => $listing->listingPromotion->name,
+                    'type' => $listing->listingPromotion->type,
+                    'price' => $listing->listingPromotion->price,
+                    'currency' => $listing->listingPromotion->currency,
+                    'duration_days' => $listing->listingPromotion->duration_days,
+                    'features' => $listing->listingPromotion->features,
+                    'is_active' => $listing->listingPromotion->is_active,
+                ];
+            }
+
+            // Get active boosts
+            $activeBoosts = $listing->activeBoosts->map(function ($boost) {
+                return [
+                    'id' => $boost->id,
+                    'type' => $boost->type,
+                    'price_paid' => $boost->price_paid,
+                    'currency' => $boost->currency,
+                    'started_at' => $boost->started_at,
+                    'expires_at' => $boost->expires_at,
+                    'is_active' => $boost->expires_at > now(),
+                ];
+            });
+
+            $data = [
+                'listing' => [
+                    'id' => $listing->id,
+                    'odoo_id' => $listing->odoo_id,
+                    'title' => $listing->title,
+                    'full_title' => $listing->full_title,
+                    'vin' => $listing->vin,
+                    'price' => $listing->price,
+                    'formatted_price' => $listing->formatted_price,
+                    'price_currency' => $listing->price_currency,
+                    'year' => $listing->year,
+                    'trim' => $listing->trim,
+                    'doors' => $listing->doors,
+                    'mileage' => $listing->mileage,
+                    'formatted_mileage' => $listing->formatted_mileage,
+                    'origin_country' => $listing->origin_country,
+                    'gcc_import' => $listing->gcc_import,
+                    'plate_status' => $listing->plate_status,
+                    'condition_type' => $listing->condition_type,
+                    'has_warranty' => $listing->has_warranty,
+                    'is_inspected' => $listing->is_inspected,
+                    'is_verified' => $listing->is_verified,
+                    'has_insurance' => $listing->has_insurance,
+                    'status' => $listing->status,
+                    'status_label' => $listing->status_label,
+                    'operator_decision' => $listing->operator_decision,
+                    'approved_by' => $listing->approved_by,
+                    'approved_at' => $listing->approved_at,
+                    'rejection_reason' => $listing->rejection_reason,
+                    'rejected_by' => $listing->rejected_by,
+                    'rejected_at' => $listing->rejected_at,
+                    'is_featured' => $listing->is_featured,
+                    'is_new_arrival' => $listing->is_new_arrival,
+                    'description' => $listing->description,
+                    'sold_at' => $listing->sold_at,
+                    'featured_at' => $listing->featured_at,
+                    'paused_at' => $listing->paused_at,
+                    'archived_at' => $listing->archived_at,
+                    'created_at' => $listing->created_at,
+                    'updated_at' => $listing->updated_at,
+                ],
+                
+                // Engine and performance specs
+                'specifications' => [
+                    'engine_size' => $listing->engine_size,
+                    'engine_type' => $listing->engine_type,
+                    'horsepower' => $listing->horsepower,
+                    'torque' => $listing->torque,
+                    'acceleration_0_100' => $listing->acceleration_0_100,
+                    'top_speed' => $listing->top_speed,
+                    'seating_capacity' => $listing->seating_capacity,
+                    'mileage_efficiency' => $listing->mileage_efficiency,
+                    'formatted_mileage_efficiency' => $listing->formatted_mileage_efficiency,
+                    'length' => $listing->length,
+                    'width' => $listing->width,
+                    'height' => $listing->height,
+                    'formatted_dimensions' => $listing->formatted_dimensions,
+                ],
+                
+                // Relationships
+                'brand' => $listing->brand,
+                'car_model' => $listing->carModel,
+                'car_trim' => $listing->carTrim,
+                'body_type' => $listing->bodyType,
+                'location' => $listing->location,
+                'studio' => $listing->studio,
+                'car_condition' => $listing->carCondition,
+                'fuel_type' => $listing->fuelType,
+                'transmission' => $listing->transmission,
+                'exterior_color' => $listing->exteriorColor,
+                'drive_type' => $listing->driveType,
+                'cylinder' => $listing->cylinder,
+                'mileage_type' => $listing->mileageType,
+                'import_type' => $listing->importType,
+                'warranty_status' => $listing->warrantyStatus,
+                'user' => $listing->user,
+                
+                // Media
+                'media' => $listing->media,
+                
+                // Features and specifications
+                'features_by_category' => $featuresByCategory,
+                'detailed_specifications' => $specificationsByType,
+                
+                // Badges and status
+                'badges' => $listing->badges,
+                'active_badges' => $listing->active_badges,
+                'status_badge' => $listing->status_badge,
+                
+                // Documents
+                'documents_by_category' => $documentsByCategory,
+                
+                // Inspection and reports
+                'inspection' => $inspectionDetails,
+                'carfax_report' => $carfaxDetails,
+                'damage_details' => $damageDetails,
+                
+                // Analytics
+                'analytics' => $analyticsSummary,
+                
+                // Promotions and boosts
+                'promotion' => $promotionDetails,
+                'active_boosts' => $activeBoosts,
+                'promotion_type' => $listing->promotion_type,
+                
+                // Reports
+                'reports' => $listing->reports,
+            ];
+
+            return $this->successResponse($data, 'Car listing details retrieved successfully');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve car listing details: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get car listings that match with other brand and model
+     */
+    public function getSimilarCars(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'brand_id' => 'required|integer|exists:car_brands,id',
+                'model_id' => 'required|integer|exists:car_models,id',
+                'exclude_id' => 'nullable|integer|exists:car_listings,id',
+                'limit' => 'nullable|integer|min:1|max:50',
+                'price_range' => 'nullable|array',
+                'price_range.min' => 'nullable|numeric|min:0',
+                'price_range.max' => 'nullable|numeric|min:0',
+                'year_range' => 'nullable|array',
+                'year_range.min' => 'nullable|integer|min:1900|max:' . date('Y'),
+                'year_range.max' => 'nullable|integer|min:1900|max:' . date('Y'),
+            ]);
+
+            $limit = $request->get('limit', 20);
+            $excludeId = $request->get('exclude_id');
+
+            $query = CarListing::with([
+                'brand', 'carModel', 'bodyType', 'location', 'studio',
+                'media', 'badges', 'carCondition', 'fuelType', 'transmission',
+                'exteriorColor', 'driveType', 'cylinder'
+            ])
+            ->where('car_brand_id', $request->brand_id)
+            ->where('car_model_id', $request->model_id)
+            ->active();
+
+            // Exclude specific listing if provided
+            if ($excludeId) {
+                $query->where('id', '!=', $excludeId);
+            }
+
+            // Apply price range filter
+            if ($request->filled('price_range.min') && $request->filled('price_range.max')) {
+                $query->byPriceRange($request->price_range['min'], $request->price_range['max']);
+            }
+
+            // Apply year range filter
+            if ($request->filled('year_range.min') && $request->filled('year_range.max')) {
+                $query->byYearRange($request->year_range['min'], $request->year_range['max']);
+            }
+
+            // Order by relevance (newer listings first, then by price)
+            $query->orderBy('created_at', 'desc')
+                  ->orderBy('price', 'asc');
+
+            $similarCars = $query->limit($limit)->get();
+
+            // Get additional similar cars by brand only (if not enough results)
+            if ($similarCars->count() < $limit) {
+                $additionalLimit = $limit - $similarCars->count();
+                $additionalCars = CarListing::with([
+                    'brand', 'carModel', 'bodyType', 'location', 'studio',
+                    'media', 'badges', 'carCondition', 'fuelType', 'transmission',
+                    'exteriorColor', 'driveType', 'cylinder'
+                ])
+                ->where('car_brand_id', $request->brand_id)
+                ->where('car_model_id', '!=', $request->model_id)
+                ->active();
+
+                if ($excludeId) {
+                    $additionalCars->where('id', '!=', $excludeId);
+                }
+
+                // Exclude already found cars
+                $excludeIds = $similarCars->pluck('id')->toArray();
+                if (!empty($excludeIds)) {
+                    $additionalCars->whereNotIn('id', $excludeIds);
+                }
+
+                $additionalCars = $additionalCars->orderBy('created_at', 'desc')
+                    ->orderBy('price', 'asc')
+                    ->limit($additionalLimit)
+                    ->get();
+
+                $similarCars = $similarCars->merge($additionalCars);
+            }
+
+            // Get additional similar cars by body type (if still not enough results)
+            if ($similarCars->count() < $limit) {
+                $additionalLimit = $limit - $similarCars->count();
+                
+                // Get body type from the original model
+                $originalModel = \App\Models\CarModel::find($request->model_id);
+                if ($originalModel && $originalModel->body_type_id) {
+                    $additionalCars = CarListing::with([
+                        'brand', 'carModel', 'bodyType', 'location', 'studio',
+                        'media', 'badges', 'carCondition', 'fuelType', 'transmission',
+                        'exteriorColor', 'driveType', 'cylinder'
+                    ])
+                    ->where('car_body_type_id', $originalModel->body_type_id)
+                    ->where('car_brand_id', '!=', $request->brand_id)
+                    ->active();
+
+                    if ($excludeId) {
+                        $additionalCars->where('id', '!=', $excludeId);
+                    }
+
+                    // Exclude already found cars
+                    $excludeIds = $similarCars->pluck('id')->toArray();
+                    if (!empty($excludeIds)) {
+                        $additionalCars->whereNotIn('id', $excludeIds);
+                    }
+
+                    $additionalCars = $additionalCars->orderBy('created_at', 'desc')
+                        ->orderBy('price', 'asc')
+                        ->limit($additionalLimit)
+                        ->get();
+
+                    $similarCars = $similarCars->merge($additionalCars);
+                }
+            }
+
+            $data = [
+                'similar_cars' => $similarCars,
+                'total_found' => $similarCars->count(),
+                'search_criteria' => [
+                    'brand_id' => $request->brand_id,
+                    'model_id' => $request->model_id,
+                    'exclude_id' => $excludeId,
+                    'price_range' => $request->get('price_range'),
+                    'year_range' => $request->get('year_range'),
+                ],
+                'brand' => \App\Models\CarBrand::find($request->brand_id),
+                'model' => \App\Models\CarModel::find($request->model_id),
+            ];
+
+            return $this->successResponse($data, 'Similar cars retrieved successfully');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->errorResponse('Validation failed: ' . $e->getMessage(), 422, $e->errors());
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve similar cars: ' . $e->getMessage(), 500);
+        }
+    }
+}

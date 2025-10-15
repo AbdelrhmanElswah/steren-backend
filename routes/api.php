@@ -195,6 +195,12 @@ Route::prefix('car-listings')->group(function () {
     Route::get('/{id}', [App\Http\Controllers\Data\CarListingController::class, 'getCarListingDetails']);
     Route::get('/trims/{modelId}', [App\Http\Controllers\Data\CarListingController::class, 'getCarTrims']);
     Route::get('/news', [App\Http\Controllers\Data\CarListingController::class, 'getNewsArticles']);
+    
+    // Enhanced car listing details API
+    Route::get('/{id}/complete', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getCarListingDetails']);
+    
+    // Similar cars API
+    Route::get('/similar/search', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getSimilarCars']);
 });
 
 // Contact Methods Routes - GET only
