@@ -1,0 +1,477 @@
+{
+  "title": "Car Listing Status Management API",
+  "description": "API endpoints for managing car listing statuses with Odoo integration",
+  "version": "1.0.0",
+  "base_url": "/api/listing",
+  "authentication": {
+    "type": "Bearer Token",
+    "required": true,
+    "header": "Authorization: Bearer {token}"
+  },
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/{listingId}/pause",
+      "summary": "Pause a car listing",
+      "description": "Pauses an active car listing, making it temporarily unavailable for search",
+      "parameters": {
+        "path": {
+          "listingId": {
+            "type": "integer",
+            "required": true,
+            "description": "The ID of the car listing to pause"
+          }
+        }
+      },
+      "request_body": {
+        "type": "application/json",
+        "required": false,
+        "schema": {}
+      },
+      "responses": {
+        "200": {
+          "description": "Listing paused successfully",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "message": {
+                "type": "string",
+                "example": "Listing paused successfully"
+              },
+              "data": {
+                "type": "object",
+                "properties": {
+                  "listing": {
+                    "type": "object",
+                    "description": "Updated listing object"
+                  },
+                  "status": {
+                    "type": "string",
+                    "example": "paused"
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "Listing paused successfully"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Bad request - listing already paused or not found",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "message": {
+                "type": "string",
+                "example": "Listing is already paused"
+              }
+            }
+          }
+        },
+        "401": {
+          "description": "Unauthorized - invalid or missing token"
+        },
+        "403": {
+          "description": "Forbidden - user doesn't own this listing"
+        },
+        "500": {
+          "description": "Internal server error"
+        }
+      },
+      "example_usage": {
+        "curl": "curl -X POST 'https://api.example.com/api/listing/2/pause' -H 'Authorization: Bearer your-token' -H 'Content-Type: application/json'"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/{listingId}/unpause",
+      "summary": "Unpause a car listing",
+      "description": "Resumes a paused car listing, making it available for search again",
+      "parameters": {
+        "path": {
+          "listingId": {
+            "type": "integer",
+            "required": true,
+            "description": "The ID of the car listing to unpause"
+          }
+        }
+      },
+      "request_body": {
+        "type": "application/json",
+        "required": false,
+        "schema": {}
+      },
+      "responses": {
+        "200": {
+          "description": "Listing unpaused successfully",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "message": {
+                "type": "string",
+                "example": "Listing unpaused successfully"
+              },
+              "data": {
+                "type": "object",
+                "properties": {
+                  "listing": {
+                    "type": "object",
+                    "description": "Updated listing object"
+                  },
+                  "status": {
+                    "type": "string",
+                    "example": "active"
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "Listing unpaused successfully"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Bad request - listing not paused",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "message": {
+                "type": "string",
+                "example": "Listing is not paused"
+              }
+            }
+          }
+        }
+      },
+      "example_usage": {
+        "curl": "curl -X POST 'https://api.example.com/api/listing/2/unpause' -H 'Authorization: Bearer your-token' -H 'Content-Type: application/json'"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/{listingId}/boost",
+      "summary": "Boost a car listing",
+      "description": "Promotes a car listing to increase visibility and search ranking",
+      "parameters": {
+        "path": {
+          "listingId": {
+            "type": "integer",
+            "required": true,
+            "description": "The ID of the car listing to boost"
+          }
+        }
+      },
+      "request_body": {
+        "type": "application/json",
+        "required": false,
+        "schema": {}
+      },
+      "responses": {
+        "200": {
+          "description": "Listing boosted successfully",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "message": {
+                "type": "string",
+                "example": "Listing boosted successfully"
+              },
+              "data": {
+                "type": "object",
+                "properties": {
+                  "listing": {
+                    "type": "object",
+                    "description": "Updated listing object with promotion details"
+                  },
+                  "status": {
+                    "type": "string",
+                    "example": "boosted"
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "Listing boosted successfully"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Bad request - only active listings can be boosted",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "message": {
+                "type": "string",
+                "example": "Only active listings can be boosted"
+              }
+            }
+          }
+        }
+      },
+      "example_usage": {
+        "curl": "curl -X POST 'https://api.example.com/api/listing/2/boost' -H 'Authorization: Bearer your-token' -H 'Content-Type: application/json'"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/{listingId}/archive",
+      "summary": "Archive a car listing",
+      "description": "Archives a car listing, removing it from search results but keeping it in user's account",
+      "parameters": {
+        "path": {
+          "listingId": {
+            "type": "integer",
+            "required": true,
+            "description": "The ID of the car listing to archive"
+          }
+        }
+      },
+      "request_body": {
+        "type": "application/json",
+        "required": false,
+        "schema": {}
+      },
+      "responses": {
+        "200": {
+          "description": "Listing archived successfully",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "message": {
+                "type": "string",
+                "example": "Listing archived successfully"
+              },
+              "data": {
+                "type": "object",
+                "properties": {
+                  "listing": {
+                    "type": "object",
+                    "description": "Updated listing object"
+                  },
+                  "status": {
+                    "type": "string",
+                    "example": "archived"
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "Listing archived successfully"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Bad request - listing already archived",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "message": {
+                "type": "string",
+                "example": "Listing is already archived"
+              }
+            }
+          }
+        }
+      },
+      "example_usage": {
+        "curl": "curl -X POST 'https://api.example.com/api/listing/2/archive' -H 'Authorization: Bearer your-token' -H 'Content-Type: application/json'"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/{listingId}/mark_sold",
+      "summary": "Mark car listing as sold",
+      "description": "Marks a car listing as sold, removing it from search results and updating the status",
+      "parameters": {
+        "path": {
+          "listingId": {
+            "type": "integer",
+            "required": true,
+            "description": "The ID of the car listing to mark as sold"
+          }
+        }
+      },
+      "request_body": {
+        "type": "application/json",
+        "required": false,
+        "schema": {}
+      },
+      "responses": {
+        "200": {
+          "description": "Listing marked as sold successfully",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": true
+              },
+              "message": {
+                "type": "string",
+                "example": "Listing marked as sold successfully"
+              },
+              "data": {
+                "type": "object",
+                "properties": {
+                  "listing": {
+                    "type": "object",
+                    "description": "Updated listing object"
+                  },
+                  "status": {
+                    "type": "string",
+                    "example": "sold"
+                  },
+                  "message": {
+                    "type": "string",
+                    "example": "Listing marked as sold successfully"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "400": {
+          "description": "Bad request - listing already marked as sold",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "example": false
+              },
+              "message": {
+                "type": "string",
+                "example": "Listing is already marked as sold"
+              }
+            }
+          }
+        }
+      },
+      "example_usage": {
+        "curl": "curl -X POST 'https://api.example.com/api/listing/2/mark_sold' -H 'Authorization: Bearer your-token' -H 'Content-Type: application/json'"
+      }
+    }
+  ],
+  "status_codes": {
+    "active": "Listing is live and visible in search results",
+    "paused": "Listing is temporarily hidden from search results",
+    "archived": "Listing is archived and not visible in search results",
+    "sold": "Listing has been sold and is no longer available",
+    "boosted": "Listing is promoted and has increased visibility"
+  },
+  "odoo_integration": {
+    "description": "All status changes are automatically synchronized with Odoo dashboard",
+    "endpoint": "/api/listing/status-update",
+    "sync_actions": [
+      "pause",
+      "unpause", 
+      "boost",
+      "archive",
+      "mark_sold"
+    ],
+    "error_handling": "If Odoo sync fails, local changes still succeed with warning logs"
+  },
+  "database_fields": {
+    "paused_at": "Timestamp when listing was paused",
+    "archived_at": "Timestamp when listing was archived", 
+    "sold_at": "Timestamp when listing was marked as sold",
+    "is_promoted": "Boolean flag for boosted listings",
+    "promotion_started_at": "Timestamp when promotion started",
+    "promotion_expires_at": "Timestamp when promotion expires"
+  },
+  "security": {
+    "authentication": "Bearer token required for all endpoints",
+    "authorization": "Users can only modify their own listings",
+    "validation": "Input validation on all requests",
+    "logging": "Comprehensive logging for all operations"
+  },
+  "examples": {
+    "pause_listing": {
+      "request": {
+        "method": "POST",
+        "url": "/api/listing/123/pause",
+        "headers": {
+          "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+          "Content-Type": "application/json"
+        }
+      },
+      "response": {
+        "success": true,
+        "message": "Listing paused successfully",
+        "data": {
+          "listing": {
+            "id": 123,
+            "title": "2020 Toyota Camry",
+            "status": "paused",
+            "paused_at": "2024-01-15T10:30:00Z"
+          },
+          "status": "paused",
+          "message": "Listing paused successfully"
+        }
+      }
+    },
+    "boost_listing": {
+      "request": {
+        "method": "POST", 
+        "url": "/api/listing/123/boost",
+        "headers": {
+          "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+          "Content-Type": "application/json"
+        }
+      },
+      "response": {
+        "success": true,
+        "message": "Listing boosted successfully",
+        "data": {
+          "listing": {
+            "id": 123,
+            "title": "2020 Toyota Camry",
+            "status": "active",
+            "is_promoted": true,
+            "promotion_started_at": "2024-01-15T10:30:00Z",
+            "promotion_expires_at": "2024-01-22T10:30:00Z"
+          },
+          "status": "boosted",
+          "message": "Listing boosted successfully"
+        }
+      }
+    }
+  }
+}

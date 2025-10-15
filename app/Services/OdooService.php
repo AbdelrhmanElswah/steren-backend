@@ -337,12 +337,37 @@ class OdooService
                     'response' => $data
                 ]);
 
-                if (isset($data['success']) && $data['success']) {
+                $result = $data['result'] ?? $data;
+                
+                Log::info('Parsing Odoo response', [
+                    'result' => $result,
+                    'success_field' => $result['success'] ?? 'not_set',
+                    'status_field' => $result['status'] ?? 'not_set'
+                ]);
+                
+                $isSuccess = (isset($result['success']) && $result['success'] === true) || 
+                            (isset($result['status']) && $result['status'] == 200);
+                
+                Log::info('Success check result', [
+                    'isSuccess' => $isSuccess,
+                    'success_value' => $result['success'] ?? 'not_set',
+                    'status_value' => $result['status'] ?? 'not_set'
+                ]);
+                
+                if ($isSuccess) {
+                    $listingId = $result['data']['listing_id'] ?? $result['listing_id'] ?? $result['id'] ?? null;
+                    
+                    Log::info('Extracted Odoo listing ID', [
+                        'listing_id' => $listingId,
+                        'result_data' => $result['data'] ?? null,
+                        'full_result' => $result
+                    ]);
+                    
                     return [
                         'success' => true,
-                        'odoo_listing_id' => $data['listing_id'] ?? $data['id'] ?? null,
-                        'message' => $data['message'] ?? 'Listing created successfully',
-                        'data' => $data['data'] ?? $data
+                        'odoo_listing_id' => $listingId,
+                        'message' => $result['message'] ?? 'Listing created successfully',
+                        'data' => $result['data'] ?? $result
                     ];
                 }
 

@@ -478,6 +478,12 @@ class CarListing extends Model
         return $this->hasMany(AdBoost::class);
     }
 
+    public function getFormattedViewsAttribute() {
+        if ($this->views >= 1000) {
+            return number_format($this->views / 1000, 1) . 'K Views';
+        }
+        return $this->views . ' Views';
+    }
 
     public function scopeByVin($query, $vin) {
         return $query->where('vin', strtoupper($vin));
@@ -496,6 +502,72 @@ class CarListing extends Model
         return $query;
     }
 
+    public function getDamageStatusAttribute() {
+        $damages = $this->carDamages;
+        
+        if ($damages->where('status', 'damaged')->count() > 0) {
+            return 'damaged';
+        }
+        
+        if ($damages->where('status', 'needs_repair')->count() > 0) {
+            return 'needs_repair';
+        }
+        
+        if ($damages->where('status', 'repaired')->count() > 0) {
+            return 'repaired';
+        }
+        
+        return 'clean';
+    }
+
+    // Additional helper methods for UI
+    public function getStatusBadgeAttribute() {
+        if ($this->status === 'sold') {
+            return [
+                'text' => 'Sold',
+                'color' => 'red',
+                'icon' => 'check_circle'
+            ];
+        }
+        
+        if ($this->is_sponsored) {
+            return [
+                'text' => 'Sponsored',
+                'color' => 'orange',
+                'icon' => 'star'
+            ];
+        }
+        
+        if ($this->is_new_arrival) {
+            return [
+                'text' => 'New Arrival',
+                'color' => 'green',
+                'icon' => 'new_releases'
+            ];
+        }
+        
+        return null;
+    }
+
+    public function getFormattedMileageAttribute() {
+        if ($this->mileage >= 1000) {
+            return number_format($this->mileage / 1000, 1) . 'K km';
+        }
+        return $this->mileage . ' km';
+    }
+
+    public function getFormattedDimensionsAttribute() {
+        $dimensions = [];
+        if ($this->length) $dimensions[] = $this->length . ' mm';
+        if ($this->width) $dimensions[] = $this->width . ' mm';
+        if ($this->height) $dimensions[] = $this->height . ' mm';
+        
+        return implode(' - ', $dimensions);
+    }
+
+    public function getFormattedMileageEfficiencyAttribute() {
+        return $this->mileage_efficiency ? '~' . $this->mileage_efficiency . ' Km/L' : null;
+    }
 
     // Scopes for filtering
     public function scopeActive($query) {

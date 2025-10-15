@@ -504,7 +504,7 @@ class User extends Authenticatable
      */
     public function isSuspended(): bool
     {
-        return $this->is_suspended;
+        return (bool) $this->is_suspended;
     }
 
     /**

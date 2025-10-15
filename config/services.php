@@ -57,7 +57,7 @@ return [
     'standingtech' => [
         'api_url' => env('STANDINGTECH_API_URL', 'https://gateway.standingtech.com/api/v4/sms/send'),
         'api_token' => env('STANDINGTECH_API_TOKEN'),
-        'sender_id' => env('STANDINGTECH_SENDER_ID', 'SterenApp'),
+        'sender_id' => env('STANDINGTECH_SENDER_ID', null),
         'timeout' => env('STANDINGTECH_TIMEOUT', 30),
         'enabled' => env('STANDINGTECH_ENABLED', true),
     ],

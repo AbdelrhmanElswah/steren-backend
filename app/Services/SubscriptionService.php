@@ -171,6 +171,8 @@ class SubscriptionService
                 'last_free_slot_reset_at' => now(),
                 'next_free_slot_reset_at' => now()->addMonth()->startOfMonth(),
             ]);
+        } else {
+            $userSlot->refresh();
         }
 
         // Check if monthly free slot needs reset
