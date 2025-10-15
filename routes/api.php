@@ -5,7 +5,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SimilarCarsController;
 use App\Http\Controllers\Api\Subscription\SubscriptionController;
-use App\Http\Controllers\Api\MessagingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -389,23 +388,6 @@ Route::prefix('similar-cars')->group(function () {
     });
 });
 
-// Messaging Routes (StandingTech SMS/WhatsApp Integration)
-Route::prefix('messaging')->group(function () {
-    // Public messaging routes (can be used without authentication for system notifications)
-    Route::post('/sms/send', [MessagingController::class, 'sendSMS']);
-    Route::post('/whatsapp/send', [MessagingController::class, 'sendWhatsApp']);
-    Route::post('/notification/send', [MessagingController::class, 'sendNotification']);
-    Route::post('/otp/send', [MessagingController::class, 'sendOTP']);
-    Route::post('/otp/whatsapp', [MessagingController::class, 'sendOTPWhatsApp']);
-    Route::post('/verification/send', [MessagingController::class, 'sendVerificationCode']);
-    
-    // Protected messaging routes (require authentication)
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::post('/bulk/send', [MessagingController::class, 'sendBulk']);
-        Route::get('/status', [MessagingController::class, 'getStatus']);
-        Route::get('/test-connection', [MessagingController::class, 'testConnection']);
-    });
-});
 
 // VIN Decoder Routes (Vehicle Databases Integration)
 Route::prefix('vin')->group(function () {

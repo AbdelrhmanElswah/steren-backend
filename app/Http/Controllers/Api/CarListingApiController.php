@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\CarListingCreateRequest;
+use App\Http\Resources\Api\CarListingResource;
 use App\Models\CarListing;
 use App\Models\ListingPromotion;
 use App\Models\Media;
@@ -121,14 +122,32 @@ class CarListingApiController extends Controller
             // Get subscription info for response
             $subscriptionInfo = $this->subscriptionService->canCreateListing($request->user());
 
+            // Load all necessary relationships for comprehensive response
+            $carListing->load([
+                'brand', 'carModel', 'bodyType', 'location', 'studio',
+                'media', 'badges', 'carCondition', 'fuelType', 'transmission',
+                'exteriorColor', 'driveType', 'cylinder', 'user', 'mileageType',
+                'features', 'specifications', 'listingPromotion'
+            ]);
+
+            // Prepare subscription info response
+            $subscriptionResponse = [
+                'remaining_listings' => $subscriptionInfo['remaining_listings'] ?? null,
+                'max_listings' => $subscriptionInfo['max_listings'] ?? null,
+                'current_listings' => $subscriptionInfo['current_listings'] ?? 0,
+                'plan_name' => $subscriptionInfo['plan_name'] ?? 'Free'
+            ];
+
+            // Add slots info for free users
+            if (isset($subscriptionInfo['slots'])) {
+                $subscriptionResponse['slots'] = $subscriptionInfo['slots'];
+            }
+
             return $this->createdResponse([
-                'car_listing' => $carListing->load(['brand', 'carModel', 'bodyType', 'media']),
+                'car_listing' => new CarListingResource($carListing),
                 'status' => 'pending',
                 'message' => 'Car listing created successfully and is pending approval from our team.',
-                'subscription_info' => [
-                    'remaining_listings' => $subscriptionInfo['remaining_listings'],
-                    'max_listings' => $subscriptionInfo['max_listings']
-                ],
+                'subscription_info' => $subscriptionResponse,
                 'odoo_response' => $odooResponse
             ], 'Car listing created successfully and is pending approval');
 

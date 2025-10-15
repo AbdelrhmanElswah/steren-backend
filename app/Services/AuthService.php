@@ -23,7 +23,8 @@ class AuthService
     public function __construct(
         private OdooService $odooService,
         private ClientService $clientService,
-        private FirebaseService $firebaseService
+        private FirebaseService $firebaseService,
+        private StandingTechService $standingTechService
     ) {
     }
 
@@ -39,6 +40,18 @@ class AuthService
 
             $otp = $this->generateOtp();
             $this->storeOtp($this->phoneKey($user->phone), $otp['code']);
+
+            if ($user->phone) {
+                try {
+                    $this->standingTechService->sendOTPWhatsApp($user->phone, $otp['code'], 'en');
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to send WhatsApp OTP on register', [
+                        'user_id' => $user->id,
+                        'phone' => $user->phone,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             $token = $user->createToken('otp-verification', ['verify-otp'])->plainTextToken;
 
@@ -75,6 +88,16 @@ class AuthService
         $otp = $this->generateOtp();
         $this->storeOtp($this->phoneKey($phone), $otp['code']);
 
+        // Send OTP via WhatsApp using StandingTech
+        try {
+            $this->standingTechService->sendOTPWhatsApp($phone, $otp['code'], 'en');
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send WhatsApp OTP', [
+                'phone' => $phone,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         return ['sent' => true];
     }
 
@@ -95,12 +118,14 @@ class AuthService
             'message' => 'Client creation not attempted'
         ];
 
-        if ($clientData && isset($clientData['full_name'], $clientData['email'])) {
+        if ($clientData && isset($clientData['full_name'])) {
             try {
+                $email = $clientData['email'] ?? $clientData['phone'] . '@steren.app';
+                
                 $clientResult = $this->clientService->createClient([
                     'full_name' => $clientData['full_name'],
                     'phone' => $clientData['phone'],
-                    'email' => $clientData['email']
+                    'email' => $email
                 ]);
 
                 $clientIntegration = [
@@ -110,7 +135,9 @@ class AuthService
                 ];
 
                 // Update user with partner_id
-                $user->update(['partner_id' => $clientResult['partner_id']]);
+                if ($clientResult['success'] && $clientResult['partner_id']) {
+                    $user->update(['partner_id' => $clientResult['partner_id']]);
+                }
 
             } catch (\Exception $e) {
                 Log::error('Client creation failed during OTP verification', [
@@ -152,6 +179,18 @@ class AuthService
         $user = User::query()->where('phone', $phone)->firstOrFail();
         $otp = $this->generateOtp();
         $this->storeOtp($this->phoneKey($phone), $otp['code']);
+
+        // Send OTP via WhatsApp using StandingTech
+        try {
+            $this->standingTechService->sendOTPWhatsApp($phone, $otp['code'], 'en');
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send WhatsApp OTP for password reset', [
+                'user_id' => $user->id,
+                'phone' => $phone,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         return ['sent' => true, 'user' => $user];
     }
 

@@ -10,14 +10,14 @@ class StandingTechService
 {
     protected ?string $apiUrl;
     protected ?string $apiToken;
-    protected string $defaultSenderId;
+    protected ?string $defaultSenderId;
     protected int $timeout;
 
     public function __construct()
     {
         $this->apiUrl = config('services.standingtech.api_url');
         $this->apiToken = config('services.standingtech.api_token');
-        $this->defaultSenderId = config('services.standingtech.sender_id', 'SterenApp');
+        $this->defaultSenderId = config('services.standingtech.sender_id');
         $this->timeout = config('services.standingtech.timeout', 30);
 
         // Validate configuration
