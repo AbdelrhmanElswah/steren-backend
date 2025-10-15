@@ -93,6 +93,7 @@ return new class extends Migration
             
             // Not implemented/used
             if (Schema::hasColumn('car_listings', 'studio_id')) {
+                $table->dropForeign(['studio_id']);
                 $columnsToRemove[] = 'studio_id';
             }
             

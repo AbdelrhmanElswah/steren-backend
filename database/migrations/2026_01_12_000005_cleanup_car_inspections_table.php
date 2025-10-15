@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('car_inspections', function (Blueprint $table) {
-            // Remove redundant columns now that we use Document system and individual boolean fields
+            // Drop foreign key constraint first
+            $table->dropForeign(['inspector_id']);
+            
             $table->dropColumn([
                 'inspection_results', // Redundant - we have individual boolean fields now
                 'report_url',         // Redundant - we use Document system for files
@@ -21,7 +23,9 @@ return new class extends Migration
             ]);
             
             // Add soft deletes if not exists
-            $table->softDeletes();
+            if (!Schema::hasColumn('car_inspections', 'deleted_at')) {
+                $table->softDeletes();
+            }
         });
     }
 
