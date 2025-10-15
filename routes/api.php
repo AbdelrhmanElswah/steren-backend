@@ -233,11 +233,22 @@ Route::prefix('options')->group(function () {
     Route::get('/report-reasons', [App\Http\Controllers\Data\ReportReasonOptionsController::class, 'getReportReasonOptions']);
 });
 
-// Watch List Routes - GET only
+// Watch List Routes
 Route::prefix('watch-list')->middleware('auth:sanctum')->group(function () {
+    // GET routes
     Route::get('/', [App\Http\Controllers\Data\WatchListController::class, 'getWatchList']);
     Route::get('/search-history', [App\Http\Controllers\Data\WatchListController::class, 'getSearchHistory']);
     Route::get('/sort-options', [App\Http\Controllers\Data\WatchListController::class, 'getSortOptions']);
+    
+    // POST routes for managing favorites
+    Route::post('/favorites', [App\Http\Controllers\Data\WatchListController::class, 'addToWatchList']);
+    Route::delete('/favorites/{favoriteId}', [App\Http\Controllers\Data\WatchListController::class, 'removeFromWatchList']);
+    Route::put('/favorites/{favoriteId}/notifications', [App\Http\Controllers\Data\WatchListController::class, 'toggleFavoriteNotifications']);
+    
+    // POST routes for managing search history
+    Route::post('/search-history', [App\Http\Controllers\Data\WatchListController::class, 'saveSearch']);
+    Route::delete('/search-history/{searchId}', [App\Http\Controllers\Data\WatchListController::class, 'deleteSearch']);
+    Route::put('/search-history/{searchId}/notifications', [App\Http\Controllers\Data\WatchListController::class, 'toggleSearchNotifications']);
 });
 
 // Account Routes - GET only

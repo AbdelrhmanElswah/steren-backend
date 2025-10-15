@@ -197,6 +197,105 @@ class WatchListController extends Controller
     }
 
     /**
+     * Add a car listing to watch list
+     */
+    public function addToWatchList(Request $request): JsonResponse
+    {
+        try {
+            $user = auth()->user();
+            
+            $request->validate([
+                'car_listing_id' => 'required|exists:car_listings,id',
+                'notes' => 'nullable|string|max:500',
+                'notifications_enabled' => 'boolean'
+            ]);
+
+            // Check if already in watch list
+            $existingFavorite = Favorite::where('user_id', $user->id)
+                ->where('car_listing_id', $request->car_listing_id)
+                ->first();
+
+            if ($existingFavorite) {
+                return $this->errorResponse('Car listing is already in your watch list', 400);
+            }
+
+            $carListing = \App\Models\CarListing::find($request->car_listing_id);
+            
+            $favorite = Favorite::create([
+                'user_id' => $user->id,
+                'car_listing_id' => $request->car_listing_id,
+                'notes' => $request->notes,
+                'notifications_enabled' => $request->notifications_enabled ?? false,
+                'price_when_added' => $carListing->price,
+                'viewed_at' => now(),
+            ]);
+
+            $favorite->load([
+                'carListing.brand',
+                'carListing.carModel',
+                'carListing.bodyType',
+                'carListing.location',
+                'carListing.media',
+                'carListing.badges'
+            ]);
+
+            return $this->successResponse($favorite, 'Added to watch list successfully');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to add to watch list: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Remove a car listing from watch list
+     */
+    public function removeFromWatchList($favoriteId): JsonResponse
+    {
+        try {
+            $user = auth()->user();
+            
+            $favorite = Favorite::where('user_id', $user->id)
+                ->where('id', $favoriteId)
+                ->first();
+
+            if (!$favorite) {
+                return $this->notFoundResponse('Favorite not found');
+            }
+
+            $favorite->delete();
+
+            return $this->successResponse(null, 'Removed from watch list successfully');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to remove from watch list: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Toggle notifications for a favorite
+     */
+    public function toggleFavoriteNotifications($favoriteId): JsonResponse
+    {
+        try {
+            $user = auth()->user();
+            
+            $favorite = Favorite::where('user_id', $user->id)
+                ->where('id', $favoriteId)
+                ->first();
+
+            if (!$favorite) {
+                return $this->notFoundResponse('Favorite not found');
+            }
+
+            $favorite->update([
+                'notifications_enabled' => !$favorite->notifications_enabled
+            ]);
+
+            return $this->successResponse($favorite, 'Notifications toggled successfully');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to toggle notifications: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Get sort options for watch list
      */
     public function getSortOptions(): JsonResponse

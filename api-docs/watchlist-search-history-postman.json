@@ -1,0 +1,688 @@
+{
+  "info": {
+    "name": "Watchlist & Search History API",
+    "description": "API endpoints for managing user watchlist and search history functionality",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Watchlist",
+      "item": [
+        {
+          "name": "Get Watchlist",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/watch-list?sort={{sort_option}}&page={{page}}",
+              "host": ["{{base_url}}"],
+              "path": ["watch-list"],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "{{sort_option}}",
+                  "description": "latest, recently_viewed, price_high, price_low, year_high, year_low, mileage_high, mileage_low"
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}",
+                  "description": "Page number for pagination"
+                }
+              ]
+            },
+            "description": "Get user's watchlist with sorting and pagination options"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/watch-list?sort=latest",
+                  "host": ["{{base_url}}"],
+                  "path": ["watch-list"],
+                  "query": [
+                    {
+                      "key": "sort",
+                      "value": "latest"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Watch list retrieved successfully\",\n  \"data\": {\n    \"watch_list\": [\n      {\n        \"id\": 1,\n        \"user_id\": 1,\n        \"car_listing_id\": 2,\n        \"notes\": \"Great car, considering purchase\",\n        \"notifications_enabled\": true,\n        \"price_when_added\": 25895.00,\n        \"viewed_at\": \"2024-01-15T10:30:00Z\",\n        \"view_count\": 5,\n        \"car_listing\": {\n          \"id\": 2,\n          \"title\": \"2022 Hyundai Kona SEL\",\n          \"price\": 25895.00,\n          \"year\": 2022,\n          \"mileage\": 89000,\n          \"brand\": {\n            \"name\": \"Hyundai\"\n          },\n          \"car_model\": {\n            \"name\": \"Kona\"\n          },\n          \"media\": [\n            {\n              \"url\": \"https://example.com/image1.jpg\",\n              \"type\": \"image\"\n            }\n          ],\n          \"badges\": [\n            {\n              \"name\": \"Warranty\",\n              \"color\": \"purple\"\n            },\n            {\n              \"name\": \"Inspected\",\n              \"color\": \"green\"\n            }\n          ]\n        }\n      }\n    ],\n    \"total\": 2,\n    \"per_page\": 20,\n    \"current_page\": 1,\n    \"last_page\": 1,\n    \"count\": 2\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add to Watchlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"car_listing_id\": 2,\n  \"notes\": \"Great car, considering purchase\",\n  \"notifications_enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/watch-list/favorites",
+              "host": ["{{base_url}}"],
+              "path": ["watch-list", "favorites"]
+            },
+            "description": "Add a car listing to user's watchlist"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"car_listing_id\": 2,\n  \"notes\": \"Great car, considering purchase\",\n  \"notifications_enabled\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/watch-list/favorites",
+                  "host": ["{{base_url}}"],
+                  "path": ["watch-list", "favorites"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Added to watch list successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"car_listing_id\": 2,\n    \"notes\": \"Great car, considering purchase\",\n    \"notifications_enabled\": true,\n    \"price_when_added\": 25895.00,\n    \"viewed_at\": \"2024-01-15T10:30:00Z\",\n    \"car_listing\": {\n      \"id\": 2,\n      \"title\": \"2022 Hyundai Kona SEL\",\n      \"price\": 25895.00,\n      \"year\": 2022,\n      \"mileage\": 89000\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove from Watchlist",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/watch-list/favorites/{{favorite_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["watch-list", "favorites", "{{favorite_id}}"]
+            },
+            "description": "Remove a car listing from user's watchlist"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/watch-list/favorites/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["watch-list", "favorites", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Removed from watch list successfully\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Toggle Favorite Notifications",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/watch-list/favorites/{{favorite_id}}/notifications",
+              "host": ["{{base_url}}"],
+              "path": ["watch-list", "favorites", "{{favorite_id}}", "notifications"]
+            },
+            "description": "Toggle notifications for a favorite item"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/watch-list/favorites/1/notifications",
+                  "host": ["{{base_url}}"],
+                  "path": ["watch-list", "favorites", "1", "notifications"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Notifications toggled successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"car_listing_id\": 2,\n    \"notifications_enabled\": false\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Sort Options",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/watch-list/sort-options",
+              "host": ["{{base_url}}"],
+              "path": ["watch-list", "sort-options"]
+            },
+            "description": "Get available sorting options for watchlist"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/watch-list/sort-options",
+                  "host": ["{{base_url}}"],
+                  "path": ["watch-list", "sort-options"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Sort options retrieved successfully\",\n  \"data\": [\n    {\n      \"value\": \"latest\",\n      \"label\": \"Latest\"\n    },\n    {\n      \"value\": \"recently_viewed\",\n      \"label\": \"Recently Viewed\"\n    },\n    {\n      \"value\": \"price_high\",\n      \"label\": \"Price (High to Low)\"\n    },\n    {\n      \"value\": \"price_low\",\n      \"label\": \"Price (Low to High)\"\n    },\n    {\n      \"value\": \"year_high\",\n      \"label\": \"Year (High to Low)\"\n    },\n    {\n      \"value\": \"year_low\",\n      \"label\": \"Year (Low to High)\"\n    },\n    {\n      \"value\": \"mileage_high\",\n      \"label\": \"Mileage (High to Low)\"\n    },\n    {\n      \"value\": \"mileage_low\",\n      \"label\": \"Mileage (Low to High)\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Search History",
+      "item": [
+        {
+          "name": "Get Search History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/watch-list/search-history?saved_only={{saved_only}}&page={{page}}",
+              "host": ["{{base_url}}"],
+              "path": ["watch-list", "search-history"],
+              "query": [
+                {
+                  "key": "saved_only",
+                  "value": "{{saved_only}}",
+                  "description": "true to get only saved searches, false for all history"
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}",
+                  "description": "Page number for pagination"
+                }
+              ]
+            },
+            "description": "Get user's search history with optional filtering for saved searches"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/watch-list/search-history?saved_only=true",
+                  "host": ["{{base_url}}"],
+                  "path": ["watch-list", "search-history"],
+                  "query": [
+                    {
+                      "key": "saved_only",
+                      "value": "true"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Search history retrieved successfully\",\n  \"data\": {\n    \"search_history\": [\n      {\n        \"id\": 1,\n        \"user_id\": 1,\n        \"title\": \"Mazda rx7\",\n        \"search_query\": \"Mazda rx7\",\n        \"filters\": {\n          \"color\": \"Blue\",\n          \"year\": \"2018\",\n          \"condition\": \"Used\",\n          \"body_type\": \"Coupe\",\n          \"transmission\": \"Automatic\",\n          \"category\": \"Sport\"\n        },\n        \"sort_options\": {\n          \"sort_by\": \"price\",\n          \"order\": \"asc\"\n        },\n        \"is_saved\": true,\n        \"notifications_enabled\": true,\n        \"search_count\": 3,\n        \"last_searched_at\": \"2024-01-15T10:30:00Z\",\n        \"created_at\": \"2024-01-10T09:15:00Z\"\n      }\n    ],\n    \"total\": 1,\n    \"per_page\": 20,\n    \"current_page\": 1,\n    \"last_page\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Save Search",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mazda rx7\",\n  \"search_query\": \"Mazda rx7\",\n  \"filters\": {\n    \"color\": \"Blue\",\n    \"year\": \"2018\",\n    \"condition\": \"Used\",\n    \"body_type\": \"Coupe\",\n    \"transmission\": \"Automatic\",\n    \"category\": \"Sport\"\n  },\n  \"sort_options\": {\n    \"sort_by\": \"price\",\n    \"order\": \"asc\"\n  },\n  \"notifications_enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/watch-list/search-history",
+              "host": ["{{base_url}}"],
+              "path": ["watch-list", "search-history"]
+            },
+            "description": "Save a search query with filters and notification preferences"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Mazda rx7\",\n  \"search_query\": \"Mazda rx7\",\n  \"filters\": {\n    \"color\": \"Blue\",\n    \"year\": \"2018\",\n    \"condition\": \"Used\",\n    \"body_type\": \"Coupe\",\n    \"transmission\": \"Automatic\",\n    \"category\": \"Sport\"\n  },\n  \"sort_options\": {\n    \"sort_by\": \"price\",\n    \"order\": \"asc\"\n  },\n  \"notifications_enabled\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/watch-list/search-history",
+                  "host": ["{{base_url}}"],
+                  "path": ["watch-list", "search-history"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Search saved successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"title\": \"Mazda rx7\",\n    \"search_query\": \"Mazda rx7\",\n    \"filters\": {\n      \"color\": \"Blue\",\n      \"year\": \"2018\",\n      \"condition\": \"Used\",\n      \"body_type\": \"Coupe\",\n      \"transmission\": \"Automatic\",\n      \"category\": \"Sport\"\n    },\n    \"sort_options\": {\n      \"sort_by\": \"price\",\n      \"order\": \"asc\"\n    },\n    \"is_saved\": true,\n    \"notifications_enabled\": true,\n    \"search_count\": 1,\n    \"last_searched_at\": \"2024-01-15T10:30:00Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete Search",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/watch-list/search-history/{{search_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["watch-list", "search-history", "{{search_id}}"]
+            },
+            "description": "Delete a saved search from user's history"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/watch-list/search-history/1",
+                  "host": ["{{base_url}}"],
+                  "path": ["watch-list", "search-history", "1"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Search deleted successfully\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Toggle Search Notifications",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/watch-list/search-history/{{search_id}}/notifications",
+              "host": ["{{base_url}}"],
+              "path": ["watch-list", "search-history", "{{search_id}}", "notifications"]
+            },
+            "description": "Toggle notifications for a saved search"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/watch-list/search-history/1/notifications",
+                  "host": ["{{base_url}}"],
+                  "path": ["watch-list", "search-history", "1", "notifications"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Notifications toggled successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"user_id\": 1,\n    \"title\": \"Mazda rx7\",\n    \"notifications_enabled\": false\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-set variables if not provided",
+          "if (!pm.variables.get('favorite_id')) {",
+          "    pm.variables.set('favorite_id', '1'); // Default favorite ID for testing",
+          "}",
+          "if (!pm.variables.get('search_id')) {",
+          "    pm.variables.set('search_id', '1'); // Default search ID for testing",
+          "}",
+          "if (!pm.variables.get('sort_option')) {",
+          "    pm.variables.set('sort_option', 'latest'); // Default sort option",
+          "}",
+          "if (!pm.variables.get('page')) {",
+          "    pm.variables.set('page', '1'); // Default page",
+          "}",
+          "if (!pm.variables.get('saved_only')) {",
+          "    pm.variables.set('saved_only', 'true'); // Default to saved searches only",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Test response structure",
+          "pm.test('Response has success field', function () {",
+          "    pm.expect(pm.response.json()).to.have.property('success');",
+          "});",
+          "",
+          "pm.test('Response has message field', function () {",
+          "    pm.expect(pm.response.json()).to.have.property('message');",
+          "});",
+          "",
+          "pm.test('Status code is 200', function () {",
+          "    pm.response.to.have.status(200);",
+          "});",
+          "",
+          "// Log response for debugging",
+          "console.log('Response:', pm.response.json());"
+        ]
+      }
+    }
+  ]
+}
