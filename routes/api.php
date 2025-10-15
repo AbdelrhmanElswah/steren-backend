@@ -99,6 +99,15 @@ Route::prefix('car-listings')->middleware('auth:sanctum')->group(function () {
     Route::post('/', [App\Http\Controllers\Api\CarListingApiController::class, 'store']);
 });
 
+// Listing Status Management Routes - Protected with Sanctum
+Route::prefix('listing')->middleware('auth:sanctum')->group(function () {
+    Route::post('/{listingId}/pause', [App\Http\Controllers\Api\ListingStatusController::class, 'pause']);
+    Route::post('/{listingId}/unpause', [App\Http\Controllers\Api\ListingStatusController::class, 'unpause']);
+    Route::post('/{listingId}/boost', [App\Http\Controllers\Api\ListingStatusController::class, 'boost']);
+    Route::post('/{listingId}/archive', [App\Http\Controllers\Api\ListingStatusController::class, 'archive']);
+    Route::post('/{listingId}/mark_sold', [App\Http\Controllers\Api\ListingStatusController::class, 'markSold']);
+});
+
 // Listing Promotion API Routes - Public (for pricing info)
 Route::prefix('listing-promotions')->group(function () {
     Route::get('/', [App\Http\Controllers\Api\ListingPromotionController::class, 'index']);

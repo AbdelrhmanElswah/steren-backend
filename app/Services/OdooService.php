@@ -503,4 +503,101 @@ class OdooService
             ];
         }
     }
+
+    /**
+     * Update listing status in Odoo
+     */
+    public function updateListingStatus(string $odooListingId, int $listingId, string $action, string $status): array
+    {
+        try {
+            $payload = [
+                'odoo_listing_id' => $odooListingId,
+                'listing_id' => $listingId,
+                'action' => $action,
+                'status' => $status,
+                'updated_at' => now()->toISOString()
+            ];
+
+            // Add specific data based on action
+            switch ($action) {
+                case 'pause':
+                    $payload['paused_at'] = now()->toISOString();
+                    break;
+                case 'unpause':
+                    $payload['paused_at'] = null;
+                    break;
+                case 'boost':
+                    $payload['is_promoted'] = true;
+                    $payload['promotion_started_at'] = now()->toISOString();
+                    $payload['promotion_expires_at'] = now()->addDays(7)->toISOString();
+                    break;
+                case 'archive':
+                    $payload['archived_at'] = now()->toISOString();
+                    break;
+                case 'mark_sold':
+                    $payload['sold_at'] = now()->toISOString();
+                    break;
+            }
+
+            Log::info('Sending listing status update to Odoo', [
+                'url' => $this->baseUrl . '/api/listing/status-update',
+                'payload' => $payload
+            ]);
+
+            $response = Http::timeout(30)->withHeaders([
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer ' . $this->apiKey,
+            ])->post($this->baseUrl . '/api/listing/status-update', $payload);
+
+            Log::info('Odoo listing status update response', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'successful' => $response->successful()
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                Log::info('Listing status updated in Odoo', [
+                    'odoo_listing_id' => $odooListingId,
+                    'listing_id' => $listingId,
+                    'action' => $action,
+                    'status' => $status
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => $data['message'] ?? 'Listing status updated successfully'
+                ];
+            }
+
+            $errorResponse = $response->json();
+            Log::error('Odoo listing status update failed', [
+                'odoo_listing_id' => $odooListingId,
+                'listing_id' => $listingId,
+                'action' => $action,
+                'status' => $response->status(),
+                'error' => $errorResponse,
+                'body' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $errorResponse['message'] ?? 'Failed to update listing status in Odoo'
+            ];
+
+        } catch (Exception $e) {
+            Log::error('Odoo listing status update failed', [
+                'odoo_listing_id' => $odooListingId,
+                'listing_id' => $listingId,
+                'action' => $action,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Failed to update listing status in Odoo: ' . $e->getMessage()
+            ];
+        }
+    }
 }

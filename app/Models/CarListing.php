@@ -77,6 +77,8 @@ class CarListing extends Model
         'promotion_expires_at',
         'is_promoted',
         'promotion_started_at',
+        'paused_at',
+        'archived_at',
     ];
 
     protected $casts = [
@@ -100,6 +102,8 @@ class CarListing extends Model
         'specifications' => 'array',
         'sold_at' => 'datetime',
         'featured_at' => 'datetime',
+        'paused_at' => 'datetime',
+        'archived_at' => 'datetime',
         // Promotion casts
         'promotion_price_paid' => 'decimal:2',
         'promotion_expires_at' => 'datetime',
@@ -467,22 +471,6 @@ class CarListing extends Model
     }
 
     /**
-     * Get analytics for this car listing
-     */
-    public function analytics()
-    {
-        return $this->hasMany(CarListingAnalytics::class);
-    }
-
-    /**
-     * Get active boosts for this car listing
-     */
-    public function activeBoosts()
-    {
-        return $this->hasMany(AdBoost::class)->active();
-    }
-
-    /**
      * Get all boosts for this car listing
      */
     public function boosts()
@@ -490,35 +478,6 @@ class CarListing extends Model
         return $this->hasMany(AdBoost::class);
     }
 
-    // Helper methods for UI
-    public function getFormattedPriceAttribute() {
-        return '$' . number_format($this->price, 0);
-    }
-
-    public function getFormattedViewsAttribute() {
-        if ($this->views >= 1000) {
-            return number_format($this->views / 1000, 1) . 'K Views';
-        }
-        return $this->views . ' Views';
-    }
-
-    public function getFullTitleAttribute() {
-        $parts = [$this->year, $this->brand->name, $this->carModel->name ?? ''];
-        if ($this->trim) {
-            $parts[] = $this->trim;
-        }
-        if ($this->doors) {
-            $parts[] = $this->doors . 'dr';
-        }
-        if ($this->driveType) {
-            $parts[] = $this->driveType->name;
-        }
-        if ($this->transmission) {
-            $parts[] = $this->transmission->name;
-        }
-        
-        return implode(' ', array_filter($parts));
-    }
 
     public function scopeByVin($query, $vin) {
         return $query->where('vin', strtoupper($vin));
@@ -537,115 +496,6 @@ class CarListing extends Model
         return $query;
     }
 
-    // Badge helper methods
-    public function getActiveBadgesAttribute() {
-        $badges = [];
-        
-        if ($this->has_warranty) {
-            $badges[] = [
-                'text' => 'Warranty',
-                'color' => 'purple',
-                'icon' => 'shield',
-                'description' => 'Manufacturer coverage protects against post-purchase defects.'
-            ];
-        }
-        
-        if ($this->is_verified) {
-            $badges[] = [
-                'text' => 'Verified',
-                'color' => 'blue',
-                'icon' => 'person',
-                'description' => 'Awarded to trusted, long-term, active dealerships only.'
-            ];
-        }
-        
-        if ($this->has_insurance) {
-            $badges[] = [
-                'text' => 'Insurance',
-                'color' => 'blue',
-                'icon' => 'circular_arrow',
-                'description' => 'Drive with confidence, this vehicle is insured, offering added protection and peace of mind after purchase.'
-            ];
-        }
-        
-        if ($this->is_inspected) {
-            $badges[] = [
-                'text' => 'Inspected',
-                'color' => 'green',
-                'icon' => 'eye',
-                'description' => 'This badge means the seller uploaded an inspection.'
-            ];
-        }
-        
-        return $badges;
-    }
-
-    public function getDamageStatusAttribute() {
-        $damages = $this->carDamages;
-        
-        if ($damages->where('status', 'damaged')->count() > 0) {
-            return 'damaged';
-        }
-        
-        if ($damages->where('status', 'needs_repair')->count() > 0) {
-            return 'needs_repair';
-        }
-        
-        if ($damages->where('status', 'repaired')->count() > 0) {
-            return 'repaired';
-        }
-        
-        return 'clean';
-    }
-
-    // Additional helper methods for UI
-    public function getStatusBadgeAttribute() {
-        if ($this->status === 'sold') {
-            return [
-                'text' => 'Sold',
-                'color' => 'red',
-                'icon' => 'check_circle'
-            ];
-        }
-        
-        if ($this->is_sponsored) {
-            return [
-                'text' => 'Sponsored',
-                'color' => 'orange',
-                'icon' => 'star'
-            ];
-        }
-        
-        if ($this->is_new_arrival) {
-            return [
-                'text' => 'New Arrival',
-                'color' => 'green',
-                'icon' => 'new_releases'
-            ];
-        }
-        
-        return null;
-    }
-
-    public function getFormattedMileageAttribute() {
-        if ($this->mileage >= 1000) {
-            return number_format($this->mileage / 1000, 1) . 'K km';
-        }
-        return $this->mileage . ' km';
-    }
-
-    public function getFormattedDimensionsAttribute() {
-        $dimensions = [];
-        if ($this->length) $dimensions[] = $this->length . ' mm';
-        if ($this->width) $dimensions[] = $this->width . ' mm';
-        if ($this->height) $dimensions[] = $this->height . ' mm';
-        
-        return implode(' - ', $dimensions);
-    }
-
-    public function getFormattedMileageEfficiencyAttribute() {
-        return $this->mileage_efficiency ? '~' . $this->mileage_efficiency . ' Km/L' : null;
-    }
 
     // Scopes for filtering
     public function scopeActive($query) {
