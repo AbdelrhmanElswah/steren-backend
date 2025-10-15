@@ -440,4 +440,17 @@ Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(functi
         Route::get('/auto-studio/status', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getAutoStudioStatus']);
         Route::post('/auto-studio/process', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'processAutoStudio']);
     });
+
+    // Notification Routes
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\NotificationController::class, 'index']);
+        Route::get('/types', [App\Http\Controllers\Api\NotificationController::class, 'getNotificationTypes']);
+        Route::get('/stats', [App\Http\Controllers\Api\NotificationController::class, 'getStats']);
+        Route::put('/{notificationId}/read', [App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
+        Route::put('/{notificationId}/clicked', [App\Http\Controllers\Api\NotificationController::class, 'markAsClicked']);
+        Route::put('/mark-all-read', [App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
+        Route::delete('/{notificationId}', [App\Http\Controllers\Api\NotificationController::class, 'destroy']);
+        Route::post('/fcm/register', [App\Http\Controllers\Api\NotificationController::class, 'registerFcmToken']);
+        Route::post('/fcm/deactivate', [App\Http\Controllers\Api\NotificationController::class, 'deactivateFcmToken']);
+    });
 });
