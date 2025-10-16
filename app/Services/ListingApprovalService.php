@@ -139,14 +139,98 @@ class ListingApprovalService
 
     public function approveListingByOdooId(string $odooId, ?int $approvedBy = null): array
     {
-        $listing = CarListing::where('odoo_id', $odooId)->firstOrFail();
-        return $this->approveListing($listing->id, $approvedBy);
+        try {
+            $listing = CarListing::where('odoo_id', $odooId)->firstOrFail();
+            
+            if ($listing->operator_decision === 'approved') {
+                throw new OdooServiceException('Listing is already approved');
+            }
+
+            DB::beginTransaction();
+
+            $listing->update([
+                'operator_decision' => 'approved',
+                'status' => 'active',
+                'approved_by' => $approvedBy,
+                'approved_at' => now(),
+                'rejection_reason' => null,
+                'rejected_by' => null,
+                'rejected_at' => null
+            ]);
+
+            DB::commit();
+
+            Log::info('Listing approved via Odoo integration', [
+                'listing_id' => $listing->id,
+                'odoo_id' => $odooId,
+                'approved_by' => $approvedBy
+            ]);
+
+            return [
+                'success' => true,
+                'listing_id' => $listing->id,
+                'odoo_id' => $odooId,
+                'status' => 'active',
+                'operator_decision' => 'approved'
+            ];
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to approve listing via Odoo', [
+                'odoo_id' => $odooId,
+                'error' => $e->getMessage()
+            ]);
+            throw new OdooServiceException('Failed to approve listing: ' . $e->getMessage());
+        }
     }
 
     public function rejectListingByOdooId(string $odooId, string $reason, ?int $rejectedBy = null): array
     {
-        $listing = CarListing::where('odoo_id', $odooId)->firstOrFail();
-        return $this->rejectListing($listing->id, $reason, $rejectedBy);
+        try {
+            $listing = CarListing::where('odoo_id', $odooId)->firstOrFail();
+            
+            if ($listing->operator_decision === 'rejected') {
+                throw new OdooServiceException('Listing is already rejected');
+            }
+
+            DB::beginTransaction();
+
+            // Update listing status directly (no Odoo callback since we're called FROM Odoo)
+            $listing->update([
+                'operator_decision' => 'rejected',
+                'status' => 'rejected',
+                'rejected_by' => $rejectedBy,
+                'rejected_at' => now(),
+                'rejection_reason' => $reason,
+                'approved_by' => null,
+                'approved_at' => null
+            ]);
+
+            DB::commit();
+
+            Log::info('Listing rejected via Odoo integration', [
+                'listing_id' => $listing->id,
+                'odoo_id' => $odooId,
+                'rejected_by' => $rejectedBy,
+                'reason' => $reason
+            ]);
+
+            return [
+                'success' => true,
+                'listing_id' => $listing->id,
+                'odoo_id' => $odooId,
+                'status' => 'rejected',
+                'operator_decision' => 'rejected'
+            ];
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to reject listing via Odoo', [
+                'odoo_id' => $odooId,
+                'error' => $e->getMessage()
+            ]);
+            throw new OdooServiceException('Failed to reject listing: ' . $e->getMessage());
+        }
     }
 
     public function processListing(int $listingId, string $action, ?string $reason = null, ?int $operatorId = null): array

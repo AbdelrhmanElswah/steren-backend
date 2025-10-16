@@ -98,14 +98,14 @@ class ListingApprovalController extends Controller
         }
     }
 
-    public function rejectByOdooId(ListingApprovalRequest $request, string $odooId)
+    public function rejectByOdooId(Request $request, string $odooId)
     {
         try {
-            $validated = $request->validated();
+            $reason = $request->input('reason') ?? $request->input('rejection_reason') ?? 'No reason provided';
             
             $result = $this->listingApprovalService->rejectListingByOdooId(
                 $odooId,
-                $validated['reason'] ?? 'No reason provided',
+                $reason,
                 $request->user()?->id
             );
 
@@ -119,12 +119,11 @@ class ListingApprovalController extends Controller
         }
     }
 
-    public function processByOdooId(ListingApprovalRequest $request, string $odooId)
+    public function processByOdooId(Request $request, string $odooId)
     {
         try {
-            $validated = $request->validated();
-            $action = $validated['action'];
-            $reason = $validated['reason'] ?? null;
+            $action = $request->input('action') ?? 'approve';
+            $reason = $request->input('reason') ?? $request->input('rejection_reason') ?? null;
             $operatorId = $request->user()?->id;
 
             $result = $this->listingApprovalService->processListingByOdooId($odooId, $action, $reason, $operatorId);
@@ -133,7 +132,7 @@ class ListingApprovalController extends Controller
 
         } catch (Exception $e) {
             return $this->errorResponse(
-                "Failed to {$validated['action']} listing: " . $e->getMessage(),
+                "Failed to {$action} listing: " . $e->getMessage(),
                 500
             );
         }
