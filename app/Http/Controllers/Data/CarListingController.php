@@ -152,33 +152,39 @@ class CarListingController extends Controller
             ])->findOrFail($id);
 
             // Group features by category
-            $featuresByCategory = $listing->features->groupBy('category')->map(function ($features) {
-                return $features->map(function ($feature) {
-                    return [
-                        'id' => $feature->id,
-                        'name' => $feature->name,
-                        'description' => $feature->description,
-                        'icon' => $feature->icon,
-                        'is_included' => $feature->pivot->is_included,
-                        'notes' => $feature->pivot->notes,
-                    ];
+            $featuresByCategory = collect();
+            if ($listing->features && $listing->features->isNotEmpty()) {
+                $featuresByCategory = $listing->features->groupBy('category')->map(function ($features) {
+                    return $features->map(function ($feature) {
+                        return [
+                            'id' => $feature->id,
+                            'name' => $feature->name,
+                            'description' => $feature->description,
+                            'icon' => $feature->icon,
+                            'is_included' => $feature->pivot->is_included ?? false,
+                            'notes' => $feature->pivot->notes ?? null,
+                        ];
+                    });
                 });
-            });
+            }
 
             // Group specifications by type
-            $specificationsByType = $listing->specifications->groupBy('specification_type')->map(function ($specs) {
-                return $specs->map(function ($spec) {
-                    return [
-                        'id' => $spec->id,
-                        'name' => $spec->name,
-                        'value' => $spec->value,
-                        'unit' => $spec->unit,
-                        'formatted_value' => $spec->formatted_value,
-                        'description' => $spec->description,
-                        'is_highlighted' => $spec->is_highlighted,
-                    ];
+            $specificationsByType = collect();
+            if ($listing->specifications && $listing->specifications->isNotEmpty()) {
+                $specificationsByType = $listing->specifications->groupBy('specification_type')->map(function ($specs) {
+                    return $specs->map(function ($spec) {
+                        return [
+                            'id' => $spec->id,
+                            'name' => $spec->name,
+                            'value' => $spec->value,
+                            'unit' => $spec->unit,
+                            'formatted_value' => $spec->formatted_value,
+                            'description' => $spec->description,
+                            'is_highlighted' => $spec->is_highlighted,
+                        ];
+                    });
                 });
-            });
+            }
 
             $data = [
                 'listing' => $listing,

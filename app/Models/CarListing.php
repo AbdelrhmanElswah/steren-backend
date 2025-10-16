@@ -66,8 +66,6 @@ class CarListing extends Model
         'is_featured',
         'is_new_arrival',
         'description',
-        'features',
-        'specifications',
         'sold_at',
         'featured_at',
         // Promotion fields
@@ -98,8 +96,6 @@ class CarListing extends Model
         'height' => 'decimal:2',
         'is_featured' => 'boolean',
         'is_new_arrival' => 'boolean',
-        'features' => 'array',
-        'specifications' => 'array',
         'sold_at' => 'datetime',
         'featured_at' => 'datetime',
         'paused_at' => 'datetime',
