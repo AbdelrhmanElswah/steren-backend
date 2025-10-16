@@ -12,12 +12,19 @@ class CarBrand extends Model
 
     protected $fillable = ['odoo_id', 'name'];
 
-    protected $appends = ['logo_url'];
+    protected $appends = ['logo'];
 
-    public function getLogoUrlAttribute()
+    public function getLogoAttribute()
     {
-        if ($this->media) {
-            return $this->media->url ?? null;
+        if ($this->relationLoaded('media') && $this->media) {
+            return [
+                'id' => $this->media->id,
+                'url' => $this->media->url ?? $this->media->media_temporary_url,
+                'file_path' => $this->media->file_path ?? $this->media->path_file_name,
+                'file_type' => $this->media->file_type,
+                'file_size' => $this->media->file_size,
+                'mime_type' => $this->media->mime_type,
+            ];
         }
         return null;
     }
