@@ -710,35 +710,57 @@ class CarListingApiController extends Controller
     }
 
     /**
-     * Map form data to car listing database structure
+     * Map form data to car listing database structure (Flutter compatible)
      */
     private function mapFormDataToCarListingData(array $data): array
     {
         return [
             'vin' => $data['vin'] ?? null,
-            'car_brand_id' => $data['brand_id'],
-            'car_model_id' => $data['model_id'],
-            'condition_type' => $data['condition'],
+            'car_brand_id' => $data['car_brand_id'],
+            'car_model_id' => $data['car_model_id'],
+            'condition_type' => $data['condition_type'],
             'year' => $data['year'],
             'gcc_import' => $data['gcc_import'] ?? null,
-            'car_body_type_id' => $data['body_type_id'],
+            'car_body_type_id' => $data['car_body_type_id'],
             'engine_size' => $data['engine_size'] ?? null,
             'fuel_type_id' => $data['fuel_type_id'] ?? null,
             'cylinder_id' => $data['cylinder_id'] ?? null,
             'transmission_id' => $data['transmission_id'] ?? null,
             'seating_capacity' => $data['seating_capacity'] ?? null,
             'exterior_color_id' => $data['exterior_color_id'] ?? null,
-            'has_warranty' => $data['warranty'] === 'yes',
+            'has_warranty' => $data['has_warranty'] ?? false,
             'drive_type_id' => $data['drive_type_id'] ?? null,
             'mileage_type_id' => $data['mileage_type_id'] ?? null,
             'mileage' => $data['mileage'],
             'plate_status' => $data['plate_status'] ?? null,
+            'doors' => $data['doors'] ?? null,
+            'trim' => $data['trim'] ?? null,
+            'origin_country' => $data['origin_country'] ?? null,
+            'is_inspected' => $data['is_inspected'] ?? false,
+            'is_verified' => $data['is_verified'] ?? false,
+            'has_insurance' => $data['has_insurance'] ?? false,
+            'location_id' => $data['city_id'] ?? null,
+            'import_type_id' => $data['import_type_id'] ?? null,
+            'warranty_status_id' => $data['warranty_status_id'] ?? null,
+            'engine_type' => $data['engine_type'] ?? null,
+            'horsepower' => $data['horsepower'] ?? null,
+            'torque' => $data['torque'] ?? null,
+            'acceleration_0_100' => $data['acceleration_0_100'] ?? null,
+            'top_speed' => $data['top_speed'] ?? null,
+            'mileage_efficiency' => $data['mileage_efficiency'] ?? null,
+            'length' => $data['length'] ?? null,
+            'width' => $data['width'] ?? null,
+            'height' => $data['height'] ?? null,
+            'status' => $data['status'] ?? 'pending',
+            'status_id' => $data['status_id'] ?? null,
+            'operator_decision' => $data['operator_decision'] ?? 'pending',
+            'is_featured' => $data['is_featured'] ?? false,
+            'is_new_arrival' => $data['is_new_arrival'] ?? false,
             'price' => $data['price'],
             'price_currency' => $data['price_currency'],
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
             'user_id' => $data['user_id'],
-            'status' => 'pending',
         ];
     }
 
