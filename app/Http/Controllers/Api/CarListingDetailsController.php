@@ -311,6 +311,403 @@ class CarListingDetailsController extends Controller
     }
 
     /**
+     * Get all car listing data with media
+     */
+    public function getCarListingWithMedia($id): JsonResponse
+    {
+        try {
+            $listing = CarListing::with([
+                // Basic relationships
+                'brand', 'carModel', 'carTrim', 'bodyType', 'location', 'studio',
+                'carCondition', 'fuelType', 'transmission', 'exteriorColor', 
+                'driveType', 'cylinder', 'mileageType', 'importType', 'warrantyStatus',
+                'status',
+                
+                // User and contact info
+                'user',
+                
+                // Media with detailed information
+                'media' => function($query) {
+                    $query->orderBy('order')->orderBy('created_at');
+                },
+                
+                // Features and specifications
+                'features' => function($query) {
+                    $query->orderBy('category')->orderBy('name');
+                },
+                'specifications' => function($query) {
+                    $query->orderBy('specification_type')->orderBy('name');
+                },
+                
+                // Badges and promotions
+                'badges',
+                'listingPromotion',
+                
+                // Documents and reports
+                'documents',
+                'inspection',
+                'carfaxReport',
+                'carDamages',
+                
+                // Analytics
+                'analytics',
+                
+                // Favorites
+                'favorites',
+                
+                // Reports
+                'reports',
+                
+                // Boosts
+                'boosts',
+                'activeBoosts'
+            ])->findOrFail($id);
+
+            // Group media by type
+            $mediaByType = $listing->media->groupBy('media_type')->map(function ($media) {
+                return $media->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'file_name' => $item->file_name,
+                        'file_path' => $item->file_path,
+                        'file_url' => $item->file_url,
+                        'file_type' => $item->file_type,
+                        'media_type' => $item->media_type,
+                        'file_size' => $item->file_size,
+                        'mime_type' => $item->mime_type,
+                        'is_primary' => $item->is_primary,
+                        'order' => $item->order,
+                        'alt_text' => $item->alt_text,
+                        'caption' => $item->caption,
+                        'created_at' => $item->created_at,
+                        'updated_at' => $item->updated_at,
+                    ];
+                });
+            });
+
+            // Get primary media
+            $primaryMedia = $listing->media->where('is_primary', true)->first();
+            
+            // Get all images
+            $images = $listing->media->where('media_type', 'image');
+            
+            // Get all videos
+            $videos = $listing->media->where('media_type', 'video');
+            
+            // Get all documents
+            $documents = $listing->media->where('media_type', 'document');
+
+            // Group features by category
+            $featuresByCategory = $listing->features->groupBy('category')->map(function ($features) {
+                return $features->map(function ($feature) {
+                    return [
+                        'id' => $feature->id,
+                        'name' => $feature->name,
+                        'description' => $feature->description,
+                        'icon' => $feature->icon,
+                        'category' => $feature->category,
+                        'is_included' => $feature->pivot->is_included ?? false,
+                        'notes' => $feature->pivot->notes,
+                    ];
+                });
+            });
+
+            // Group specifications by type
+            $specificationsByType = $listing->specifications->groupBy('specification_type')->map(function ($specs) {
+                return $specs->map(function ($spec) {
+                    return [
+                        'id' => $spec->id,
+                        'name' => $spec->name,
+                        'value' => $spec->value,
+                        'unit' => $spec->unit,
+                        'formatted_value' => $spec->formatted_value,
+                        'description' => $spec->description,
+                        'is_highlighted' => $spec->is_highlighted,
+                    ];
+                });
+            });
+
+            // Get analytics summary
+            $analyticsSummary = [
+                'total_views' => $listing->total_views,
+                'total_shares' => $listing->total_shares,
+                'total_call_taps' => $listing->total_call_taps,
+                'total_whatsapp_clicks' => $listing->total_whatsapp_clicks,
+                'total_sms_clicks' => $listing->total_sms_clicks,
+                'total_email_clicks' => $listing->total_email_clicks,
+                'total_watchlist_saves' => $listing->total_watchlist_saves,
+                'days_active' => $listing->days_active,
+            ];
+
+            $data = [
+                'listing' => [
+                    'id' => $listing->id,
+                    'odoo_id' => $listing->odoo_id,
+                    'title' => $listing->title,
+                    'full_title' => $listing->full_title,
+                    'vin' => $listing->vin,
+                    'price' => $listing->price,
+                    'formatted_price' => $listing->formatted_price,
+                    'price_currency' => $listing->price_currency,
+                    'year' => $listing->year,
+                    'trim' => $listing->trim,
+                    'doors' => $listing->doors,
+                    'mileage' => $listing->mileage,
+                    'formatted_mileage' => $listing->formatted_mileage,
+                    'origin_country' => $listing->origin_country,
+                    'gcc_import' => $listing->gcc_import,
+                    'plate_status' => $listing->plate_status,
+                    'condition_type' => $listing->condition_type,
+                    'has_warranty' => $listing->has_warranty,
+                    'is_inspected' => $listing->is_inspected,
+                    'is_verified' => $listing->is_verified,
+                    'has_insurance' => $listing->has_insurance,
+                    'status' => $listing->status,
+                    'status_label' => $listing->status_label,
+                    'operator_decision' => $listing->operator_decision,
+                    'approved_by' => $listing->approved_by,
+                    'approved_at' => $listing->approved_at,
+                    'rejection_reason' => $listing->rejection_reason,
+                    'rejected_by' => $listing->rejected_by,
+                    'rejected_at' => $listing->rejected_at,
+                    'is_featured' => $listing->is_featured,
+                    'is_new_arrival' => $listing->is_new_arrival,
+                    'description' => $listing->description,
+                    'sold_at' => $listing->sold_at,
+                    'featured_at' => $listing->featured_at,
+                    'paused_at' => $listing->paused_at,
+                    'archived_at' => $listing->archived_at,
+                    'created_at' => $listing->created_at,
+                    'updated_at' => $listing->updated_at,
+                ],
+                
+                // Engine and performance specs
+                'specifications' => [
+                    'engine_size' => $listing->engine_size,
+                    'engine_type' => $listing->engine_type,
+                    'horsepower' => $listing->horsepower,
+                    'torque' => $listing->torque,
+                    'acceleration_0_100' => $listing->acceleration_0_100,
+                    'top_speed' => $listing->top_speed,
+                    'seating_capacity' => $listing->seating_capacity,
+                    'mileage_efficiency' => $listing->mileage_efficiency,
+                    'formatted_mileage_efficiency' => $listing->formatted_mileage_efficiency,
+                    'length' => $listing->length,
+                    'width' => $listing->width,
+                    'height' => $listing->height,
+                    'formatted_dimensions' => $listing->formatted_dimensions,
+                ],
+                
+                // Relationships
+                'brand' => $listing->brand,
+                'car_model' => $listing->carModel,
+                'car_trim' => $listing->carTrim,
+                'body_type' => $listing->bodyType,
+                'location' => $listing->location,
+                'studio' => $listing->studio,
+                'car_condition' => $listing->carCondition,
+                'fuel_type' => $listing->fuelType,
+                'transmission' => $listing->transmission,
+                'exterior_color' => $listing->exteriorColor,
+                'drive_type' => $listing->driveType,
+                'cylinder' => $listing->cylinder,
+                'mileage_type' => $listing->mileageType,
+                'import_type' => $listing->importType,
+                'warranty_status' => $listing->warrantyStatus,
+                'user' => $listing->user,
+                'status' => $listing->status,
+                
+                // Media information
+                'media' => [
+                    'all_media' => $listing->media,
+                    'media_by_type' => $mediaByType,
+                    'primary_media' => $primaryMedia,
+                    'images' => $images,
+                    'videos' => $videos,
+                    'documents' => $documents,
+                    'total_media_count' => $listing->media->count(),
+                    'image_count' => $images->count(),
+                    'video_count' => $videos->count(),
+                    'document_count' => $documents->count(),
+                ],
+                
+                // Features and specifications
+                'features_by_category' => $featuresByCategory,
+                'detailed_specifications' => $specificationsByType,
+                
+                // Badges and status
+                'badges' => $listing->badges,
+                'active_badges' => $listing->active_badges,
+                'status_badge' => $listing->status_badge,
+                
+                // Documents
+                'documents' => $listing->documents,
+                
+                // Inspection and reports
+                'inspection' => $listing->inspection,
+                'carfax_report' => $listing->carfaxReport,
+                'damage_details' => [
+                    'status' => $listing->damage_status,
+                    'damages' => $listing->carDamages,
+                ],
+                
+                // Analytics
+                'analytics' => $analyticsSummary,
+                
+                // Promotions and boosts
+                'promotion' => $listing->listingPromotion,
+                'active_boosts' => $listing->activeBoosts,
+                'promotion_type' => $listing->promotion_type,
+                
+                // Reports
+                'reports' => $listing->reports,
+            ];
+
+            return $this->successResponse($data, 'Car listing with media retrieved successfully');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve car listing with media: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get user's own car listings
+     */
+    public function getUserListings(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
+
+            $query = CarListing::with([
+                'brand', 'carModel', 'carTrim', 'bodyType', 'location', 'studio',
+                'media', 'badges', 'carCondition', 'fuelType', 'transmission',
+                'exteriorColor', 'driveType', 'cylinder', 'status',
+                'listingPromotion', 'analytics'
+            ])
+            ->where('user_id', $user->id);
+
+            // Apply filters
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            if ($request->filled('is_featured')) {
+                $query->where('is_featured', $request->is_featured === 'true');
+            }
+
+            if ($request->filled('is_promoted')) {
+                $query->where('is_promoted', $request->is_promoted === 'true');
+            }
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%")
+                      ->orWhereHas('brand', function($q) use ($search) {
+                          $q->where('name', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('carModel', function($q) use ($search) {
+                          $q->where('name', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            // Apply sorting
+            $sortBy = $request->get('sort', 'latest');
+            switch ($sortBy) {
+                case 'oldest':
+                    $query->orderBy('created_at', 'asc');
+                    break;
+                case 'price_high':
+                    $query->orderBy('price', 'desc');
+                    break;
+                case 'price_low':
+                    $query->orderBy('price', 'asc');
+                    break;
+                case 'year_high':
+                    $query->orderBy('year', 'desc');
+                    break;
+                case 'year_low':
+                    $query->orderBy('year', 'asc');
+                    break;
+                case 'mileage_high':
+                    $query->orderBy('mileage', 'desc');
+                    break;
+                case 'mileage_low':
+                    $query->orderBy('mileage', 'asc');
+                    break;
+                case 'status':
+                    $query->orderBy('status', 'asc')->orderBy('created_at', 'desc');
+                    break;
+                default:
+                    $query->orderBy('created_at', 'desc');
+            }
+
+            $perPage = $request->get('per_page', 20);
+            $listings = $query->paginate($perPage);
+
+            // Get summary statistics
+            $stats = [
+                'total_listings' => CarListing::where('user_id', $user->id)->count(),
+                'active_listings' => CarListing::where('user_id', $user->id)->where('status', 'active')->count(),
+                'sold_listings' => CarListing::where('user_id', $user->id)->where('status', 'sold')->count(),
+                'paused_listings' => CarListing::where('user_id', $user->id)->where('status', 'paused')->count(),
+                'pending_listings' => CarListing::where('user_id', $user->id)->where('status', 'pending')->count(),
+                'rejected_listings' => CarListing::where('user_id', $user->id)->where('status', 'rejected')->count(),
+                'featured_listings' => CarListing::where('user_id', $user->id)->where('is_featured', true)->count(),
+                'promoted_listings' => CarListing::where('user_id', $user->id)->where('is_promoted', true)->count(),
+            ];
+
+            // Get total analytics for user's listings
+            $totalViews = CarListing::where('user_id', $user->id)
+                ->join('car_listing_analytics', 'car_listings.id', '=', 'car_listing_analytics.car_listing_id')
+                ->where('car_listing_analytics.event_type', 'view')
+                ->count();
+
+            $totalShares = CarListing::where('user_id', $user->id)
+                ->join('car_listing_analytics', 'car_listings.id', '=', 'car_listing_analytics.car_listing_id')
+                ->where('car_listing_analytics.event_type', 'share')
+                ->count();
+
+            $totalCalls = CarListing::where('user_id', $user->id)
+                ->join('car_listing_analytics', 'car_listings.id', '=', 'car_listing_analytics.car_listing_id')
+                ->where('car_listing_analytics.event_type', 'call_tap')
+                ->count();
+
+            $stats['total_views'] = $totalViews;
+            $stats['total_shares'] = $totalShares;
+            $stats['total_calls'] = $totalCalls;
+
+            $data = [
+                'listings' => $listings->items(),
+                'pagination' => [
+                    'total' => $listings->total(),
+                    'per_page' => $listings->perPage(),
+                    'current_page' => $listings->currentPage(),
+                    'last_page' => $listings->lastPage(),
+                    'from' => $listings->firstItem(),
+                    'to' => $listings->lastItem(),
+                ],
+                'statistics' => $stats,
+                'filters_applied' => [
+                    'status' => $request->get('status'),
+                    'is_featured' => $request->get('is_featured'),
+                    'is_promoted' => $request->get('is_promoted'),
+                    'search' => $request->get('search'),
+                    'sort' => $request->get('sort'),
+                ],
+            ];
+
+            return $this->successResponse($data, 'User listings retrieved successfully');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve user listings: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Get car listings that match with other brand and model
      */
     public function getSimilarCars(Request $request): JsonResponse

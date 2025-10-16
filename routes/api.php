@@ -199,8 +199,16 @@ Route::prefix('car-listings')->group(function () {
     // Enhanced car listing details API
     Route::get('/{id}/complete', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getCarListingDetails']);
     
+    // Car listing with media API
+    Route::get('/{id}/with-media', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getCarListingWithMedia']);
+    
     // Similar cars API
     Route::get('/similar/search', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getSimilarCars']);
+});
+
+// User's Own Car Listings - Protected with Sanctum
+Route::prefix('my-listings')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getUserListings']);
 });
 
 // Contact Methods Routes - GET only
