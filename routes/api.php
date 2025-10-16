@@ -387,6 +387,14 @@ Route::prefix('listings')->middleware('auth:sanctum')->group(function () {
     Route::post('/odoo/{odooId}/process', [App\Http\Controllers\Api\Listing\ListingApprovalController::class, 'processByOdooId']);
 });
 
+// Singular listing routes (for Odoo compatibility) - No auth required
+Route::prefix('listing')->group(function () {
+    // Routes by Odoo ID (for Odoo integration) - singular form
+    Route::post('/odoo/{odooId}/approve', [App\Http\Controllers\Api\Listing\ListingApprovalController::class, 'approveByOdooId']);
+    Route::post('/odoo/{odooId}/reject', [App\Http\Controllers\Api\Listing\ListingApprovalController::class, 'rejectByOdooId']);
+    Route::post('/odoo/{odooId}/process', [App\Http\Controllers\Api\Listing\ListingApprovalController::class, 'processByOdooId']);
+});
+
 // Search Routes
 Route::prefix('search')->group(function () {
     // Public search routes
