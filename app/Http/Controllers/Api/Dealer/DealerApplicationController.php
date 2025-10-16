@@ -37,7 +37,7 @@ class DealerApplicationController extends Controller
             'has_application' => true,
             'application' => [
                 'id' => $latestApplication->id,
-                'status' => $latestApplication->status,
+                'status' => $latestApplication->status?->name,
                 'status_badge_color' => $latestApplication->status_badge_color,
                 'seller_type' => $latestApplication->seller_type,
                 'dealership_company_name' => $latestApplication->dealership_company_name,
@@ -61,7 +61,7 @@ class DealerApplicationController extends Controller
         ];
 
         // Add specific messages based on status
-        switch ($latestApplication->status) {
+        switch ($latestApplication->status?->name) {
             case 'pending':
                 $response['message'] = 'Your application is pending review';
                 break;
@@ -127,7 +127,10 @@ class DealerApplicationController extends Controller
 
         // Check if user already has a pending or approved application
         $existingApplication = $user->dealerApplications()
-            ->whereIn('status', ['pending', 'under_review', 'approved'])
+            ->whereHas('status', function ($query) {
+                $query->whereIn('name', ['pending', 'under_review', 'approved'])
+                      ->where('type', 'dealer_application');
+            })
             ->first();
 
         if ($existingApplication) {
@@ -153,14 +156,23 @@ class DealerApplicationController extends Controller
             // Remove file from validated data as it's not a database field
             unset($data['authorization_letter']);
 
+            // Set default status to pending
+            $pendingStatus = \App\Models\Status::where('name', 'pending')
+                ->where('type', 'dealer_application')
+                ->first();
+            $data['status_id'] = $pendingStatus?->id;
+
             $application = $user->dealerApplications()->create($data);
 
             DB::commit();
 
+            // Load the status relationship
+            $application->load('status');
+
             return $this->successResponse([
                 'application' => [
                     'id' => $application->id,
-                    'status' => $application->status,
+                    'status' => $application->status?->name,
                     'message' => 'Dealer application submitted successfully'
                 ]
             ], 'Dealer application submitted successfully', 201);
@@ -205,7 +217,7 @@ class DealerApplicationController extends Controller
                     ? Storage::disk('public')->url($application->authorization_letter_path) 
                     : null,
                 'business_license_number' => $application->business_license_number,
-                'status' => $application->status,
+                'status' => $application->status?->name,
                 'status_badge_color' => $application->status_badge_color,
                 'subscription_plan' => $application->subscriptionPlan ? [
                     'id' => $application->subscriptionPlan->id,
@@ -272,7 +284,7 @@ class DealerApplicationController extends Controller
             return $this->successResponse([
                 'application' => [
                     'id' => $application->id,
-                    'status' => $application->status,
+                    'status' => $application->status?->name,
                     'message' => 'Dealer application updated successfully'
                 ]
             ], 'Dealer application updated successfully');
