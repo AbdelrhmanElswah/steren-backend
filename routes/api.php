@@ -96,6 +96,7 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
 // Car Listing API Routes - Protected with Sanctum
 Route::prefix('car-listings')->middleware('auth:sanctum')->group(function () {
     Route::post('/', [App\Http\Controllers\Api\CarListingApiController::class, 'store']);
+    Route::post('/form-data', [App\Http\Controllers\Api\CarListingApiController::class, 'storeFormData']);
 });
 
 // Listing Status Management Routes - Protected with Sanctum
@@ -210,6 +211,9 @@ Route::prefix('car-listings')->group(function () {
 Route::prefix('my-listings')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getUserListings']);
 });
+
+// Form-data Car Listing Creation Route - Protected with Sanctum
+Route::post('/car-listing-form', [App\Http\Controllers\Api\CarListingApiController::class, 'storeFormData'])->middleware('auth:sanctum');
 
 // Contact Methods Routes - GET only
 Route::prefix('contact-methods')->group(function () {

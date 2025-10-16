@@ -10,7 +10,7 @@ class Media extends Model
 {
     use HasFactory, MediaTrait;
 
-    protected $fillable = ['modelable_type', 'modelable_id', 'media', 'info', 'path_file_name', 'file_type'];
+    protected $fillable = ['modelable_type', 'modelable_id', 'media', 'info', 'path_file_name', 'file_path', 'url', 'file_type', 'file_size', 'mime_type', 'is_primary'];
 
     protected $appends = ['media_link', 'media_temporary_url', 'file_size', 'mime_type'];
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\CarListingCreateRequest;
+use App\Http\Requests\Api\CarListingCreateFormRequest;
 use App\Http\Resources\Api\CarListingResource;
 use App\Models\CarListing;
 use App\Models\ListingPromotion;
@@ -288,14 +289,18 @@ class CarListingApiController extends Controller
                 $filename = 'car_listing_' . $carListing->id . '_' . ($index + 1) . '_' . time() . '.jpg';
                 $path = 'car_listings/' . $carListing->id . '/' . $filename;
 
-                // Store image
-                Storage::disk('public')->put($path, $imageData);
+                // Store image to AWS S3
+                Storage::disk('s3')->put($path, $imageData);
+                
+                // Get the full S3 URL
+                $url = Storage::disk('s3')->url($path);
 
                 // Create media record
                 Media::create([
                     'modelable_type' => CarListing::class,
                     'modelable_id' => $carListing->id,
                     'file_path' => $path,
+                    'url' => $url,
                     'file_type' => 'image',
                     'file_size' => strlen($imageData),
                     'mime_type' => 'image/jpeg',
@@ -570,5 +575,260 @@ class CarListingApiController extends Controller
         }
 
         return $promotionData;
+    }
+
+    /**
+     * Create a new car listing from form-data (multipart/form-data)
+     */
+    public function storeFormData(CarListingCreateFormRequest $request)
+    {
+        try {
+            // Check if user can create listing based on subscription or free tier
+            $canCreate = $this->subscriptionService->canCreateListing($request->user());
+            
+            if (!$canCreate['can_create']) {
+                return $this->errorResponse(
+                    $canCreate['reason'],
+                    403,
+                    [
+                        'code' => $canCreate['code'],
+                        'current_listings' => $canCreate['current_listings'] ?? 0,
+                        'max_listings' => $canCreate['max_listings'] ?? 0
+                    ]
+                );
+            }
+
+            DB::beginTransaction();
+
+            // Get validated data from request
+            $validatedData = $request->validated();
+
+            // Add authenticated user_id to the data
+            $validatedData['user_id'] = $request->user()->id;
+
+            // Validate photo count if images are provided
+            if ($request->hasFile('images')) {
+                $photoCount = count($request->file('images'));
+                $canUpload = $this->subscriptionService->canUploadPhotos($request->user(), $photoCount);
+                
+                if (!$canUpload['can_upload']) {
+                    return $this->errorResponse(
+                        $canUpload['reason'],
+                        403,
+                        [
+                            'code' => $canUpload['code'],
+                            'max_photos' => $canUpload['max_photos'],
+                            'attempted_photos' => $canUpload['attempted_photos'] ?? $photoCount
+                        ]
+                    );
+                }
+            }
+
+            // Map form data to car listing structure
+            $carListingData = $this->mapFormDataToCarListingData($validatedData);
+
+            // Handle promotion selection (if any)
+            $promotionData = $this->handlePromotionSelection($validatedData, $request->user());
+            $carListingData = array_merge($carListingData, $promotionData);
+
+            // Create the car listing in local database
+            $carListing = CarListing::create($carListingData);
+
+            // Consume slot if user is free tier (no active subscription)
+            $this->subscriptionService->consumeSlot($request->user());
+
+            // Handle image uploads if provided
+            if ($request->hasFile('images')) {
+                $this->handleImageUploads($carListing, $request->file('images'));
+            }
+
+            // Handle inspection data and file if provided
+            if ($this->hasInspectionData($validatedData) || $request->hasFile('inspection_file')) {
+                $this->handleInspectionFormData($carListing, $validatedData, $request);
+            }
+
+            // Prepare data for Odoo API
+            $odooData = $this->prepareOdooData($carListing, $validatedData);
+
+            // Send to Odoo API
+            $odooResponse = $this->sendToOdoo($odooData);
+
+            if ($odooResponse) {
+                $odooId = $this->extractOdooListingId($odooResponse);
+                if ($odooId) {
+                    $carListing->update(['odoo_id' => $odooId]);
+                    Log::info('Saved Odoo ID to listing', [
+                        'listing_id' => $carListing->id,
+                        'odoo_id' => $odooId
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            // Get subscription info for response
+            $subscriptionInfo = $this->subscriptionService->canCreateListing($request->user());
+
+            // Load all necessary relationships for comprehensive response
+            $carListing->load([
+                'brand', 'carModel', 'bodyType', 'location', 'studio',
+                'media', 'badges', 'carCondition', 'fuelType', 'transmission',
+                'exteriorColor', 'driveType', 'cylinder', 'user', 'mileageType',
+                'features', 'specifications', 'listingPromotion'
+            ]);
+
+            // Prepare subscription info response
+            $subscriptionResponse = [
+                'remaining_listings' => $subscriptionInfo['remaining_listings'] ?? null,
+                'max_listings' => $subscriptionInfo['max_listings'] ?? null,
+                'current_listings' => $subscriptionInfo['current_listings'] ?? 0,
+                'plan_name' => $subscriptionInfo['plan_name'] ?? 'Free'
+            ];
+
+            // Add slots info for free users
+            if (isset($subscriptionInfo['slots'])) {
+                $subscriptionResponse['slots'] = $subscriptionInfo['slots'];
+            }
+
+            return $this->createdResponse([
+                'car_listing' => new CarListingResource($carListing),
+                'status' => 'pending',
+                'message' => 'Car listing created successfully and is pending approval from our team.',
+                'subscription_info' => $subscriptionResponse,
+                'odoo_response' => $odooResponse
+            ], 'Car listing created successfully and is pending approval');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Car listing creation failed: ' . $e->getMessage());
+            
+            return $this->errorResponse(
+                'Failed to create car listing: ' . $e->getMessage(),
+                500
+            );
+        }
+    }
+
+    /**
+     * Map form data to car listing database structure
+     */
+    private function mapFormDataToCarListingData(array $data): array
+    {
+        return [
+            'vin' => $data['vin'] ?? null,
+            'car_brand_id' => $data['brand_id'],
+            'car_model_id' => $data['model_id'],
+            'condition_type' => $data['condition'],
+            'year' => $data['year'],
+            'gcc_import' => $data['gcc_import'] ?? null,
+            'car_body_type_id' => $data['body_type_id'],
+            'engine_size' => $data['engine_size'] ?? null,
+            'fuel_type_id' => $data['fuel_type_id'] ?? null,
+            'cylinder_id' => $data['cylinder_id'] ?? null,
+            'transmission_id' => $data['transmission_id'] ?? null,
+            'seating_capacity' => $data['seating_capacity'] ?? null,
+            'exterior_color_id' => $data['exterior_color_id'] ?? null,
+            'has_warranty' => $data['warranty'] === 'yes',
+            'drive_type_id' => $data['drive_type_id'] ?? null,
+            'mileage_type_id' => $data['mileage_type_id'] ?? null,
+            'mileage' => $data['mileage'],
+            'plate_status' => $data['plate_status'] ?? null,
+            'price' => $data['price'],
+            'price_currency' => $data['price_currency'],
+            'title' => $data['title'],
+            'description' => $data['description'] ?? null,
+            'user_id' => $data['user_id'],
+            'status' => 'pending',
+        ];
+    }
+
+    /**
+     * Handle image uploads from form data to AWS S3
+     */
+    private function handleImageUploads(CarListing $carListing, array $images): void
+    {
+        foreach ($images as $index => $image) {
+            // Upload to AWS S3
+            $path = $image->store('car-listings', 's3');
+            
+            // Get the full S3 URL
+            $url = Storage::disk('s3')->url($path);
+            
+            Media::create([
+                'car_listing_id' => $carListing->id,
+                'file_path' => $path,
+                'url' => $url,
+                'file_type' => $image->getMimeType(),
+                'file_size' => $image->getSize(),
+                'is_primary' => $index === 0, // First image is primary
+            ]);
+        }
+    }
+
+    /**
+     * Handle inspection data from form data
+     */
+    private function handleInspectionFormData(CarListing $carListing, array $data, $request): void
+    {
+        $inspectionData = [
+            'car_listing_id' => $carListing->id,
+            'right_side' => $data['inspection_right_side'] ?? false,
+            'left_side' => $data['inspection_left_side'] ?? false,
+            'roof' => $data['inspection_roof'] ?? false,
+            'front' => $data['inspection_front'] ?? false,
+            'back' => $data['inspection_back'] ?? false,
+        ];
+
+        // Handle inspection file upload if provided
+        if ($request->hasFile('inspection_file')) {
+            $inspectionFile = $this->handleInspectionFileUploadForm($request->file('inspection_file'));
+            if ($inspectionFile) {
+                $inspectionData = array_merge($inspectionData, $inspectionFile);
+            }
+        }
+
+        CarInspection::create($inspectionData);
+    }
+
+    /**
+     * Handle inspection file upload from form data to AWS S3
+     */
+    private function handleInspectionFileUploadForm($file): ?array
+    {
+        try {
+            // Upload to AWS S3
+            $path = $file->store('car-inspections', 's3');
+            
+            // Get the full S3 URL
+            $url = Storage::disk('s3')->url($path);
+            
+            $document = Document::create([
+                'file_path' => $path,
+                'url' => $url,
+                'file_name' => $file->getClientOriginalName(),
+                'file_type' => $file->getMimeType(),
+                'file_size' => $file->getSize(),
+                'document_type' => 'inspection_report',
+            ]);
+
+            return [
+                'inspection_document_id' => $document->id,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Failed to upload inspection file to S3: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Check if inspection data is provided
+     */
+    private function hasInspectionData(array $data): bool
+    {
+        return isset($data['inspection_right_side']) ||
+               isset($data['inspection_left_side']) ||
+               isset($data['inspection_roof']) ||
+               isset($data['inspection_front']) ||
+               isset($data['inspection_back']);
     }
 }
