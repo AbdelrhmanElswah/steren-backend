@@ -137,6 +137,19 @@ class CarListingController extends Controller
                 'last_page' => $listings->lastPage(),
             ];
 
+            // If brand_id is specified and no listings found, still return brand info
+            if ($request->filled('brand_id') && $listings->total() == 0) {
+                $brand = \App\Models\CarBrand::with('media')->find($request->brand_id);
+                if ($brand) {
+                    $data['brand_info'] = [
+                        'id' => $brand->id,
+                        'name' => $brand->name,
+                        'odoo_id' => $brand->odoo_id,
+                        'logo' => $brand->logo,
+                    ];
+                }
+            }
+
             return $this->successResponse($data, 'Car listings retrieved successfully');
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to retrieve car listings: ' . $e->getMessage(), 500);
