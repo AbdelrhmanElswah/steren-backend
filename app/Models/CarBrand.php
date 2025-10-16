@@ -19,7 +19,7 @@ class CarBrand extends Model
         if ($this->relationLoaded('media') && $this->media) {
             return [
                 'id' => $this->media->id,
-                'url' => $this->media->url ?? $this->media->media_temporary_url,
+                'url' => $this->media->media_temporary_url ?? $this->media->url,
                 'file_path' => $this->media->file_path ?? $this->media->path_file_name,
                 'file_type' => $this->media->file_type,
                 'file_size' => $this->media->file_size,
