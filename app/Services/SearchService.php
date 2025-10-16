@@ -125,7 +125,7 @@ class SearchService
                 'brand',
                 'carModel',
                 'media' => function ($query) {
-                    $query->where('type', 'image')->orderBy('sort_order')->limit(1);
+                    $query->where('file_type', 'like', 'image/%')->limit(1);
                 }
             ])
             ->where('is_sponsored', true)
@@ -197,7 +197,7 @@ class SearchService
                 'bodyType',
                 'location',
                 'media' => function ($query) {
-                    $query->where('type', 'image')->orderBy('sort_order');
+                    $query->where('file_type', 'like', 'image/%');
                 },
                 'fuelType',
                 'transmission',

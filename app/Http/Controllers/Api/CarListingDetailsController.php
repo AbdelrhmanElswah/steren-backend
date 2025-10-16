@@ -389,13 +389,19 @@ class CarListingDetailsController extends Controller
             $primaryMedia = $listing->media->where('is_primary', true)->first();
             
             // Get all images
-            $images = $listing->media->where('media_type', 'image');
+            $images = $listing->media->filter(function ($media) {
+                return str_starts_with($media->file_type, 'image/');
+            });
             
             // Get all videos
-            $videos = $listing->media->where('media_type', 'video');
+            $videos = $listing->media->filter(function ($media) {
+                return str_starts_with($media->file_type, 'video/');
+            });
             
             // Get all documents
-            $documents = $listing->media->where('media_type', 'document');
+            $documents = $listing->media->filter(function ($media) {
+                return str_starts_with($media->file_type, 'application/');
+            });
 
             // Group features by category
             $featuresByCategory = $listing->features->groupBy('category')->map(function ($features) {

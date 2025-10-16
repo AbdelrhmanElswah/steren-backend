@@ -67,7 +67,7 @@ class SimilarCarsService
                 'driveType',
                 'cylinder',
                 'media' => function ($query) {
-                    $query->where('type', 'image')->orderBy('sort_order');
+                    $query->where('file_type', 'like', 'image/%');
                 }
             ])
             ->where('car_brand_id', $brandId)
@@ -112,7 +112,7 @@ class SimilarCarsService
                 'driveType',
                 'cylinder',
                 'media' => function ($query) {
-                    $query->where('type', 'image')->orderBy('sort_order');
+                    $query->where('file_type', 'like', 'image/%');
                 }
             ])
             ->whereBetween('price', [$minPrice, $maxPrice])
@@ -155,7 +155,7 @@ class SimilarCarsService
                 'driveType',
                 'cylinder',
                 'media' => function ($query) {
-                    $query->where('type', 'image')->orderBy('sort_order');
+                    $query->where('file_type', 'like', 'image/%');
                 }
             ])
             ->whereBetween('year', [$minYear, $maxYear])
@@ -195,7 +195,7 @@ class SimilarCarsService
                 'driveType',
                 'cylinder',
                 'media' => function ($query) {
-                    $query->where('type', 'image')->orderBy('sort_order');
+                    $query->where('file_type', 'like', 'image/%');
                 }
             ])
             ->where('car_body_type_id', $bodyTypeId)
@@ -231,7 +231,7 @@ class SimilarCarsService
                 'driveType',
                 'cylinder',
                 'media' => function ($query) {
-                    $query->where('type', 'image')->orderBy('sort_order');
+                    $query->where('file_type', 'like', 'image/%');
                 }
             ]);
 
@@ -307,7 +307,7 @@ class SimilarCarsService
             'driveType',
             'cylinder',
             'media' => function ($query) {
-                $query->where('type', 'image')->orderBy('sort_order');
+                $query->where('file_type', 'like', 'image/%')->orderBy('sort_order');
             }
         ])
         ->where('status', 'active')
