@@ -12,6 +12,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Log;
 
 class CarListingController extends Controller
 {
@@ -152,33 +153,49 @@ class CarListingController extends Controller
             ])->findOrFail($id);
 
             // Group features by category
-            $featuresByCategory = $listing->features->groupBy('category')->map(function ($features) {
-                return $features->map(function ($feature) {
-                    return [
-                        'id' => $feature->id,
-                        'name' => $feature->name,
-                        'description' => $feature->description,
-                        'icon' => $feature->icon,
-                        'is_included' => $feature->pivot->is_included,
-                        'notes' => $feature->pivot->notes,
-                    ];
-                });
-            });
+            $featuresByCategory = collect();
+            try {
+                if ($listing->relationLoaded('features') && $listing->features instanceof \Illuminate\Database\Eloquent\Collection && $listing->features->isNotEmpty()) {
+                    $featuresByCategory = $listing->features->groupBy('category')->map(function ($features) {
+                        return $features->map(function ($feature) {
+                            return [
+                                'id' => $feature->id,
+                                'name' => $feature->name,
+                                'description' => $feature->description,
+                                'icon' => $feature->icon,
+                                'is_included' => $feature->pivot->is_included ?? false,
+                                'notes' => $feature->pivot->notes ?? null,
+                            ];
+                        });
+                    });
+                }
+            } catch (\Exception $e) {
+                // Features relationship not properly loaded or is not a collection
+                Log::warning('Features relationship issue for listing ' . $listing->id . ': ' . $e->getMessage());
+            }
 
             // Group specifications by type
-            $specificationsByType = $listing->specifications->groupBy('specification_type')->map(function ($specs) {
-                return $specs->map(function ($spec) {
-                    return [
-                        'id' => $spec->id,
-                        'name' => $spec->name,
-                        'value' => $spec->value,
-                        'unit' => $spec->unit,
-                        'formatted_value' => $spec->formatted_value,
-                        'description' => $spec->description,
-                        'is_highlighted' => $spec->is_highlighted,
-                    ];
-                });
-            });
+            $specificationsByType = collect();
+            try {
+                if ($listing->relationLoaded('specifications') && $listing->specifications instanceof \Illuminate\Database\Eloquent\Collection && $listing->specifications->isNotEmpty()) {
+                    $specificationsByType = $listing->specifications->groupBy('specification_type')->map(function ($specs) {
+                        return $specs->map(function ($spec) {
+                            return [
+                                'id' => $spec->id,
+                                'name' => $spec->name,
+                                'value' => $spec->value,
+                                'unit' => $spec->unit,
+                                'formatted_value' => $spec->formatted_value,
+                                'description' => $spec->description,
+                                'is_highlighted' => $spec->is_highlighted,
+                            ];
+                        });
+                    });
+                }
+            } catch (\Exception $e) {
+                // Specifications relationship not properly loaded or is not a collection
+                Log::warning('Specifications relationship issue for listing ' . $listing->id . ': ' . $e->getMessage());
+            }
 
             $data = [
                 'listing' => $listing,

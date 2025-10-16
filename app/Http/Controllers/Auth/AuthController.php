@@ -49,6 +49,8 @@ class AuthController extends Controller
         $validated = $request->validated();
         $result = $this->authService->login($validated['identifier'], $validated['password']);
 
+        $result['user']->load(['latestDealerApplication.status', 'latestDealerApplication.subscriptionPlan']);
+
         return $this->successResponse([
             'user' => new UserResource($result['user']),
             'token' => $result['token'],
@@ -74,6 +76,9 @@ class AuthController extends Controller
         
         $result = $this->authService->verifyOtp($user, $validated['code'], $clientData);
 
+        // Load dealer application data
+        $result['user']->load(['latestDealerApplication.status', 'latestDealerApplication.subscriptionPlan']);
+
         return $this->successResponse([
             'user' => new UserResource($result['user']),
             'token' => $result['token'],
@@ -83,7 +88,10 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return $this->resourceResponse(new UserResource($request->user()));
+        $user = $request->user();
+        $user->load(['latestDealerApplication.status', 'latestDealerApplication.subscriptionPlan']);
+        
+        return $this->resourceResponse(new UserResource($user));
     }
 
     public function logout(Request $request)
