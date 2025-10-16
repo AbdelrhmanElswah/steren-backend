@@ -25,7 +25,7 @@ class CarListingController extends Controller
     {
         try {
             $query = CarListing::with([
-                'brand', 'carModel', 'bodyType', 'location', 'studio',
+                'brand.media', 'carModel', 'bodyType', 'location', 'studio',
                 'media', 'badges', 'carCondition', 'fuelType', 'transmission',
                 'exteriorColor', 'driveType', 'cylinder'
             ]);
@@ -46,6 +46,10 @@ class CarListingController extends Controller
 
             if ($request->filled('condition')) {
                 $query->where('condition_type', $request->condition);
+            }
+
+            if ($request->filled('brand_id')) {
+                $query->where('car_brand_id', $request->brand_id);
             }
 
             if ($request->filled('year_from') && $request->filled('year_to')) {

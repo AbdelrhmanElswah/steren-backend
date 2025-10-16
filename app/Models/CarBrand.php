@@ -12,6 +12,16 @@ class CarBrand extends Model
 
     protected $fillable = ['odoo_id', 'name'];
 
+    protected $appends = ['logo_url'];
+
+    public function getLogoUrlAttribute()
+    {
+        if ($this->media) {
+            return $this->media->url ?? null;
+        }
+        return null;
+    }
+
     public function userPreferences()
     {
         return $this->hasMany(UserPreference::class);
