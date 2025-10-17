@@ -40,55 +40,121 @@ class CarouselService extends OdooCrudService
         return $carousel;
     }
 
-    private function handleCarouselImage(Carousel $carousel, string $base64Image): void
+    /**
+     * Handle carousel image - accepts both file uploads and base64 strings
+     * 
+     * @param Carousel $carousel
+     * @param mixed $image Can be either an UploadedFile or a base64 string
+     * @return void
+     */
+    private function handleCarouselImage(Carousel $carousel, $image): void
     {
-        // Clean the base64 string - remove any URL encoding and whitespace
-        $cleanBase64 = trim($base64Image);
-        
-        // If it starts with +, it's URL-encoded base64, decode it first
-        if (str_starts_with($cleanBase64, '+')) {
-            $cleanBase64 = urldecode($cleanBase64);
+        // Check if it's a file upload
+        if ($image instanceof \Illuminate\Http\UploadedFile) {
+            $this->handleImageFromFile($carousel, $image);
+        } 
+        // Otherwise treat as base64 string
+        elseif (is_string($image)) {
+            $this->handleImageFromBase64($carousel, $image);
+        } else {
+            throw new \RuntimeException('Invalid image data type');
         }
+    }
+
+    /**
+     * Handle image from uploaded file
+     * 
+     * @param Carousel $carousel
+     * @param \Illuminate\Http\UploadedFile $file
+     * @return void
+     */
+    private function handleImageFromFile(Carousel $carousel, \Illuminate\Http\UploadedFile $file): void
+    {
+        $ext = $file->getClientOriginalExtension();
+        $mime = $file->getMimeType();
         
-        // Remove any data URL prefix if present (data:image/png;base64,)
-        if (str_contains($cleanBase64, ',')) {
-            $cleanBase64 = substr($cleanBase64, strpos($cleanBase64, ',') + 1);
+        // Fallback to detecting from mime type if extension is not available
+        if (empty($ext)) {
+            $ext = match($mime) {
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'image/gif' => 'gif',
+                'image/bmp' => 'bmp',
+                'image/webp' => 'webp',
+                default => 'png'
+            };
         }
 
-        // Decode base64 image
-        $imageData = base64_decode($cleanBase64);
-        
-        if ($imageData === false) {
-            throw new \Exception('Failed to decode base64 image');
-        }
-
-        // Detect image type from the decoded data
-        $imageType = 'png'; // default
-        if (str_starts_with($imageData, "\xFF\xD8\xFF")) {
-            $imageType = 'jpg';
-        } elseif (str_starts_with($imageData, "\x89PNG")) {
-            $imageType = 'png';
-        } elseif (str_starts_with($imageData, "GIF8")) {
-            $imageType = 'gif';
-        }
-
-        // Generate filename with correct extension
-        $filename = 'carousel_' . $carousel->id . '_' . time() . '.' . $imageType;
+        $filename = 'carousel_' . $carousel->id . '_' . Str::random(10) . '.' . $ext;
         $path = 'carousels/' . $filename;
 
-        // Store image
-        Storage::disk('public')->put($path, $imageData);
+        // Store the file directly
+        Storage::disk('s3')->put($path, file_get_contents($file->getRealPath()));
 
-        // Create media record
         Media::create([
             'modelable_type' => Carousel::class,
             'modelable_id' => $carousel->id,
-            'file_path' => $path,
-            'file_name' => $filename,
-            'file_type' => 'image/' . $imageType,
-            'file_size' => strlen($imageData),
+            'media' => $path,
+            'path_file_name' => $path,
+            'file_type' => $mime,
             'info' => 'main',
-            'alt_text' => $carousel->title,
+        ]);
+    }
+
+    /**
+     * Handle image from base64 string
+     * 
+     * @param Carousel $carousel
+     * @param string $base64Image
+     * @return void
+     */
+    private function handleImageFromBase64(Carousel $carousel, string $base64Image): void
+    {
+        $clean = trim($base64Image);
+        if (str_starts_with($clean, '+')) {
+            $clean = urldecode($clean);
+        }
+        if (str_contains($clean, ',')) {
+            $clean = substr($clean, strpos($clean, ',') + 1);
+        }
+        $clean = str_replace(' ', '+', $clean);
+
+        $binary = base64_decode($clean);
+        if ($binary === false) {
+            throw new \RuntimeException('Invalid base64 image data');
+        }
+
+        $ext = 'png';
+        $mime = 'image/png';
+        if (str_starts_with($binary, "\xFF\xD8\xFF")) {
+            $ext = 'jpg';
+            $mime = 'image/jpeg';
+        } elseif (str_starts_with($binary, "\x89PNG")) {
+            $ext = 'png';
+            $mime = 'image/png';
+        } elseif (str_starts_with($binary, 'GIF8')) {
+            $ext = 'gif';
+            $mime = 'image/gif';
+        } elseif (str_starts_with($binary, "BM")) {
+            $ext = 'bmp';
+            $mime = 'image/bmp';
+        } elseif (str_starts_with($binary, 'RIFF')) {
+            $ext = 'webp';
+            $mime = 'image/webp';
+        }
+
+        $filename = 'carousel_' . $carousel->id . '_' . Str::random(10) . '.' . $ext;
+        $path = 'carousels/' . $filename;
+
+        Storage::disk('s3')->put($path, $binary);
+
+        Media::create([
+            'modelable_type' => Carousel::class,
+            'modelable_id' => $carousel->id,
+            'media' => $path,
+            'path_file_name' => $path,
+            'file_type' => $mime,
+            'info' => 'main',
         ]);
     }
 }

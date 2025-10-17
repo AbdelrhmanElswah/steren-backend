@@ -85,7 +85,6 @@ class CarouselController extends Controller
     {
         try {
             $carousel = $this->carouselService->restoreByOdooId($odooId);
-            $carousel->load('media');
 
             return $this->successResponse(
                 new CarouselResource($carousel),
