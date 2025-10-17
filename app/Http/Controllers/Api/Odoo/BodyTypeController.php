@@ -68,8 +68,6 @@ class BodyTypeController extends Controller
             $this->bodyTypeService->deleteByOdooId($odooId);
 
             return $this->noContentResponse('Body type deleted successfully');
-        } catch (\App\Exceptions\OdooModelNotFoundException $e) {
-            return $this->errorResponse('Body type with Odoo ID "' . $odooId . '" not found', 404);
         } catch (\Exception $e) {
             Log::error('BodyTypeController: Error deleting body type', [
                 'message' => $e->getMessage(),
@@ -90,8 +88,6 @@ class BodyTypeController extends Controller
                 new BodyTypeResource($bodyType),
                 'Body type restored successfully'
             );
-        } catch (\App\Exceptions\OdooModelNotFoundException $e) {
-            return $this->errorResponse('Body type with Odoo ID "' . $odooId . '" not found', 404);
         } catch (\Exception $e) {
             Log::error('BodyTypeController: Error restoring body type', [
                 'message' => $e->getMessage(),
