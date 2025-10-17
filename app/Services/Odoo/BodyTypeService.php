@@ -19,15 +19,7 @@ class BodyTypeService extends OdooCrudService
         $bodyType = parent::create($data);
 
         if (!empty($data['image'])) {
-            try {
-                $this->handleImage($bodyType, $data['image']);
-            } catch (\Exception $e) {
-                // Log the error but don't fail the creation
-                \Log::warning('BodyTypeService: Failed to handle image', [
-                    'bodytype_id' => $bodyType->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
+            $this->handleImage($bodyType, $data['image']);
         }
 
         return $bodyType;
@@ -41,15 +33,7 @@ class BodyTypeService extends OdooCrudService
             $bodyType->media()?->delete();
 
             if (!empty($data['image'])) {
-                try {
-                    $this->handleImage($bodyType, $data['image']);
-                } catch (\Exception $e) {
-                    // Log the error but don't fail the update
-                    \Log::warning('BodyTypeService: Failed to handle image update', [
-                        'bodytype_id' => $bodyType->id,
-                        'error' => $e->getMessage()
-                    ]);
-                }
+                $this->handleImage($bodyType, $data['image']);
             }
         }
 
@@ -104,28 +88,8 @@ class BodyTypeService extends OdooCrudService
         $filename = 'bodytype_' . $bodyType->id . '_' . Str::random(10) . '.' . $ext;
         $path = 'bodytypes/' . $filename;
 
-        // Check if S3 is available, otherwise use local storage
-        $s3Config = config('filesystems.disks.s3');
-        if ($s3Config && !empty($s3Config['key']) && !empty($s3Config['secret'])) {
-            try {
-                Storage::disk('s3')->put($path, file_get_contents($file->getRealPath()));
-            } catch (\Exception $e) {
-                // Fallback to local storage if S3 fails
-                Storage::disk('public')->put($path, file_get_contents($file->getRealPath()));
-                \Log::info('BodyTypeService: S3 failed, using local storage', [
-                    'bodytype_id' => $bodyType->id,
-                    'path' => $path,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        } else {
-            // Use local storage directly if S3 is not configured
-            Storage::disk('public')->put($path, file_get_contents($file->getRealPath()));
-            \Log::info('BodyTypeService: S3 not configured, using local storage', [
-                'bodytype_id' => $bodyType->id,
-                'path' => $path
-            ]);
-        }
+        // Store the file directly
+        Storage::disk('s3')->put($path, file_get_contents($file->getRealPath()));
 
         Media::create([
             'modelable_type' => BodyType::class,
@@ -182,28 +146,7 @@ class BodyTypeService extends OdooCrudService
         $filename = 'bodytype_' . $bodyType->id . '_' . Str::random(10) . '.' . $ext;
         $path = 'bodytypes/' . $filename;
 
-        // Check if S3 is available, otherwise use local storage
-        $s3Config = config('filesystems.disks.s3');
-        if ($s3Config && !empty($s3Config['key']) && !empty($s3Config['secret'])) {
-            try {
-                Storage::disk('s3')->put($path, $binary);
-            } catch (\Exception $e) {
-                // Fallback to local storage if S3 fails
-                Storage::disk('public')->put($path, $binary);
-                \Log::info('BodyTypeService: S3 failed, using local storage', [
-                    'bodytype_id' => $bodyType->id,
-                    'path' => $path,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        } else {
-            // Use local storage directly if S3 is not configured
-            Storage::disk('public')->put($path, $binary);
-            \Log::info('BodyTypeService: S3 not configured, using local storage', [
-                'bodytype_id' => $bodyType->id,
-                'path' => $path
-            ]);
-        }
+        Storage::disk('s3')->put($path, $binary);
 
         Media::create([
             'modelable_type' => BodyType::class,

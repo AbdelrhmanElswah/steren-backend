@@ -19,15 +19,7 @@ class CarouselService extends OdooCrudService
         $carousel = parent::create($data);
 
         if (!empty($data['img'])) {
-            try {
-                $this->handleCarouselImage($carousel, $data['img']);
-            } catch (\Exception $e) {
-                // Log the error but don't fail the creation
-                \Log::warning('CarouselService: Failed to handle image', [
-                    'carousel_id' => $carousel->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
+            $this->handleCarouselImage($carousel, $data['img']);
         }
 
         return $carousel;
@@ -41,15 +33,7 @@ class CarouselService extends OdooCrudService
             $carousel->medias()?->delete();
 
             if (!empty($data['img'])) {
-                try {
-                    $this->handleCarouselImage($carousel, $data['img']);
-                } catch (\Exception $e) {
-                    // Log the error but don't fail the update
-                    \Log::warning('CarouselService: Failed to handle image update', [
-                        'carousel_id' => $carousel->id,
-                        'error' => $e->getMessage()
-                    ]);
-                }
+                $this->handleCarouselImage($carousel, $data['img']);
             }
         }
 
@@ -104,28 +88,8 @@ class CarouselService extends OdooCrudService
         $filename = 'carousel_' . $carousel->id . '_' . Str::random(10) . '.' . $ext;
         $path = 'carousels/' . $filename;
 
-        // Check if S3 is available, otherwise use local storage
-        $s3Config = config('filesystems.disks.s3');
-        if ($s3Config && !empty($s3Config['key']) && !empty($s3Config['secret'])) {
-            try {
-                Storage::disk('s3')->put($path, file_get_contents($file->getRealPath()));
-            } catch (\Exception $e) {
-                // Fallback to local storage if S3 fails
-                Storage::disk('public')->put($path, file_get_contents($file->getRealPath()));
-                \Log::info('CarouselService: S3 failed, using local storage', [
-                    'carousel_id' => $carousel->id,
-                    'path' => $path,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        } else {
-            // Use local storage directly if S3 is not configured
-            Storage::disk('public')->put($path, file_get_contents($file->getRealPath()));
-            \Log::info('CarouselService: S3 not configured, using local storage', [
-                'carousel_id' => $carousel->id,
-                'path' => $path
-            ]);
-        }
+        // Store the file directly
+        Storage::disk('s3')->put($path, file_get_contents($file->getRealPath()));
 
         Media::create([
             'modelable_type' => Carousel::class,
@@ -182,28 +146,7 @@ class CarouselService extends OdooCrudService
         $filename = 'carousel_' . $carousel->id . '_' . Str::random(10) . '.' . $ext;
         $path = 'carousels/' . $filename;
 
-        // Check if S3 is available, otherwise use local storage
-        $s3Config = config('filesystems.disks.s3');
-        if ($s3Config && !empty($s3Config['key']) && !empty($s3Config['secret'])) {
-            try {
-                Storage::disk('s3')->put($path, $binary);
-            } catch (\Exception $e) {
-                // Fallback to local storage if S3 fails
-                Storage::disk('public')->put($path, $binary);
-                \Log::info('CarouselService: S3 failed, using local storage', [
-                    'carousel_id' => $carousel->id,
-                    'path' => $path,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        } else {
-            // Use local storage directly if S3 is not configured
-            Storage::disk('public')->put($path, $binary);
-            \Log::info('CarouselService: S3 not configured, using local storage', [
-                'carousel_id' => $carousel->id,
-                'path' => $path
-            ]);
-        }
+        Storage::disk('s3')->put($path, $binary);
 
         Media::create([
             'modelable_type' => Carousel::class,
