@@ -29,7 +29,7 @@ class CarouselResource extends JsonResource
             'sort_order' => $this->sort_order,
             'image_details' => $this->when($this->media, [
                 'id' => $this->media?->id,
-                'url' => $this->media ? $this->media->media_link : null,
+                'url' => $this->media?->media_link,
                 'alt_text' => $this->media?->alt_text,
                 'file_name' => $this->media?->file_name,
             ]),
