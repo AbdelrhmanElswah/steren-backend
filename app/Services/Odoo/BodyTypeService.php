@@ -40,6 +40,16 @@ class BodyTypeService extends OdooCrudService
         return $bodyType;
     }
 
+    public function deleteByOdooId(string $odooId): bool
+    {
+        return parent::deleteByOdooId($odooId);
+    }
+
+    public function restoreByOdooId(string $odooId): BodyType
+    {
+        return parent::restoreByOdooId($odooId);
+    }
+
     /**
      * Handle body type image - accepts both file uploads and base64 strings
      * 

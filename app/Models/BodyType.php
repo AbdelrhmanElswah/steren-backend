@@ -4,12 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class BodyType extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
-    protected $fillable = ['name', 'odoo_id'];
+    protected $fillable = [
+        'odoo_id',
+        'name',
+        'description',
+        'is_active'
+    ];
 
     public function userPreferences()
     {
