@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('carousels', function (Blueprint $table) {
-            $table->integer('priority')->default(0)->after('sort_order');
+            if (!Schema::hasColumn('carousels', 'priority')) {
+                $table->integer('priority')->default(0)->after('sort_order');
+            }
         });
     }
 

@@ -12,9 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('car_brands', function (Blueprint $table) {
-            $table->string('odoo_id')->nullable()->unique()->after('name');
-            $table->text('description')->nullable()->after('odoo_id');
-            $table->boolean('is_active')->default(true)->after('description');
+            if (!Schema::hasColumn('car_brands', 'odoo_id')) {
+                $table->string('odoo_id')->nullable()->unique()->after('name');
+            }
+            if (!Schema::hasColumn('car_brands', 'description')) {
+                $table->text('description')->nullable()->after('odoo_id');
+            }
+            if (!Schema::hasColumn('car_brands', 'is_active')) {
+                $table->boolean('is_active')->default(true)->after('description');
+            }
         });
     }
 
