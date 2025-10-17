@@ -16,7 +16,7 @@ class StoreBodyTypeRequest extends FormRequest
         return [
             'odoo_id' => 'nullable|string|max:255|unique:body_types,odoo_id',
             'name' => 'required|string|max:255',
-            'image' => 'nullable|string',
+            'media' => 'nullable|string',
         ];
     }
 
@@ -33,7 +33,7 @@ class StoreBodyTypeRequest extends FormRequest
         return [
             'odoo_id' => 'odoo id',
             'name' => 'name',
-            'image' => 'image',
+            'media' => 'media',
         ];
     }
 }

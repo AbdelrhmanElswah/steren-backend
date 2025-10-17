@@ -18,8 +18,8 @@ class BodyTypeService extends OdooCrudService
     {
         $bodyType = parent::create($data);
 
-        if (!empty($data['image'])) {
-            $this->handleImage($bodyType, $data['image']);
+        if (!empty($data['media'])) {
+            $this->handleImage($bodyType, $data['media']);
         }
 
         return $bodyType;
@@ -29,11 +29,11 @@ class BodyTypeService extends OdooCrudService
     {
         $bodyType = parent::updateByOdooId($odooId, $data);
 
-        if (array_key_exists('image', $data)) {
+        if (array_key_exists('media', $data)) {
             $bodyType->media()?->delete();
 
-            if (!empty($data['image'])) {
-                $this->handleImage($bodyType, $data['image']);
+            if (!empty($data['media'])) {
+                $this->handleImage($bodyType, $data['media']);
             }
         }
 
