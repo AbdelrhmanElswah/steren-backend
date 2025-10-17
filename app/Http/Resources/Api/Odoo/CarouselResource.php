@@ -21,7 +21,9 @@ class CarouselResource extends JsonResource
             'button_text' => $this->button_text,
             'start_date' => $this->start_date?->format('Y-m-d'),
             'end_date' => $this->end_date?->format('Y-m-d'),
-            'img' => $this->when($this->media, $this->media?->media_link), // Return image URL as 'img'
+            'media' => $this->when($this->media, [
+                'media_link' => $this->media?->media_link
+            ]), // Return media object like Brand API
             'formatted_start_date' => $this->formatted_start_date,
             'formatted_end_date' => $this->formatted_end_date,
             'is_active' => $this->is_active,

@@ -22,7 +22,7 @@ class UpdateCarouselRequest extends FormRequest
             'end_date' => ['sometimes', 'date', 'after_or_equal:start_date'],
             'is_active' => ['boolean'],
             'sort_order' => ['integer', 'min:0'],
-            'img' => ['nullable', 'string'], // Base64 image
+            'media' => ['nullable', 'string'], // Base64 image
         ];
     }
 

@@ -18,8 +18,8 @@ class CarouselService extends OdooCrudService
     {
         $carousel = parent::create($data);
 
-        if (!empty($data['img'])) {
-            $this->handleCarouselImage($carousel, $data['img']);
+        if (!empty($data['media'])) {
+            $this->handleCarouselImage($carousel, $data['media']);
         }
 
         return $carousel;
@@ -29,11 +29,11 @@ class CarouselService extends OdooCrudService
     {
         $carousel = parent::updateByOdooId($odooId, $data);
 
-        if (array_key_exists('img', $data)) {
+        if (array_key_exists('media', $data)) {
             $carousel->medias()?->delete();
 
-            if (!empty($data['img'])) {
-                $this->handleCarouselImage($carousel, $data['img']);
+            if (!empty($data['media'])) {
+                $this->handleCarouselImage($carousel, $data['media']);
             }
         }
 
