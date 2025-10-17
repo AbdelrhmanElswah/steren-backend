@@ -32,6 +32,7 @@ class User extends Authenticatable
         'notification_preferences',
         'last_login_at',
         'last_activity_at',
+        'is_pending',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -40,6 +41,7 @@ class User extends Authenticatable
         'is_verified' => 'boolean',
         'is_dealer' => 'boolean',
         'is_suspended' => 'boolean',
+        'is_pending' => 'boolean',
         'suspended_at' => 'datetime',
         'email_verified_at' => 'datetime',
         'phone_verified_at' => 'datetime',

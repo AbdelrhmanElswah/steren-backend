@@ -149,6 +149,7 @@ Route::prefix('auth')->group(function () {
         Route::get('/me', [App\Http\Controllers\Auth\AuthController::class, 'me']);
         Route::post('/logout', [App\Http\Controllers\Auth\AuthController::class, 'logout']);
         Route::post('/logout-all', [App\Http\Controllers\Auth\AuthController::class, 'logoutAll']);
+        Route::post('/complete-pending-account', [App\Http\Controllers\Auth\AuthController::class, 'completePendingAccount']);
         
         // Partner/Odoo integration routes
         Route::get('/partner/info', [App\Http\Controllers\Auth\AuthController::class, 'getPartnerInfo']);

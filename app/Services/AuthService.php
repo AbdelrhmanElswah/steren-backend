@@ -221,20 +221,10 @@ class AuthService
                 'email' => $firebaseUserInfo['email']
             ]);
             
-            $userData = [
-                'firebase_uid' => $firebaseUserInfo['firebase_uid'],
-                'email' => $firebaseUserInfo['email'] ?? $additionalData['email'] ?? null,
-                'full_name' => $firebaseUserInfo['name'] ?? $additionalData['full_name'] ?? null,
-                'phone' => $firebaseUserInfo['phone_number'] ?? $additionalData['phone'] ?? 'SOCIAL_' . $firebaseUserInfo['firebase_uid'],
-                'phone_verified_at' => now(),
-                'social_provider' => $provider,
-                'firebase_claims' => json_encode($firebaseUserInfo['firebase_claims']),
-            ];
-            
             $user = User::where('firebase_uid', $firebaseUserInfo['firebase_uid'])->first();
             
-            if (!$user && $userData['email']) {
-                $user = User::where('email', $userData['email'])->first();
+            if (!$user && $firebaseUserInfo['email']) {
+                $user = User::where('email', $firebaseUserInfo['email'])->first();
                 
                 if ($user) {
                     $user->update([
@@ -245,9 +235,47 @@ class AuthService
                 }
             }
             
+            // If user doesn't exist, create a pending account
             if (!$user) {
+                $userData = [
+                    'firebase_uid' => $firebaseUserInfo['firebase_uid'],
+                    'email' => $firebaseUserInfo['email'] ?? $additionalData['email'] ?? null,
+                    'full_name' => null, // Will be set later
+                    'phone' => null, // Will be set later
+                    'social_provider' => $provider,
+                    'firebase_claims' => json_encode($firebaseUserInfo['firebase_claims']),
+                    'is_pending' => true, // Mark as pending account
+                ];
+                
                 $user = User::create($userData);
+                
+                Log::info('Pending social account created', [
+                    'user_id' => $user->id,
+                    'firebase_uid' => $firebaseUserInfo['firebase_uid'],
+                    'email' => $userData['email']
+                ]);
+                
+                $token = $user->createToken('social-auth-pending')->plainTextToken;
+                
+                return [
+                    'user' => $user,
+                    'token' => $token,
+                    'is_pending' => true,
+                    'message' => 'Account created but requires completion. Please provide your name and phone number.',
+                    'firebase_user_info' => $firebaseUserInfo,
+                ];
             }
+            
+            // Existing user - proceed with normal flow
+            $userData = [
+                'firebase_uid' => $firebaseUserInfo['firebase_uid'],
+                'email' => $firebaseUserInfo['email'] ?? $additionalData['email'] ?? null,
+                'full_name' => $firebaseUserInfo['name'] ?? $additionalData['full_name'] ?? null,
+                'phone' => $firebaseUserInfo['phone_number'] ?? $additionalData['phone'] ?? 'SOCIAL_' . $firebaseUserInfo['firebase_uid'],
+                'phone_verified_at' => now(),
+                'social_provider' => $provider,
+                'firebase_claims' => json_encode($firebaseUserInfo['firebase_claims']),
+            ];
             
             $clientIntegration = [
                 'success' => false,
@@ -299,6 +327,7 @@ class AuthService
             return [
                 'user' => $user,
                 'token' => $token,
+                'is_pending' => false,
                 'client_integration' => $clientIntegration,
                 'firebase_user_info' => $firebaseUserInfo,
             ];
@@ -311,6 +340,82 @@ class AuthService
             ]);
             
             throw new AuthenticationException('Social authentication failed: ' . $e->getMessage());
+        }
+    }
+
+    public function completePendingAccount(int $userId, string $fullName, string $phone): array
+    {
+        try {
+            $user = User::findOrFail($userId);
+            
+            if (!$user->is_pending) {
+                throw new \Exception('Account is not pending completion');
+            }
+
+            DB::beginTransaction();
+
+            $user->update([
+                'full_name' => $fullName,
+                'phone' => $phone,
+                'is_pending' => false,
+                'phone_verified_at' => now(),
+            ]);
+
+            // Create Odoo client integration
+            $clientIntegration = [
+                'success' => false,
+                'partner_id' => null,
+                'message' => 'Client creation not attempted'
+            ];
+
+            try {
+                $clientResult = $this->clientService->createClient([
+                    'full_name' => $fullName,
+                    'phone' => $phone,
+                    'email' => $user->email
+                ]);
+                
+                $clientIntegration = [
+                    'success' => $clientResult['success'],
+                    'partner_id' => $clientResult['partner_id'],
+                    'message' => $clientResult['message']
+                ];
+                
+                $user->update(['partner_id' => $clientResult['partner_id']]);
+                
+            } catch (\Exception $e) {
+                Log::error('Client creation failed during pending account completion', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage()
+                ]);
+                
+                $clientIntegration = [
+                    'success' => false,
+                    'partner_id' => null,
+                    'message' => 'Client creation failed: ' . $e->getMessage()
+                ];
+            }
+
+            DB::commit();
+
+            Log::info('Pending account completed successfully', [
+                'user_id' => $user->id,
+                'client_integration_success' => $clientIntegration['success']
+            ]);
+
+            return [
+                'user' => $user,
+                'client_integration' => $clientIntegration,
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to complete pending account', [
+                'user_id' => $userId,
+                'error' => $e->getMessage()
+            ]);
+            
+            throw new \Exception('Failed to complete account: ' . $e->getMessage());
         }
     }
 

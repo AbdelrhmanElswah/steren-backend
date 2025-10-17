@@ -34,9 +34,20 @@ class SocialAuthController extends Controller
                 ]
             );
 
+            if (isset($result['is_pending']) && $result['is_pending']) {
+                return $this->successResponse([
+                    'user' => new UserResource($result['user']),
+                    'token' => $result['token'],
+                    'is_pending' => true,
+                    'message' => $result['message'],
+                    'firebase_user_info' => $result['firebase_user_info'],
+                ], 'Account created but requires completion');
+            }
+
             return $this->successResponse([
                 'user' => new UserResource($result['user']),
                 'token' => $result['token'],
+                'is_pending' => false,
                 'client_integration' => $result['client_integration'],
                 'firebase_user_info' => $result['firebase_user_info'],
             ], 'Social authentication successful');

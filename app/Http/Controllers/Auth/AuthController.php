@@ -106,6 +106,36 @@ class AuthController extends Controller
         return $this->successResponse(null, 'Logged out from all devices');
     }
 
+    public function completePendingAccount(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'full_name' => 'required|string|max:255',
+                'phone' => 'required|string|max:20',
+            ]);
+
+            $user = $request->user();
+            
+            if (!$user->is_pending) {
+                return $this->errorResponse('Account is not pending completion', 400);
+            }
+
+            $result = $this->authService->completePendingAccount(
+                $user->id,
+                $validated['full_name'],
+                $validated['phone']
+            );
+
+            return $this->successResponse([
+                'user' => new UserResource($result['user']),
+                'client_integration' => $result['client_integration'],
+            ], 'Account completed successfully');
+
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to complete account: ' . $e->getMessage(), 500);
+        }
+    }
+
     public function startPasswordReset(StartPasswordResetRequest $request)
     {
         $result = $this->authService->startPasswordReset($request->validated()['phone']);
