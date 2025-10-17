@@ -13,6 +13,18 @@ class CarModelService extends OdooCrudService
         parent::__construct(new CarModel());
     }
 
+    public function create(array $data): CarModel
+    {
+        $model = parent::create($data);
+        return $model;
+    }
+
+    public function updateByOdooId(string $odooId, array $data): CarModel
+    {
+        $model = parent::updateByOdooId($odooId, $data);
+        return $model;
+    }
+
     public function getBrandsWithModels(array $filters = []): Collection
     {
         return CarBrand::with(['carModels' => function ($query) use ($filters) {

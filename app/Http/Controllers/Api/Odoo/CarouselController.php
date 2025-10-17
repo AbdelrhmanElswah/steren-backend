@@ -8,7 +8,6 @@ use App\Http\Requests\Api\Odoo\UpdateCarouselRequest;
 use App\Http\Requests\Api\Odoo\GetCarouselsRequest;
 use App\Http\Resources\Api\Odoo\CarouselResource;
 use App\Services\Odoo\CarouselService;
-use App\Services\ErrorTrackingService;
 use App\Traits\ApiResponse;
 use App\Traits\OdooFetchTrait;
 use Illuminate\Http\JsonResponse;
@@ -19,36 +18,20 @@ class CarouselController extends Controller
     use ApiResponse, OdooFetchTrait;
 
     public function __construct(
-        private CarouselService $carouselService,
-        private ErrorTrackingService $errorTracker
+        private CarouselService $carouselService
     ) {}
 
     public function store(StoreCarouselRequest $request): JsonResponse
     {
-        $startTime = microtime(true);
-        
         try {
             $carousel = $this->carouselService->create($request->validated());
-
-            $this->errorTracker->trackApiCall(
-                'POST /api/odoo/carousels',
-                'POST',
-                $request->validated(),
-                ['success' => true, 'carousel_id' => $carousel->id],
-                microtime(true) - $startTime
-            );
+            $carousel->load('media');
 
             return $this->createdResponse(
                 new CarouselResource($carousel),
                 'Carousel created successfully'
             );
         } catch (\Exception $e) {
-            $this->errorTracker->trackError($e, $request, [
-                'operation' => 'store',
-                'controller' => 'CarouselController',
-                'validated_data' => $request->validated()
-            ]);
-            
             Log::error('CarouselController: Error creating carousel', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -63,6 +46,7 @@ class CarouselController extends Controller
     {
         try {
             $carousel = $this->carouselService->updateByOdooId($odooId, $request->validated());
+            $carousel->load('media');
 
             return $this->successResponse(
                 new CarouselResource($carousel),
@@ -101,6 +85,7 @@ class CarouselController extends Controller
     {
         try {
             $carousel = $this->carouselService->restoreByOdooId($odooId);
+            $carousel->load('media');
 
             return $this->successResponse(
                 new CarouselResource($carousel),

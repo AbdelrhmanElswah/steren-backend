@@ -22,37 +22,82 @@ class CarModelController extends Controller
         private CarModelService $CarModelService
     ) {}
 
-    public function store(StoreCarModelRequest $request)
+    public function store(StoreCarModelRequest $request): JsonResponse
     {
-        $CarModel = $this->CarModelService->create($request->validated());
+        try {
+            $carModel = $this->CarModelService->create($request->validated());
 
-        return $this->createdResponse(
-            new CarModelResource($CarModel),
-            'CarModel created successfully'
-        );
-    }public function updateByOdooId(UpdateCarModelRequest $request, string $odooId)
-    {
-        $CarModel = $this->CarModelService->updateByOdooId($odooId, $request->validated());
+            return $this->createdResponse(
+                new CarModelResource($carModel),
+                'Car model created successfully'
+            );
+        } catch (\Exception $e) {
+            Log::error('CarModelController: Error creating car model', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->validated()
+            ]);
 
-        return $this->successResponse(
-            new CarModelResource($CarModel),
-            'CarModel updated successfully'
-        );
-    }public function deleteByOdooId(string $odooId)
-    {
-        $this->CarModelService->deleteByOdooId($odooId);
-
-        return $this->noContentResponse('CarModel deleted successfully');
+            return $this->errorResponse('Failed to create car model: ' . $e->getMessage(), 500);
+        }
     }
 
-    public function restoreByOdooId(string $odooId)
+    public function updateByOdooId(UpdateCarModelRequest $request, string $odooId): JsonResponse
     {
-        $CarModel = $this->CarModelService->restoreByOdooId($odooId);
+        try {
+            $carModel = $this->CarModelService->updateByOdooId($odooId, $request->validated());
 
-        return $this->successResponse(
-            new CarModelResource($CarModel),
-            'CarModel restored successfully'
-        );
+            return $this->successResponse(
+                new CarModelResource($carModel),
+                'Car model updated successfully'
+            );
+        } catch (\Exception $e) {
+            Log::error('CarModelController: Error updating car model', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'odoo_id' => $odooId,
+                'request_data' => $request->validated()
+            ]);
+
+            return $this->errorResponse('Failed to update car model: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function deleteByOdooId(string $odooId): JsonResponse
+    {
+        try {
+            $this->CarModelService->deleteByOdooId($odooId);
+
+            return $this->noContentResponse('Car model deleted successfully');
+        } catch (\Exception $e) {
+            Log::error('CarModelController: Error deleting car model', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'odoo_id' => $odooId
+            ]);
+
+            return $this->errorResponse('Failed to delete car model: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function restoreByOdooId(string $odooId): JsonResponse
+    {
+        try {
+            $carModel = $this->CarModelService->restoreByOdooId($odooId);
+
+            return $this->successResponse(
+                new CarModelResource($carModel),
+                'Car model restored successfully'
+            );
+        } catch (\Exception $e) {
+            Log::error('CarModelController: Error restoring car model', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'odoo_id' => $odooId
+            ]);
+
+            return $this->errorResponse('Failed to restore car model: ' . $e->getMessage(), 500);
+        }
     }
 
     public function getCarModels(GetCarModelsRequest $request): JsonResponse

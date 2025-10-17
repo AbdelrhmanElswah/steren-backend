@@ -5,70 +5,43 @@ namespace App\Services\Odoo;
 use App\Models\Carousel;
 use App\Models\Media;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
-class CarouselService
+class CarouselService extends OdooCrudService
 {
+    public function __construct()
+    {
+        parent::__construct(new Carousel());
+    }
+
     public function create(array $data): Carousel
     {
-        return DB::transaction(function () use ($data) {
-            $carousel = Carousel::create($data);
-            
-            // Handle image if provided
-            if (isset($data['img']) && !empty($data['img'])) {
-                $this->handleCarouselImage($carousel, $data['img']);
-            }
-            
-            return $carousel->load('media');
-        });
+        $carousel = parent::create($data);
+
+        if (!empty($data['img'])) {
+            $this->handleCarouselImage($carousel, $data['img']);
+        }
+
+        return $carousel;
     }
 
     public function updateByOdooId(string $odooId, array $data): Carousel
     {
-        return DB::transaction(function () use ($odooId, $data) {
-            $carousel = Carousel::where('odoo_id', $odooId)->firstOrFail();
-            
-            $carousel->update($data);
-            
-            // Handle image if provided
-            if (isset($data['img']) && !empty($data['img'])) {
+        $carousel = parent::updateByOdooId($odooId, $data);
+
+        if (array_key_exists('img', $data)) {
+            $carousel->medias()?->delete();
+
+            if (!empty($data['img'])) {
                 $this->handleCarouselImage($carousel, $data['img']);
             }
-            
-            return $carousel->load('media');
-        });
-    }
+        }
 
-    public function deleteByOdooId(string $odooId): void
-    {
-        DB::transaction(function () use ($odooId) {
-            $carousel = Carousel::where('odoo_id', $odooId)->firstOrFail();
-            
-            // Delete associated media files
-            foreach ($carousel->medias as $media) {
-                if (Storage::disk('public')->exists($media->file_path)) {
-                    Storage::disk('public')->delete($media->file_path);
-                }
-                $media->delete();
-            }
-            
-            $carousel->delete();
-        });
-    }
-
-    public function restoreByOdooId(string $odooId): Carousel
-    {
-        $carousel = Carousel::withTrashed()->where('odoo_id', $odooId)->firstOrFail();
-        $carousel->restore();
-        
-        return $carousel->load('media');
+        return $carousel;
     }
 
     private function handleCarouselImage(Carousel $carousel, string $base64Image): void
     {
-        // Remove existing media for this carousel
-        $carousel->medias()->delete();
-
         // Clean the base64 string - remove any URL encoding and whitespace
         $cleanBase64 = trim($base64Image);
         
