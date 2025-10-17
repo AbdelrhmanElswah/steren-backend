@@ -11,7 +11,7 @@ class Carousel extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'id', // This will be the Odoo ID
+        'odoo_id',
         'title',
         'description',
         'button_text',
@@ -19,6 +19,7 @@ class Carousel extends Model
         'end_date',
         'is_active',
         'sort_order',
+        'priority',
     ];
 
     protected $casts = [
