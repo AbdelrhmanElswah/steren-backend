@@ -14,7 +14,7 @@ class VerifyOtpRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code' => ['required', 'string', 'size:4', 'in:1234'],
+            'code' => ['required', 'string', 'size:4'],
         ];
     }
 }
