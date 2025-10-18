@@ -868,7 +868,7 @@ class CarListingApiController extends Controller
 
         // Handle inspection file upload if provided
         if ($request->hasFile('inspection_file')) {
-            $inspectionFile = $this->handleInspectionFileUploadForm($request->file('inspection_file'));
+            $inspectionFile = $this->handleInspectionFileUploadFromForm($request->file('inspection_file'));
             if ($inspectionFile) {
                 $inspectionData = array_merge($inspectionData, $inspectionFile);
             }
@@ -880,7 +880,7 @@ class CarListingApiController extends Controller
     /**
      * Handle inspection file upload from form data to AWS S3
      */
-    private function handleInspectionFileUploadForm($file): ?array
+    private function handleInspectionFileUploadFromForm($file): ?array
     {
         try {
             // Create a temporary CarListing object for the trait method
