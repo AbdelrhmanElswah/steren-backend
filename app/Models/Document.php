@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\DocumentTrait;
+use App\Traits\HandlesFileUpload;
 
 class Document extends Model
 {
-    use HasFactory, SoftDeletes, DocumentTrait;
+    use HasFactory, SoftDeletes, DocumentTrait, HandlesFileUpload;
 
     protected $fillable = [
         'documentable_type',
