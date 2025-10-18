@@ -241,7 +241,7 @@ class AuthService
                     'firebase_uid' => $firebaseUserInfo['firebase_uid'],
                     'email' => $firebaseUserInfo['email'] ?? $additionalData['email'] ?? null,
                     'full_name' => null, // Will be set later
-                    'phone' => null, // Will be set later
+                    'phone' => 'PENDING_' . $firebaseUserInfo['firebase_uid'], // Temporary phone for pending accounts
                     'social_provider' => $provider,
                     'firebase_claims' => json_encode($firebaseUserInfo['firebase_claims']),
                     'is_pending' => true, // Mark as pending account

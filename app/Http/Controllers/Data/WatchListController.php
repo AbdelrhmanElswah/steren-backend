@@ -34,7 +34,7 @@ class WatchListController extends Controller
                 'carListing.exteriorColor',
                 'carListing.driveType',
                 'carListing.cylinder'
-            ])->where('user_id', $user->id);
+            ])->where('favorites.user_id', $user->id);
 
             // Apply sorting
             $sortBy = $request->get('sort', 'latest');
@@ -47,26 +47,32 @@ class WatchListController extends Controller
                     break;
                 case 'price_high':
                     $query->join('car_listings', 'favorites.car_listing_id', '=', 'car_listings.id')
+                          ->where('favorites.user_id', $user->id)
                           ->orderBy('car_listings.price', 'desc');
                     break;
                 case 'price_low':
                     $query->join('car_listings', 'favorites.car_listing_id', '=', 'car_listings.id')
+                          ->where('favorites.user_id', $user->id)
                           ->orderBy('car_listings.price', 'asc');
                     break;
                 case 'year_high':
                     $query->join('car_listings', 'favorites.car_listing_id', '=', 'car_listings.id')
+                          ->where('favorites.user_id', $user->id)
                           ->orderBy('car_listings.year', 'desc');
                     break;
                 case 'year_low':
                     $query->join('car_listings', 'favorites.car_listing_id', '=', 'car_listings.id')
+                          ->where('favorites.user_id', $user->id)
                           ->orderBy('car_listings.year', 'asc');
                     break;
                 case 'mileage_high':
                     $query->join('car_listings', 'favorites.car_listing_id', '=', 'car_listings.id')
+                          ->where('favorites.user_id', $user->id)
                           ->orderBy('car_listings.mileage', 'desc');
                     break;
                 case 'mileage_low':
                     $query->join('car_listings', 'favorites.car_listing_id', '=', 'car_listings.id')
+                          ->where('favorites.user_id', $user->id)
                           ->orderBy('car_listings.mileage', 'asc');
                     break;
                 default:
