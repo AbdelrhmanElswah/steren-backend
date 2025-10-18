@@ -14,6 +14,7 @@ use App\Models\CarInspection;
 use App\Services\Odoo\CarListingService;
 use App\Services\SubscriptionService;
 use App\Traits\ApiResponse;
+use App\Traits\HandlesFileUpload;
 use App\Traits\DocumentTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,7 @@ use Illuminate\Support\Str;
 
 class CarListingApiController extends Controller
 {
-    use ApiResponse, DocumentTrait;
+    use ApiResponse, HandlesFileUpload, DocumentTrait;
 
     public function __construct(
         private CarListingService $carListingService,
@@ -454,6 +455,54 @@ class CarListingApiController extends Controller
     }
 
     /**
+     * Prepare Odoo data from form data
+     */
+    private function prepareOdooDataFromForm(CarListing $carListing, array $validatedData)
+    {
+        // Get partner_id from user
+        $user = \App\Models\User::find($validatedData['user_id']);
+
+        return [
+            'partner_id' => $user->partner_id,
+            'car_info' => [
+                'vin' => $validatedData['vin'] ?? '',
+                'brand' => $validatedData['car_brand_id'],
+                'model' => $validatedData['car_model_id'],
+                'condition' => $validatedData['condition_type'],
+                'year' => $validatedData['year'],
+                'gcc_import' => $validatedData['gcc_import'] ?? '',
+                'body_type' => $validatedData['car_body_type_id'],
+                'engine_size' => $validatedData['engine_size'] ?? 0,
+                'fuel_type' => $validatedData['fuel_type_id'] ?? '',
+                'cylinders' => $validatedData['cylinder_id'] ?? 0,
+                'transmission' => $validatedData['transmission_id'] ?? '',
+                'seating_capacity' => $validatedData['seating_capacity'] ?? 0,
+                'exterior_colour' => $validatedData['exterior_color_id'] ?? '',
+                'warranty' => ($validatedData['has_warranty'] ?? false) ? 'yes' : 'no',
+                'drive_type' => $validatedData['drive_type_id'] ?? '',
+                'mileage_type' => $validatedData['mileage_type_id'] ?? 1,
+                'mileage' => $validatedData['mileage'],
+                'plate_status' => $validatedData['plate_status'] ?? '',
+            ],
+            'price_currency' => $validatedData['price_currency'],
+            'price' => $validatedData['price'],
+            'seller_info' => [
+                'type' => $validatedData['seller_type'] ?? 'private_seller',
+            ],
+            'title' => $validatedData['title'],
+            'description' => $validatedData['description'] ?? '',
+            'images' => $validatedData['images'] ?? [],
+            'inspection' => [
+                'right_side' => $validatedData['inspection_right_side'] ?? false,
+                'left_side' => $validatedData['inspection_left_side'] ?? false,
+                'roof' => $validatedData['inspection_roof'] ?? false,
+                'front' => $validatedData['inspection_front'] ?? false,
+                'back' => $validatedData['inspection_back'] ?? false,
+            ],
+        ];
+    }
+
+    /**
      * Send data to Odoo API
      */
     private function sendToOdoo(array $data)
@@ -648,7 +697,7 @@ class CarListingApiController extends Controller
             }
 
             // Prepare data for Odoo API
-            $odooData = $this->prepareOdooData($carListing, $validatedData);
+            $odooData = $this->prepareOdooDataFromForm($carListing, $validatedData);
 
             // Send to Odoo API
             $odooResponse = $this->sendToOdoo($odooData);
@@ -765,25 +814,39 @@ class CarListingApiController extends Controller
     }
 
     /**
-     * Handle image uploads from form data to AWS S3
+     * Handle image uploads from form data to AWS S3 using HandlesFileUpload trait
      */
     private function handleImageUploads(CarListing $carListing, array $images): void
     {
         foreach ($images as $index => $image) {
-            // Upload to AWS S3
-            $path = $image->store('car-listings', 's3');
-            
-            // Get the full S3 URL
-            $url = Storage::disk('s3')->url($path);
-            
-            Media::create([
-                'car_listing_id' => $carListing->id,
-                'file_path' => $path,
-                'url' => $url,
-                'file_type' => $image->getMimeType(),
-                'file_size' => $image->getSize(),
-                'is_primary' => $index === 0, // First image is primary
-            ]);
+            try {
+                // Use HandlesFileUpload trait for S3 upload
+                $uploadResult = $this->uploadFileToS3($image, $carListing, 'car-listings');
+                
+                // Create media record with proper structure
+                Media::create([
+                    'modelable_type' => CarListing::class,
+                    'modelable_id' => $carListing->id,
+                    'media' => $uploadResult['file_name'],
+                    'path_file_name' => $uploadResult['path'],
+                    'file_type' => $uploadResult['file_type'],
+                    'order' => $index,
+                    'info' => $index === 0 ? 'primary' : 'secondary',
+                ]);
+                
+                Log::info('Image uploaded successfully for car listing', [
+                    'car_listing_id' => $carListing->id,
+                    'file_name' => $uploadResult['file_name'],
+                    'url' => $uploadResult['url']
+                ]);
+                
+            } catch (\Exception $e) {
+                Log::error('Failed to upload image for car listing', [
+                    'car_listing_id' => $carListing->id,
+                    'error' => $e->getMessage()
+                ]);
+                // Continue with other images even if one fails
+            }
         }
     }
 
@@ -799,6 +862,8 @@ class CarListingApiController extends Controller
             'roof' => $data['inspection_roof'] ?? false,
             'front' => $data['inspection_front'] ?? false,
             'back' => $data['inspection_back'] ?? false,
+            'inspection_number' => 'INSP-' . $carListing->id . '-' . time(),
+            'inspection_date' => now()->format('Y-m-d'),
         ];
 
         // Handle inspection file upload if provided
@@ -818,19 +883,26 @@ class CarListingApiController extends Controller
     private function handleInspectionFileUploadForm($file): ?array
     {
         try {
-            // Upload to AWS S3
-            $path = $file->store('car-inspections', 's3');
+            // Create a temporary CarListing object for the trait method
+            $tempCarListing = new CarListing();
+            $tempCarListing->id = 0; // Temporary ID for trait method
             
-            // Get the full S3 URL
-            $url = Storage::disk('s3')->url($path);
+            // Use HandlesFileUpload trait for S3 upload
+            $uploadResult = $this->uploadFileToS3($file, $tempCarListing, 'car-inspections');
             
             $document = Document::create([
-                'file_path' => $path,
-                'url' => $url,
-                'file_name' => $file->getClientOriginalName(),
-                'file_type' => $file->getMimeType(),
+                'file_path' => $uploadResult['path'],
+                'url' => $uploadResult['url'],
+                'file_name' => $uploadResult['file_name'],
+                'file_type' => $uploadResult['file_type'],
                 'file_size' => $file->getSize(),
                 'document_type' => 'inspection_report',
+            ]);
+
+            Log::info('Inspection file uploaded successfully', [
+                'file_name' => $uploadResult['file_name'],
+                'url' => $uploadResult['url'],
+                'document_id' => $document->id
             ]);
 
             return [
