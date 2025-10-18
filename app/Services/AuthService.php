@@ -36,6 +36,7 @@ class AuthService
                 'email' => $payload['email'] ?? null,
                 'phone' => $payload['phone'] ?? null,
                 'password' => isset($payload['password']) ? Hash::make($payload['password']) : null,
+                'firebase_uid' => $payload['firebase_uid'] ?? null,
             ]);
 
             $otp = $this->generateOtp();

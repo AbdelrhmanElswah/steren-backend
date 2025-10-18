@@ -19,6 +19,7 @@ class RegisterRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')],
             'phone' => ['required', 'string', 'max:32', Rule::unique('users', 'phone')],
             'password' => ['nullable', 'string', 'min:6'],
+            'firebase_uid' => ['nullable', 'string', 'max:255', Rule::unique('users', 'firebase_uid')],
         ];
     }
 }
