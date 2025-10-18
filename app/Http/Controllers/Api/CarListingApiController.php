@@ -462,6 +462,14 @@ class CarListingApiController extends Controller
         // Get partner_id from user
         $user = \App\Models\User::find($validatedData['user_id']);
 
+        // Get related model names for Odoo
+        $fuelTypeName = $this->getFuelTypeName($validatedData['fuel_type_id'] ?? null);
+        $transmissionName = $this->getTransmissionName($validatedData['transmission_id'] ?? null);
+        $driveTypeName = $this->getDriveTypeName($validatedData['drive_type_id'] ?? null);
+        $mileageTypeName = $this->getMileageTypeName($validatedData['mileage_type_id'] ?? null);
+        $exteriorColorName = $this->getExteriorColorName($validatedData['exterior_color_id'] ?? null);
+        $cylinderName = $this->getCylinderName($validatedData['cylinder_id'] ?? null);
+
         return [
             'partner_id' => $user->partner_id,
             'car_info' => [
@@ -473,14 +481,14 @@ class CarListingApiController extends Controller
                 'gcc_import' => $validatedData['gcc_import'] ?? '',
                 'body_type' => $validatedData['car_body_type_id'],
                 'engine_size' => $validatedData['engine_size'] ?? 0,
-                'fuel_type' => $validatedData['fuel_type_id'] ?? '',
-                'cylinders' => $validatedData['cylinder_id'] ?? 0,
-                'transmission' => $validatedData['transmission_id'] ?? '',
+                'fuel_type' => $fuelTypeName,
+                'cylinders' => $cylinderName,
+                'transmission' => $transmissionName,
                 'seating_capacity' => $validatedData['seating_capacity'] ?? 0,
-                'exterior_colour' => $validatedData['exterior_color_id'] ?? '',
+                'exterior_colour' => $exteriorColorName,
                 'warranty' => ($validatedData['has_warranty'] ?? false) ? 'yes' : 'no',
-                'drive_type' => $validatedData['drive_type_id'] ?? '',
-                'mileage_type' => $validatedData['mileage_type_id'] ?? 1,
+                'drive_type' => $driveTypeName,
+                'mileage_type' => $mileageTypeName,
                 'mileage' => $validatedData['mileage'],
                 'plate_status' => $validatedData['plate_status'] ?? '',
             ],
@@ -924,5 +932,71 @@ class CarListingApiController extends Controller
                isset($data['inspection_roof']) ||
                isset($data['inspection_front']) ||
                isset($data['inspection_back']);
+    }
+
+    /**
+     * Get fuel type name from ID
+     */
+    private function getFuelTypeName($fuelTypeId): string
+    {
+        if (!$fuelTypeId) return '';
+        
+        $fuelType = \App\Models\FuelType::find($fuelTypeId);
+        return $fuelType ? strtolower($fuelType->name) : '';
+    }
+
+    /**
+     * Get transmission name from ID
+     */
+    private function getTransmissionName($transmissionId): string
+    {
+        if (!$transmissionId) return '';
+        
+        $transmission = \App\Models\Transmission::find($transmissionId);
+        return $transmission ? strtolower($transmission->name) : '';
+    }
+
+    /**
+     * Get drive type name from ID
+     */
+    private function getDriveTypeName($driveTypeId): string
+    {
+        if (!$driveTypeId) return '';
+        
+        $driveType = \App\Models\DriveType::find($driveTypeId);
+        return $driveType ? strtolower($driveType->name) : '';
+    }
+
+    /**
+     * Get mileage type name from ID
+     */
+    private function getMileageTypeName($mileageTypeId): string
+    {
+        if (!$mileageTypeId) return 'km';
+        
+        $mileageType = \App\Models\MileageType::find($mileageTypeId);
+        return $mileageType ? strtolower($mileageType->name) : 'km';
+    }
+
+    /**
+     * Get exterior color name from ID
+     */
+    private function getExteriorColorName($exteriorColorId): string
+    {
+        if (!$exteriorColorId) return '';
+        
+        $exteriorColor = \App\Models\ExteriorColor::find($exteriorColorId);
+        return $exteriorColor ? strtolower($exteriorColor->name) : '';
+    }
+
+    /**
+     * Get cylinder value from ID
+     */
+    private function getCylinderName($cylinderId): string
+    {
+        if (!$cylinderId) return '';
+        
+        $cylinder = \App\Models\CylinderOption::find($cylinderId);
+        return $cylinder ? (string) $cylinder->id : '';
     }
 }
