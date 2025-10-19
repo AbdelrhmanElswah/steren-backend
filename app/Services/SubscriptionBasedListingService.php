@@ -145,7 +145,7 @@ class SubscriptionBasedListingService
             $query->orderBy('created_at', 'desc');
         }
 
-        return $query->paginate($filters['per_page'] ?? 20);
+        return $query->paginate($filters['per_page'] ?? 7);
     }
 
     /**
@@ -214,7 +214,7 @@ class SubscriptionBasedListingService
             ->where('is_featured', false)
             ->where('is_sponsored', false);
 
-        return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 20);
+        return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 7);
     }
 
     /**
@@ -225,7 +225,7 @@ class SubscriptionBasedListingService
         $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
             ->where('status', 'active');
 
-        return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 20);
+        return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 7);
     }
 
     /**
@@ -236,7 +236,7 @@ class SubscriptionBasedListingService
         $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
             ->where('status', 'active');
 
-        return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 20);
+        return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 7);
     }
 
     /**
@@ -257,7 +257,7 @@ class SubscriptionBasedListingService
             });
         }
 
-        return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 20);
+        return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 7);
     }
 
     /**

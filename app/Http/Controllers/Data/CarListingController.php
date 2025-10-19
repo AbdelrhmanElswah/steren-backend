@@ -143,7 +143,7 @@ class CarListingController extends Controller
                     $query->orderBy('created_at', 'desc');
             }
 
-            $listings = $query->active()->paginate(20);
+            $listings = $query->active()->paginate(7);
 
             $data = [
                 'listings' => $listings->items(),

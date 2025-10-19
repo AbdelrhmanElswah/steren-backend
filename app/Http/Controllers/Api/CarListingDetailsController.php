@@ -673,7 +673,7 @@ class CarListingDetailsController extends Controller
                     $query->orderBy('created_at', 'desc');
             }
 
-            $perPage = $request->get('per_page', 20);
+            $perPage = $request->get('per_page', 7);
             $listings = $query->paginate($perPage);
 
             // Get summary statistics
