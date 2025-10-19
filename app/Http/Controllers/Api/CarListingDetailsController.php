@@ -19,47 +19,69 @@ class CarListingDetailsController extends Controller
     {
         try {
             $listing = CarListing::with([
-                // Basic relationships
-                'brand', 'carModel', 'carTrim', 'bodyType', 'location', 'studio',
-                'carCondition', 'fuelType', 'transmission', 'exteriorColor', 
-                'driveType', 'cylinder', 'mileageType', 'importType', 'warrantyStatus',
+                'brand:id,name,logo,odoo_id',
+                'carModel:id,name,car_brand_id',
+                'carTrim:id,name,car_model_id',
+                'bodyType:id,name',
+                'location:id,name,city_id',
+                'location.city:id,name',
+                'studio:id,name,location_id',
                 
-                // User and contact info
-                'user',
+                'carCondition:id,name',
+                'fuelType:id,name',
+                'transmission:id,name',
+                'exteriorColor:id,name',
+                'driveType:id,name',
+                'cylinder:id,name',
+                'mileageType:id,name',
+                'importType:id,name',
+                'warrantyStatus:id,name',
                 
-                // Media and visual content
-                'media',
+                'user:id,full_name,display_name,phone,email',
                 
-                // Features and specifications
+                // Media (optimized)
+                'media' => function($query) {
+                    $query->select('id', 'modelable_id', 'url', 'is_primary', 'file_type', 'file_size', 'mime_type')
+                          ->orderBy('is_primary', 'desc')
+                          ->orderBy('created_at');
+                },
+                
+                // Features and specifications (conditional loading)
                 'features' => function($query) {
-                    $query->orderBy('category')->orderBy('name');
+                    $query->select('car_features.id', 'car_features.name', 'car_features.category', 'car_features.description', 'car_features.icon')
+                          ->orderBy('category')
+                          ->orderBy('name');
                 },
                 'specifications' => function($query) {
-                    $query->orderBy('specification_type')->orderBy('name');
+                    $query->select('id', 'car_listing_id', 'name', 'value', 'specification_type')
+                          ->orderBy('specification_type')
+                          ->orderBy('name');
                 },
                 
-                // Badges and promotions
-                'badges',
-                'listingPromotion',
+                // Promotions
+                'listingPromotion:id,name,type,price,currency,duration_days,is_active',
                 
-                // Documents and reports
-                'documents',
-                'inspection',
-                'carfaxReport',
-                'carDamages',
+                // Documents (conditional)
+                'documents' => function($query) {
+                    $query->select('id', 'documentable_id', 'documentable_type', 'file_path', 'url', 'file_name', 'category', 'is_verified')
+                          ->where('is_verified', true);
+                },
                 
-                // Analytics
-                'analytics',
+                // Inspection (conditional)
+                'inspection:id,car_listing_id,inspection_number,inspection_date,status',
                 
-                // Favorites (if user is authenticated)
-                'favorites',
+                // Carfax (conditional)
+                'carfaxReport:id,car_listing_id,vin,report_data,generated_at',
                 
-                // Reports
-                'reports',
+                // Car damages (conditional)
+                'carDamages:id,car_listing_id,car_part_id,condition,description',
                 
-                // Boosts
-                'boosts',
-                'activeBoosts'
+                // Analytics (minimal)
+                'analytics' => function($query) {
+                    $query->select('id', 'car_listing_id', 'event_type', 'count', 'date')
+                          ->orderBy('date', 'desc')
+                          ->limit(10);
+                }
             ])->findOrFail($id);
 
             // Group features by category

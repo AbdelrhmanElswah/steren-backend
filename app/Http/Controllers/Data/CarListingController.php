@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class CarListingController extends Controller
 {
@@ -24,10 +25,26 @@ class CarListingController extends Controller
     public function getCarListings(Request $request): JsonResponse
     {
         try {
+            $cacheKey = 'car_listings_' . md5(serialize($request->all()));
+            
+            $cachedResult = Cache::get($cacheKey);
+            if ($cachedResult) {
+                return $this->successResponse($cachedResult, 'Car listings retrieved from cache');
+            }
+
             $query = CarListing::with([
-                'brand.media', 'carModel', 'bodyType', 'location', 'studio',
-                'media', 'badges', 'carCondition', 'fuelType', 'transmission',
-                'exteriorColor', 'driveType', 'cylinder'
+                'brand:id,name,logo,odoo_id',
+                'carModel:id,name,car_brand_id', 
+                'bodyType:id,name',
+                'location:id,name,city_id',
+                'location.city:id,name',
+                'media:id,modelable_id,url,is_primary,file_type',
+                'carCondition:id,name',
+                'fuelType:id,name',
+                'transmission:id,name',
+                'exteriorColor:id,name',
+                'driveType:id,name',
+                'cylinder:id,name'
             ]);
 
             // Apply filters
@@ -149,6 +166,9 @@ class CarListingController extends Controller
                     ];
                 }
             }
+
+            // Cache the result for 5 minutes
+            Cache::put($cacheKey, $data, 300);
 
             return $this->successResponse($data, 'Car listings retrieved successfully');
         } catch (\Exception $e) {
