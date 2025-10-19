@@ -19,13 +19,12 @@ class CarListingDetailsController extends Controller
     {
         try {
             $listing = CarListing::with([
-                'brand:id,name,logo,odoo_id',
+                'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
                 'carTrim:id,name,car_model_id',
                 'bodyType:id,name',
-                'location:id,name,city_id',
-                'location.city:id,name',
-                'studio:id,name,location_id',
+                'location:id,name',
+                'studio:id,name',
                 
                 'carCondition:id,name',
                 'fuelType:id,name',

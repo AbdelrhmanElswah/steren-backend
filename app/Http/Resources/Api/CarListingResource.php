@@ -54,7 +54,6 @@ class CarListingResource extends JsonResource
             'location' => $this->whenLoaded('location', [
                 'id' => $this->location?->id,
                 'name' => $this->location?->name,
-                'city' => $this->whenLoaded('location.city', $this->location?->city?->name),
             ]),
             'cylinder' => $this->whenLoaded('cylinder', [
                 'id' => $this->cylinder?->id,
