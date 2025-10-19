@@ -37,7 +37,7 @@ class CarListingController extends Controller
                 'carModel:id,name,car_brand_id', 
                 'bodyType:id,name',
                 'location:id,name',
-                'media:id,modelable_id,url,is_primary,file_type',
+                'media:id,modelable_id,file_path,is_primary,file_type',
                 'carCondition:id,name',
                 'fuelType:id,name',
                 'transmission:id,name',

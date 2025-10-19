@@ -40,7 +40,7 @@ class CarListingDetailsController extends Controller
                 
                 // Media (optimized)
                 'media' => function($query) {
-                    $query->select('id', 'modelable_id', 'url', 'is_primary', 'file_type', 'file_size', 'mime_type')
+                    $query->select('id', 'modelable_id', 'file_path', 'is_primary', 'file_type', 'file_size', 'mime_type')
                           ->orderBy('is_primary', 'desc')
                           ->orderBy('created_at');
                 },
