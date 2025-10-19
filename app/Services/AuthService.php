@@ -31,6 +31,27 @@ class AuthService
     public function register(array $payload): array
     {
         return DB::transaction(function () use ($payload) {
+            if (isset($payload['email']) && $payload['email']) {
+                $existingUser = User::where('email', $payload['email'])->first();
+                
+                if ($existingUser) {
+                    if ($existingUser->is_pending) {
+                        throw new \Exception('An account with this email already exists but is pending completion. Please use the complete-pending-account endpoint instead.');
+                    } else {
+                        throw new \Exception('An account with this email already exists. Please use login instead.');
+                    }
+                }
+            }
+            
+            // Check if phone already exists
+            if (isset($payload['phone']) && $payload['phone']) {
+                $existingPhone = User::where('phone', $payload['phone'])->first();
+                
+                if ($existingPhone) {
+                    throw new \Exception('An account with this phone number already exists.');
+                }
+            }
+            
             $user = User::query()->create([
                 'full_name' => $payload['full_name'] ?? null,
                 'email' => $payload['email'] ?? null,
@@ -351,6 +372,15 @@ class AuthService
             
             if (!$user->is_pending) {
                 throw new \Exception('Account is not pending completion');
+            }
+
+            // Check if phone number is already taken by another user
+            $existingPhone = User::where('phone', $phone)
+                ->where('id', '!=', $userId)
+                ->first();
+                
+            if ($existingPhone) {
+                throw new \Exception('This phone number is already registered with another account.');
             }
 
             DB::beginTransaction();
