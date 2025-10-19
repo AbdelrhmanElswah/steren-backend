@@ -150,19 +150,14 @@ class SubscriptionService
     }
 
     /**
-     * Check free tier slots
-     * Free users get 1 slot per month + any purchased slots
-     * Slots are consumed when creating listings and stay consumed even if listing is deleted
+     * Get or create user slot record safely
      */
-    private function checkFreeTierSlots(User $user): array
+    private function getOrCreateUserSlot(User $user): UserSlot
     {
-        // Get or create user slot record
-        $userSlot = $user->userSlot;
-        
-        if (!$userSlot) {
-            // Create initial slot record for new free user
-            $userSlot = UserSlot::create([
-                'user_id' => $user->id,
+        // Use firstOrCreate to handle race conditions
+        return UserSlot::firstOrCreate(
+            ['user_id' => $user->id],
+            [
                 'total_slots' => 1,
                 'consumed_slots' => 0,
                 'available_slots' => 1,
@@ -170,10 +165,20 @@ class SubscriptionService
                 'has_monthly_free_slot' => true,
                 'last_free_slot_reset_at' => now(),
                 'next_free_slot_reset_at' => now()->addMonth()->startOfMonth(),
-            ]);
-        } else {
-            $userSlot->refresh();
-        }
+            ]
+        );
+    }
+
+    /**
+     * Check free tier slots
+     * Free users get 1 slot per month + any purchased slots
+     * Slots are consumed when creating listings and stay consumed even if listing is deleted
+     */
+    private function checkFreeTierSlots(User $user): array
+    {
+        // Get or create user slot record safely
+        $userSlot = $this->getOrCreateUserSlot($user);
+        $userSlot->refresh();
 
         // Check if monthly free slot needs reset
         if ($userSlot->shouldResetMonthlyFreeSlot()) {
@@ -236,21 +241,7 @@ class SubscriptionService
     {
         // Free tier - use slot system
         if (!$this->hasActiveSubscription($user)) {
-            $userSlot = $user->userSlot;
-            
-            if (!$userSlot) {
-                // Create initial slot record
-                $userSlot = UserSlot::create([
-                    'user_id' => $user->id,
-                    'total_slots' => 1,
-                    'consumed_slots' => 0,
-                    'available_slots' => 1,
-                    'purchased_slots' => 0,
-                    'has_monthly_free_slot' => true,
-                    'last_free_slot_reset_at' => now(),
-                    'next_free_slot_reset_at' => now()->addMonth()->startOfMonth(),
-                ]);
-            }
+            $userSlot = $this->getOrCreateUserSlot($user);
 
             // Check if monthly free slot needs reset
             if ($userSlot->shouldResetMonthlyFreeSlot()) {
