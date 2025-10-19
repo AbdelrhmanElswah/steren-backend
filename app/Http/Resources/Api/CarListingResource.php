@@ -16,8 +16,8 @@ class CarListingResource extends JsonResource
     {
         // Pre-calculate expensive operations
         $media = $this->whenLoaded('media');
-        $primaryImage = $media ? $media->where('is_primary', true)->first()?->file_path : null;
-        $images = $media ? $media->pluck('file_path')->toArray() : [];
+        $primaryImage = $media ? $media->where('info', 'primary')->first()?->path_file_name : null;
+        $images = $media ? $media->pluck('path_file_name')->toArray() : [];
         
         return [
             'id' => $this->id,
@@ -72,12 +72,12 @@ class CarListingResource extends JsonResource
                 return $media ? $media->map(function ($media) {
                     return [
                         'id' => $media->id,
-                        'file_path' => $media->file_path,
-                        'url' => $media->file_path, // Use file_path as URL for now
+                        'file_path' => $media->path_file_name,
+                        'url' => $media->path_file_name, // Use path_file_name as URL for now
                         'file_type' => $media->file_type,
-                        'is_primary' => $media->is_primary,
-                        'file_size' => $media->file_size ?? null,
-                        'mime_type' => $media->mime_type ?? null,
+                        'is_primary' => $media->info === 'primary',
+                        'order' => $media->order ?? 0,
+                        'info' => $media->info,
                     ];
                 }) : collect();
             }),
