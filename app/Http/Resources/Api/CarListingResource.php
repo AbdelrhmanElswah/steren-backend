@@ -21,14 +21,10 @@ class CarListingResource extends JsonResource
         
         return [
             'id' => $this->id,
-            'odoo_id' => $this->odoo_id,
             'title' => $this->title,
-            'description' => $this->description,
             'price' => $this->price,
             'price_currency' => $this->price_currency,
             'formatted_price' => $this->formatted_price,
-            'year' => $this->year,
-            'trim' => $this->trim,
             'mileage' => $this->mileage,
             'mileage_type' => $this->whenLoaded('mileageType', fn() => $this->mileageType?->name),
             'formatted_mileage' => $this->formatted_mileage,
@@ -45,28 +41,10 @@ class CarListingResource extends JsonResource
             'formatted_views' => $this->formatted_views,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
-            
-            // Optimized relationships - only load when available
-            'car_model' => $this->whenLoaded('carModel', [
-                'id' => $this->carModel?->id,
-                'name' => $this->carModel?->name,
-            ]),
             'location' => $this->whenLoaded('location', [
                 'id' => $this->location?->id,
                 'name' => $this->location?->name,
             ]),
-            'cylinder' => $this->whenLoaded('cylinder', [
-                'id' => $this->cylinder?->id,
-                'name' => $this->cylinder?->name,
-            ]),
-            'user' => $this->whenLoaded('user', [
-                'id' => $this->user?->id,
-                'full_name' => $this->user?->full_name,
-                'display_name' => $this->user?->display_name,
-                'phone' => $this->user?->phone,
-                'email' => $this->user?->email,
-            ]),
-            
             // Optimized media handling
             'media' => $this->whenLoaded('media', function() use ($media) {
                 return $media ? $media->map(function ($media) {
@@ -81,20 +59,6 @@ class CarListingResource extends JsonResource
                     ];
                 }) : collect();
             }),
-            'primary_image' => $primaryImage,
-            'images' => $images,
-            
-            // Promotion information
-            'listing_promotion' => $this->whenLoaded('listingPromotion', [
-                'id' => $this->listingPromotion?->id,
-                'name' => $this->listingPromotion?->name,
-                'type' => $this->listingPromotion?->type,
-                'price' => $this->listingPromotion?->price,
-                'currency' => $this->listingPromotion?->currency,
-                'duration_days' => $this->listingPromotion?->duration_days,
-                'is_active' => $this->listingPromotion?->is_active,
-            ]),
-            'full_title' => $this->full_title,
         ];
     }
 }
