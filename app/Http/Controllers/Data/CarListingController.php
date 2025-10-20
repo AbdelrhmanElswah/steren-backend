@@ -155,12 +155,13 @@ class CarListingController extends Controller
 
             // If brand_id is specified and no listings found, still return brand info
             if ($request->filled('brand_id') && $listings->total() == 0) {
-                $brand = \App\Models\CarBrand::find($request->brand_id);
+                $brand = \App\Models\CarBrand::with('media')->find($request->brand_id);
                 if ($brand) {
                     $data['brand_info'] = [
                         'id' => $brand->id,
                         'name' => $brand->name,
                         'odoo_id' => $brand->odoo_id,
+                        'logo_url' => $brand->media ? $brand->media->media_link : null,
                     ];
                 }
             }
