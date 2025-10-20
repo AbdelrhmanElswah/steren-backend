@@ -67,7 +67,7 @@ class CarListingDetailsController extends Controller
                 },
                 
                 // Inspection (conditional)
-                'inspection:id,car_listing_id,inspection_number,inspection_date,status',
+                'inspection:id,car_listing_id,inspection_number,inspection_date,status,notes,is_verified,verified_at,right_side,left_side,roof,front,back',
                 
                 // Carfax (conditional)
                 'carfaxReport:id,car_listing_id,vin,report_data,generated_at',
@@ -161,14 +161,19 @@ class CarListingDetailsController extends Controller
             if ($listing->inspection) {
                 $inspectionDetails = [
                     'id' => $listing->inspection->id,
-                    'inspector_name' => $listing->inspection->inspector_name,
+                    'inspection_number' => $listing->inspection->inspection_number,
                     'inspection_date' => $listing->inspection->inspection_date,
-                    'overall_condition' => $listing->inspection->overall_condition,
-                    'mechanical_condition' => $listing->inspection->mechanical_condition,
-                    'exterior_condition' => $listing->inspection->exterior_condition,
-                    'interior_condition' => $listing->inspection->interior_condition,
+                    'status' => $listing->inspection->status,
                     'notes' => $listing->inspection->notes,
-                    'recommendations' => $listing->inspection->recommendations,
+                    'is_verified' => $listing->inspection->is_verified,
+                    'verified_at' => $listing->inspection->verified_at,
+                    'inspection_sides' => [
+                        'right_side' => $listing->inspection->right_side,
+                        'left_side' => $listing->inspection->left_side,
+                        'roof' => $listing->inspection->roof,
+                        'front' => $listing->inspection->front,
+                        'back' => $listing->inspection->back,
+                    ],
                 ];
             }
 
