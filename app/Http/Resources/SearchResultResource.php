@@ -83,12 +83,12 @@ class SearchResultResource extends JsonResource
                     'id' => $media->id,
                     'url' => asset('storage/' . $media->file_path),
                     'alt_text' => $media->alt_text,
-                    'is_primary' => $media->sort_order === 1,
+                    'is_primary' => $media->order === 1,
                 ];
             })),
             
             'primary_image' => $this->when($this->media && $this->media->count() > 0, function () {
-                $primaryMedia = $this->media->where('sort_order', 1)->first() ?? $this->media->first();
+                $primaryMedia = $this->media->where('order', 1)->first() ?? $this->media->first();
                 return [
                     'id' => $primaryMedia->id,
                     'url' => asset('storage/' . $primaryMedia->file_path),

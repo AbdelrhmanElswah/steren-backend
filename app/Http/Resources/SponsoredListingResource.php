@@ -33,7 +33,7 @@ class SponsoredListingResource extends JsonResource
             ]),
             
             'primary_image' => $this->when(isset($this['media']) && count($this['media']) > 0, function () {
-                $media = collect($this['media'])->where('sort_order', 1)->first() ?? collect($this['media'])->first();
+                $media = collect($this['media'])->where('order', 1)->first() ?? collect($this['media'])->first();
                 return [
                     'id' => $media['id'] ?? null,
                     'url' => $media['file_path'] ? asset('storage/' . $media['file_path']) : null,

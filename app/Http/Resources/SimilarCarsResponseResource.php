@@ -34,16 +34,16 @@ class SimilarCarsResponseResource extends JsonResource
             'similarity_factors' => $this->resource['similarity_factors'] ?? null,
             
             // Brand information (when searching by brand)
-            'brand' => $this->when($this->resource['brand'], function () {
+            'brand' => $this->when(isset($this->resource['brand']) && $this->resource['brand'], function () {
                 return [
                     'id' => $this->resource['brand']->id,
                     'name' => $this->resource['brand']->name,
-                    'logo' => $this->resource['brand']->media ? asset('storage/' . $this->resource['brand']->media->file_path) : null,
+                    'logo' => $this->resource['brand']->media ? asset('storage/' . $this->resource['brand']->media->path_file_name) : null,
                 ];
             }),
             
             // Model information (when searching by model)
-            'model' => $this->when($this->resource['model'], function () {
+            'model' => $this->when(isset($this->resource['model']) && $this->resource['model'], function () {
                 return [
                     'id' => $this->resource['model']->id,
                     'name' => $this->resource['model']->name,
@@ -51,11 +51,11 @@ class SimilarCarsResponseResource extends JsonResource
             }),
             
             // Body type information (when searching by body type)
-            'body_type' => $this->when($this->resource['body_type'], function () {
+            'body_type' => $this->when(isset($this->resource['body_type']) && $this->resource['body_type'], function () {
                 return [
                     'id' => $this->resource['body_type']->id,
                     'name' => $this->resource['body_type']->name,
-                    'icon' => $this->resource['body_type']->media ? asset('storage/' . $this->resource['body_type']->media->file_path) : null,
+                    'icon' => $this->resource['body_type']->media ? asset('storage/' . $this->resource['body_type']->media->path_file_name) : null,
                 ];
             }),
             

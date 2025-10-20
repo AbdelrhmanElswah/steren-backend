@@ -35,7 +35,7 @@ class SimilarCarsResource extends JsonResource
             'brand' => $this->when($this->brand, [
                 'id' => $this->brand?->id,
                 'name' => $this->brand?->name,
-                'logo' => $this->brand?->media ? asset('storage/' . $this->brand->media->file_path) : null,
+                'logo' => $this->brand?->media ? asset('storage/' . $this->brand->media->path_file_name) : null,
             ]),
             
             'car_model' => $this->when($this->carModel, [
@@ -46,7 +46,7 @@ class SimilarCarsResource extends JsonResource
             'body_type' => $this->when($this->bodyType, [
                 'id' => $this->bodyType?->id,
                 'name' => $this->bodyType?->name,
-                'icon' => $this->bodyType?->media ? asset('storage/' . $this->bodyType->media->file_path) : null,
+                'icon' => $this->bodyType?->media ? asset('storage/' . $this->bodyType->media->path_file_name) : null,
             ]),
             
             'location' => $this->when($this->location, [
@@ -78,11 +78,11 @@ class SimilarCarsResource extends JsonResource
             
             // Media
             'primary_image' => $this->when($this->media && $this->media->count() > 0, function () {
-                $primaryMedia = $this->media->where('sort_order', 1)->first() ?? $this->media->first();
+                $primaryMedia = $this->media->where('order', 1)->first() ?? $this->media->first();
                 return [
                     'id' => $primaryMedia->id,
-                    'url' => asset('storage/' . $primaryMedia->file_path),
-                    'alt_text' => $primaryMedia->alt_text,
+                    'url' => asset('storage/' . $primaryMedia->path_file_name),
+                    'alt_text' => $primaryMedia->alt_text ?? '',
                 ];
             }),
             

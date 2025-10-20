@@ -307,7 +307,7 @@ class SimilarCarsService
             'driveType',
             'cylinder',
             'media' => function ($query) {
-                $query->where('file_type', 'like', 'image/%')->orderBy('sort_order');
+                $query->where('file_type', 'like', 'image/%')->orderBy('order');
             }
         ])
         ->where('status', 'active')
