@@ -46,69 +46,55 @@ class DealerVerificationService
 
             $subscriptionPlan = SubscriptionPlan::findOrFail($data['subscription_plan_id']);
 
-            $dealerApplication = $this->createDealerApplication($user, $data, $subscriptionPlan);
-            
-            Log::info('Dealer application created locally', [
-                'application_id' => $dealerApplication->id,
-                'partner_id' => $data['partner_id'],
-            ]);
-
+            // First, try to submit to Odoo BEFORE creating database record
             try {
-                $odooResponse = $this->submitToOdoo($data, $dealerApplication);
+                $odooResponse = $this->submitToOdoo($data, $user, $subscriptionPlan);
 
-                if ($odooResponse['success']) {
-                    $underReviewStatus = Status::findByNameAndType('under_review', 'dealer_application');
-                    $odooId = (string) $data['partner_id'];
-                    
-                    $dealerApplication->update([
-                        'status_id' => $underReviewStatus?->id,
-                        'odoo_id' => $odooId,
-                    ]);
-
-                    Log::info('Dealer application synced with Odoo', [
-                        'application_id' => $dealerApplication->id,
-                        'odoo_id' => $odooId,
-                    ]);
-
-                    return [
-                        'success' => true,
-                        'message' => 'Dealer verification submitted successfully',
-                        'application_id' => $dealerApplication->id,
-                        'odoo_id' => $odooId,
-                        'status' => 'under_review',
-                        'synced_with_odoo' => true
-                    ];
-                } else {
-                    Log::warning('Dealer application saved locally but Odoo sync failed', [
-                        'application_id' => $dealerApplication->id,
-                        'odoo_error' => $odooResponse['message'] ?? 'Unknown error',
-                    ]);
-
-                    return [
-                        'success' => true,
-                        'message' => 'Application saved locally. Odoo sync pending.',
-                        'application_id' => $dealerApplication->id,
-                        'odoo_id' => (string) $user->partner_id,
-                        'status' => 'application_applied',
-                        'synced_with_odoo' => false,
-                        'sync_error' => $odooResponse['message'] ?? 'Failed to sync with Odoo'
-                    ];
+                if (!$odooResponse['success']) {
+                    throw new OdooServiceException('Odoo submission failed: ' . ($odooResponse['message'] ?? 'Unknown error'));
                 }
-            } catch (OdooConnectionException $e) {
-                Log::error('Odoo connection failed, application saved locally', [
+
+                // Only create dealer application if Odoo returns success
+                $dealerApplication = $this->createDealerApplication($user, $data, $subscriptionPlan);
+                
+                $underReviewStatus = Status::findByNameAndType('under_review', 'dealer_application');
+                
+                // Use actual Odoo ID from response, not partner_id
+                $actualOdooId = $odooResponse['odoo_id'] ?? $odooResponse['id'] ?? $odooResponse['data']['id'] ?? null;
+                
+                if (!$actualOdooId) {
+                    throw new OdooServiceException('Odoo response missing ID');
+                }
+                
+                $dealerApplication->update([
+                    'status_id' => $underReviewStatus?->id,
+                    'odoo_id' => (string) $actualOdooId,
+                    'synced_with_odoo' => true,
+                    'sync_error' => null
+                ]);
+
+                // Firebase sync can be added later if needed
+
+                Log::info('Dealer application created and synced with Odoo successfully', [
                     'application_id' => $dealerApplication->id,
-                    'error' => $e->getMessage(),
+                    'odoo_id' => $actualOdooId,
                 ]);
 
                 return [
                     'success' => true,
-                    'message' => 'Application saved locally. Will sync with Odoo later.',
+                    'message' => 'Dealer verification submitted successfully to Odoo',
                     'application_id' => $dealerApplication->id,
-                    'odoo_id' => (string) $user->partner_id,
-                    'status' => 'application_applied',
-                    'synced_with_odoo' => false,
-                    'sync_error' => 'Odoo connection failed'
+                    'odoo_id' => (string) $actualOdooId,
+                    'status' => 'under_review',
+                    'synced_with_odoo' => true
                 ];
+            } catch (OdooConnectionException $e) {
+                Log::error('Odoo connection failed', [
+                    'partner_id' => $data['partner_id'],
+                    'error' => $e->getMessage(),
+                ]);
+
+                throw new OdooServiceException('Failed to connect to Odoo: ' . $e->getMessage());
             }
 
         } catch (Exception $e) {
@@ -184,25 +170,15 @@ class DealerVerificationService
         return $dealerApplication;
     }
 
-    protected function submitToOdoo(array $data, DealerApplication $dealerApplication): array
+    protected function submitToOdoo(array $data, User $user, SubscriptionPlan $subscriptionPlan): array
     {
         try {
-            $payload = $this->prepareOdooPayload($data, $dealerApplication);
+            $payload = $this->prepareOdooPayload($data, $user, $subscriptionPlan);
 
-            $jsonRpcPayload = [
-                'jsonrpc' => '2.0',
-                'id' => null,
-                'method' => 'call',
-                'params' => [
-                    'service' => 'verification',
-                    'method' => 'submit',
-                    'args' => [$payload]
-                ]
-            ];
-
+            // Try the /api/steren/ endpoint pattern that works in seeders
             $response = Http::timeout(30)->withHeaders([
                 'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Accept' => 'application/json',
             ])->post($this->baseUrl . '/api/verification/submit', $payload);
 
             if ($response->successful()) {
@@ -213,7 +189,7 @@ class DealerVerificationService
                     'response_data' => $responseData,
                     'success_field' => $responseData['success'] ?? 'NOT SET',
                     'partner_id' => $data['partner_id'] ?? null,
-                    'application_id' => $dealerApplication->id ?? null
+                    'user_id' => $user->id ?? null
                 ]);
                 
                 if (isset($responseData['success']) && $responseData['success'] === true) {
@@ -223,7 +199,7 @@ class DealerVerificationService
                         Log::warning('Odoo API Response Missing ID', [
                             'response_data' => $responseData,
                             'partner_id' => $data['partner_id'] ?? null,
-                            'application_id' => $dealerApplication->id ?? null
+                            'user_id' => $user->id ?? null
                         ]);
                     }
                     
@@ -237,7 +213,7 @@ class DealerVerificationService
                 Log::warning('Odoo API returned 200 but success=false', [
                     'response_data' => $responseData,
                     'partner_id' => $data['partner_id'] ?? null,
-                    'application_id' => $dealerApplication->id ?? null
+                    'user_id' => $user->id ?? null
                 ]);
                 
                 return [
@@ -284,7 +260,7 @@ class DealerVerificationService
         }
     }
 
-    protected function prepareOdooPayload(array $data, DealerApplication $dealerApplication): array
+    protected function prepareOdooPayload(array $data, User $user, SubscriptionPlan $subscriptionPlan): array
     {
         $payload = [
             'partner_id' => $data['partner_id'],
@@ -296,23 +272,20 @@ class DealerVerificationService
             'phone_number' => $data['phone_number'],
             'email_address' => $data['email_address'],
             'city_address' => $data['city_address'],
-            'subscription_plan_id' => $data['subscription_plan_id'],
+            'subscription_plan_id' => $subscriptionPlan->odoo_id, // Use odoo_id from subscription plan
         ];
 
         if ($data['seller_type'] === 'authorized') {
             $payload['automotive_brand'] = $data['automotive_brand'] ?? null;
+            $payload['business_license_name'] = $data['business_license_name'] ?? null;
             
             if (isset($data['authorization_letter']) && $data['authorization_letter'] instanceof \Illuminate\Http\UploadedFile) {
-                $payload['authorization_letter'] = base64_encode(file_get_contents($data['authorization_letter']->getRealPath()));
-                $payload['authorization_letter_filename'] = $data['authorization_letter']->getClientOriginalName();
+                $payload['authorization_letter'] = $data['authorization_letter'];
             }
             
             if (isset($data['business_license']) && $data['business_license'] instanceof \Illuminate\Http\UploadedFile) {
-                $payload['business_license'] = base64_encode(file_get_contents($data['business_license']->getRealPath()));
-                $payload['business_license_filename'] = $data['business_license']->getClientOriginalName();
+                $payload['business_license'] = $data['business_license'];
             }
-            
-            $payload['business_license_name'] = $data['business_license_name'] ?? null;
         }
 
         return $payload;
