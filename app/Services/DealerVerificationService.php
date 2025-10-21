@@ -59,16 +59,12 @@ class DealerVerificationService
                 
                 $underReviewStatus = Status::findByNameAndType('under_review', 'dealer_application');
                 
-                // Use actual Odoo ID from response, not partner_id
-                $actualOdooId = $odooResponse['odoo_id'] ?? $odooResponse['id'] ?? $odooResponse['data']['id'] ?? null;
-                
-                if (!$actualOdooId) {
-                    throw new OdooServiceException('Odoo response missing ID');
-                }
+                // Use user ID as odoo_id (as requested)
+                $userOdooId = (string) $user->id;
                 
                 $dealerApplication->update([
                     'status_id' => $underReviewStatus?->id,
-                    'odoo_id' => (string) $actualOdooId,
+                    'odoo_id' => $userOdooId,
                     'synced_with_odoo' => true,
                     'sync_error' => null
                 ]);
@@ -77,14 +73,14 @@ class DealerVerificationService
 
                 Log::info('Dealer application created and synced with Odoo successfully', [
                     'application_id' => $dealerApplication->id,
-                    'odoo_id' => $actualOdooId,
+                    'odoo_id' => $userOdooId,
                 ]);
 
                 return [
                     'success' => true,
                     'message' => 'Dealer verification submitted successfully to Odoo',
                     'application_id' => $dealerApplication->id,
-                    'odoo_id' => (string) $actualOdooId,
+                    'odoo_id' => $userOdooId,
                     'status' => 'under_review',
                     'synced_with_odoo' => true
                 ];
@@ -115,8 +111,8 @@ class DealerVerificationService
             $applicationAppliedStatus = Status::findByNameAndType('application_applied', 'dealer_application');
             
             $applicationData = [
-                'user_id' => $user->id,
-                'odoo_id' => (string) $user->partner_id,
+                'partner_id' => $user->id,
+                'odoo_id' => (string) $user->id,
                 'seller_type' => $data['seller_type'],
                 'owner_manager_name' => $data['owner_manager_name'],
                 'phone_number' => $data['phone_number'],
@@ -189,7 +185,7 @@ class DealerVerificationService
                     'response_data' => $responseData,
                     'success_field' => $responseData['success'] ?? 'NOT SET',
                     'partner_id' => $data['partner_id'] ?? null,
-                    'user_id' => $user->id ?? null
+                    'partner_id' => $user->id ?? null
                 ]);
                 
                 if (isset($responseData['success']) && $responseData['success'] === true) {
@@ -199,7 +195,7 @@ class DealerVerificationService
                         Log::warning('Odoo API Response Missing ID', [
                             'response_data' => $responseData,
                             'partner_id' => $data['partner_id'] ?? null,
-                            'user_id' => $user->id ?? null
+                            'partner_id' => $user->id ?? null
                         ]);
                     }
                     
@@ -213,7 +209,7 @@ class DealerVerificationService
                 Log::warning('Odoo API returned 200 but success=false', [
                     'response_data' => $responseData,
                     'partner_id' => $data['partner_id'] ?? null,
-                    'user_id' => $user->id ?? null
+                    'partner_id' => $user->id ?? null
                 ]);
                 
                 return [
@@ -421,7 +417,7 @@ class DealerVerificationService
             Log::info('Dealer application approved', [
                 'application_id' => $applicationId,
                 'odoo_id' => $application->odoo_id,
-                'user_id' => $application->user_id,
+                'partner_id' => $application->partner_id,
                 'reviewed_by' => $reviewedBy,
                 'odoo_response' => $odooResponse,
             ]);
@@ -494,7 +490,7 @@ class DealerVerificationService
             Log::info('Dealer application rejected', [
                 'application_id' => $applicationId,
                 'odoo_id' => $application->odoo_id,
-                'user_id' => $application->user_id,
+                'partner_id' => $application->partner_id,
                 'reason' => $reason,
                 'reviewed_by' => $reviewedBy,
                 'odoo_response' => $odooResponse,

@@ -12,7 +12,7 @@ class DealerApplication extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'user_id',
+        'partner_id',
         'odoo_id',
         'seller_type',
         'owner_manager_name',
@@ -52,7 +52,7 @@ class DealerApplication extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'partner_id');
     }
 
     /**
