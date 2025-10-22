@@ -470,14 +470,26 @@ Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(functi
 
     // Notification Routes
     Route::prefix('notifications')->group(function () {
-        Route::get('/', [App\Http\Controllers\Api\NotificationController::class, 'index']);
+        // User notification management
+        Route::get('/', [App\Http\Controllers\Api\NotificationController::class, 'getUserNotifications']);
         Route::get('/types', [App\Http\Controllers\Api\NotificationController::class, 'getNotificationTypes']);
-        Route::get('/stats', [App\Http\Controllers\Api\NotificationController::class, 'getStats']);
+        Route::get('/analytics', [App\Http\Controllers\Api\NotificationController::class, 'getAnalytics']);
         Route::put('/{notificationId}/read', [App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
-        Route::put('/{notificationId}/clicked', [App\Http\Controllers\Api\NotificationController::class, 'markAsClicked']);
         Route::put('/mark-all-read', [App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
-        Route::delete('/{notificationId}', [App\Http\Controllers\Api\NotificationController::class, 'destroy']);
-        Route::post('/fcm/register', [App\Http\Controllers\Api\NotificationController::class, 'registerFcmToken']);
-        Route::post('/fcm/deactivate', [App\Http\Controllers\Api\NotificationController::class, 'deactivateFcmToken']);
+        Route::delete('/{notificationId}', [App\Http\Controllers\Api\NotificationController::class, 'delete']);
+        
+        // FCM token management
+        Route::post('/fcm/register', [App\Http\Controllers\Api\NotificationController::class, 'registerToken']);
+        Route::post('/fcm/deactivate', [App\Http\Controllers\Api\NotificationController::class, 'deactivateToken']);
+        
+        // Admin notification sending (requires admin role)
+        Route::middleware('admin')->group(function () {
+            Route::post('/send/user', [App\Http\Controllers\Api\NotificationController::class, 'sendToUser']);
+            Route::post('/send/users', [App\Http\Controllers\Api\NotificationController::class, 'sendToUsers']);
+            Route::post('/send/all', [App\Http\Controllers\Api\NotificationController::class, 'sendToAll']);
+            Route::post('/send/dealers', [App\Http\Controllers\Api\NotificationController::class, 'sendToDealers']);
+            Route::post('/send/template', [App\Http\Controllers\Api\NotificationController::class, 'sendTemplate']);
+            Route::post('/schedule', [App\Http\Controllers\Api\NotificationController::class, 'schedule']);
+        });
     });
 });
