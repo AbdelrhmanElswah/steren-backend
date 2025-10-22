@@ -21,7 +21,20 @@ class DealerVerificationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // No validation - let Odoo handle everything
+            'partner_id' => 'required|integer',
+            'seller_type' => 'required|string|in:authorized,independent',
+            'dealership_name' => 'required|string|max:255',
+            'owner_manager_name' => 'required|string|max:255',
+            'phone_number' => 'required|string|max:20',
+            'email_address' => 'required|email|max:255',
+            'city_address' => 'required|string|max:500',
+            'subscription_plan_id' => 'required|exists:subscription_plans,id',
+            'automotive_brand' => 'nullable|string|max:255',
+            'business_license_name' => 'nullable|string|max:255',
+            'vehicles_in_stock' => 'nullable|integer|min:0|max:9999',
+            'years_in_business' => 'nullable|integer|min:0|max:100',
+            'authorization_letter' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'business_license' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ];
     }
 

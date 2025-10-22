@@ -39,6 +39,23 @@ class DealerVerificationService
                 'seller_type' => $data['seller_type'] ?? 'NOT_SET'
             ]);
 
+            // Map field names from Flutter app to expected database field names
+            if (isset($data['email_address']) && !isset($data['email'])) {
+                $data['email'] = $data['email_address'];
+            }
+            
+            if (isset($data['dealership_name']) && !isset($data['dealership_company_name'])) {
+                $data['dealership_company_name'] = $data['dealership_name'];
+            }
+            
+            if (isset($data['automotive_brand']) && !isset($data['automotive_brand_represented'])) {
+                $data['automotive_brand_represented'] = $data['automotive_brand'];
+            }
+            
+            if (isset($data['business_license_name']) && !isset($data['business_license_number'])) {
+                $data['business_license_number'] = $data['business_license_name'];
+            }
+
             $user = $authenticatedUser ?? User::where('partner_id', $data['partner_id'])->first();
             
             if (!$user) {
@@ -469,7 +486,7 @@ class DealerVerificationService
             'phone_number' => $data['phone_number'],
             'email_address' => $data['email_address'],
             'city_address' => $data['city_address'],
-            'subscription_plans_id' => $subscriptionPlan->odoo_id ?? $subscriptionPlan->id, 
+            'subscription_plan_id' => $subscriptionPlan->odoo_id ?? $subscriptionPlan->id, 
         ];
 
         if ($data['seller_type'] === 'authorized') {
