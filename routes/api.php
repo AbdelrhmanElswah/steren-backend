@@ -93,8 +93,8 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('budgets/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'restoreByOdooId']);
 });
 
-// Car Listing API Routes - Protected with Sanctum
-Route::prefix('car-listings')->middleware('auth:sanctum')->group(function () {
+// Car Listing API Routes - Protected with Sanctum and Phone Verification
+Route::prefix('car-listings')->middleware(['auth:sanctum', 'phone.verified'])->group(function () {
     Route::post('/', [App\Http\Controllers\Api\CarListingApiController::class, 'store']);
     Route::post('/form-data', [App\Http\Controllers\Api\CarListingApiController::class, 'storeFormData']);
 });
@@ -336,8 +336,8 @@ Route::prefix('subscriptions')->middleware('auth:sanctum')->group(function () {
     Route::post('/change-plan', [SubscriptionController::class, 'changePlan']);
 });
 
-// Dealer Application Routes
-Route::prefix('dealer')->middleware('auth:sanctum')->group(function () {
+// Dealer Application Routes - Protected with Sanctum and Phone Verification
+Route::prefix('dealer')->middleware(['auth:sanctum', 'phone.verified'])->group(function () {
     // Application Management
     Route::get('/status', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'status']);
     Route::get('/subscription-plans', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'subscriptionPlans']);

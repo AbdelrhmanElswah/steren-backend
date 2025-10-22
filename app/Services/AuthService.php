@@ -257,7 +257,6 @@ class AuthService
                 }
             }
             
-            // If user doesn't exist, create a pending account
             if (!$user) {
                 $userData = [
                     'firebase_uid' => $firebaseUserInfo['firebase_uid'],
@@ -288,16 +287,21 @@ class AuthService
                 ];
             }
             
-            // Existing user - proceed with normal flow
             $userData = [
                 'firebase_uid' => $firebaseUserInfo['firebase_uid'],
-                'email' => $firebaseUserInfo['email'] ?? $additionalData['email'] ?? null,
-                'full_name' => $firebaseUserInfo['name'] ?? $additionalData['full_name'] ?? null,
-                'phone' => $firebaseUserInfo['phone_number'] ?? $additionalData['phone'] ?? 'SOCIAL_' . $firebaseUserInfo['firebase_uid'],
+                'full_name' => $firebaseUserInfo['name'] ?? $additionalData['full_name'] ?? $user->full_name,
+                'phone' => $firebaseUserInfo['phone_number'] ?? $additionalData['phone'] ?? $user->phone,
                 'phone_verified_at' => now(),
                 'social_provider' => $provider,
                 'firebase_claims' => json_encode($firebaseUserInfo['firebase_claims']),
             ];
+            
+            if ($firebaseUserInfo['email'] && $user->email !== $firebaseUserInfo['email']) {
+                $userData['email'] = $firebaseUserInfo['email'];
+            }
+            
+            // Update the existing user with the new data
+            $user->update($userData);
             
             $clientIntegration = [
                 'success' => false,
@@ -305,12 +309,12 @@ class AuthService
                 'message' => 'Client creation not attempted'
             ];
             
-            if ($userData['full_name'] && $userData['email']) {
+            if ($userData['full_name'] && ($userData['email'] ?? $user->email)) {
                 try {
                     $clientResult = $this->clientService->createClient([
                         'full_name' => $userData['full_name'],
-                        'phone' => $userData['phone'] ?? 'SOCIAL_' . $firebaseUserInfo['firebase_uid'],
-                        'email' => $userData['email']
+                        'phone' => $userData['phone'] ?? $user->phone ?? 'SOCIAL_' . $firebaseUserInfo['firebase_uid'],
+                        'email' => $userData['email'] ?? $user->email
                     ]);
                     
                     $clientIntegration = [
