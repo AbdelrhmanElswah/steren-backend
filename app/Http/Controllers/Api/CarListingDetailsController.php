@@ -577,6 +577,7 @@ class CarListingDetailsController extends Controller
                 
                 // Inspection and reports
                 'inspection' => $listing->inspection,
+                'inspection_sides' => $listing->inspection_sides,
                 'carfax_report' => $listing->carfaxReport,
                 'damage_details' => [
                     'status' => $listing->damage_status,
