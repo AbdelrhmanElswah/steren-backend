@@ -57,15 +57,17 @@ class DealerVerificationService
                 'partner_id' => $data['partner_id']
             ]);
 
-            $subscriptionPlan = SubscriptionPlan::where('odoo_id', (string) $data['subscription_plan_id'])->first();
+            // First try to find by database ID (Flutter sends database IDs)
+            $subscriptionPlan = SubscriptionPlan::find($data['subscription_plan_id']);
             
             if (!$subscriptionPlan) {
-                Log::info('Plan not found by odoo_id, trying database ID', [
-                    'odoo_id_search' => $data['subscription_plan_id'],
-                    'trying_database_id' => true
+                Log::info('Plan not found by database ID, trying odoo_id', [
+                    'database_id_search' => $data['subscription_plan_id'],
+                    'trying_odoo_id' => true
                 ]);
                 
-                $subscriptionPlan = SubscriptionPlan::find($data['subscription_plan_id']);
+                // Try to find by odoo_id as fallback
+                $subscriptionPlan = SubscriptionPlan::where('odoo_id', (string) $data['subscription_plan_id'])->first();
             }
             
             if (!$subscriptionPlan) {
