@@ -494,15 +494,68 @@ class CarListingApiController extends Controller
             $inspectionFileName = $request->file('inspection_file')->getClientOriginalName();
         }
 
-        // Prepare car_info with all required fields
+        // Get brand and model data for Odoo
+        $brand = \App\Models\CarBrand::find($validatedData['car_brand_id']);
+        $model = \App\Models\CarModel::find($validatedData['car_model_id']);
+        $bodyType = \App\Models\BodyType::find($validatedData['car_body_type_id']);
+
+        // Validate that Odoo IDs exist
+        $missingOdooIds = [];
+        if (!$brand || !$brand->odoo_id) {
+            $missingOdooIds[] = "Brand (ID: {$validatedData['car_brand_id']})";
+        }
+        if (!$model || !$model->odoo_id) {
+            $missingOdooIds[] = "Model (ID: {$validatedData['car_model_id']})";
+        }
+        if (!$bodyType || !$bodyType->odoo_id) {
+            $missingOdooIds[] = "Body Type (ID: {$validatedData['car_body_type_id']})";
+        }
+
+        if (!empty($missingOdooIds)) {
+            Log::error('Missing Odoo IDs for car listing creation', [
+                'missing_odoo_ids' => $missingOdooIds,
+                'brand' => $brand ? ['id' => $brand->id, 'name' => $brand->name, 'odoo_id' => $brand->odoo_id] : null,
+                'model' => $model ? ['id' => $model->id, 'name' => $model->name, 'odoo_id' => $model->odoo_id] : null,
+                'body_type' => $bodyType ? ['id' => $bodyType->id, 'name' => $bodyType->name, 'odoo_id' => $bodyType->odoo_id] : null
+            ]);
+            
+            // Return error response instead of sending to Odoo
+            return [
+                'error' => true,
+                'message' => 'Missing Odoo IDs for required data',
+                'missing_odoo_ids' => $missingOdooIds,
+                'details' => 'Please ensure all brands, models, and body types have Odoo IDs before creating listings'
+            ];
+        }
+
+        // Log the data being sent to Odoo for debugging
+        Log::info('Preparing Odoo data', [
+            'brand' => [
+                'laravel_id' => $validatedData['car_brand_id'],
+                'odoo_id' => $brand->odoo_id,
+                'name' => $brand->name
+            ],
+            'model' => [
+                'laravel_id' => $validatedData['car_model_id'],
+                'odoo_id' => $model->odoo_id,
+                'name' => $model->name
+            ],
+            'body_type' => [
+                'laravel_id' => $validatedData['car_body_type_id'],
+                'odoo_id' => $bodyType->odoo_id,
+                'name' => $bodyType->name
+            ]
+        ]);
+
+        // Prepare car_info with all required fields - Use Odoo IDs only
         $carInfo = [
             'vin' => $validatedData['vin'] ?? '',
-            'brand' => $validatedData['car_brand_id'],
-            'model' => $validatedData['car_model_id'],
+            'brand' => $brand->odoo_id, // Use Odoo ID only
+            'model' => $model->odoo_id, // Use Odoo ID only
             'condition' => $validatedData['condition_type'],
             'year' => $validatedData['year'],
             'gcc_import' => $validatedData['gcc_import'] ?? '',
-            'body_type' => $validatedData['car_body_type_id'],
+            'body_type' => $bodyType->odoo_id, // Use Odoo ID only
             'engine_size' => $validatedData['engine_size'] ?? 0,
             'fuel_type' => $fuelTypeName,
             'cylinders' => $cylinderName,
@@ -564,12 +617,22 @@ class CarListingApiController extends Controller
             if ($response->successful()) {
                 return $response->json();
             } else {
+                $errorBody = $response->json();
                 Log::error('Odoo API request failed', [
                     'status' => $response->status(),
                     'body' => $response->body(),
+                    'error_details' => $errorBody,
                     'data' => $data
                 ]);
-                return null;
+                
+                // Return error response for better debugging
+                return [
+                    'error' => true,
+                    'status' => $response->status(),
+                    'message' => $errorBody['result']['error'] ?? 'Odoo API request failed',
+                    'details' => $errorBody['result']['details'] ?? null,
+                    'odoo_response' => $errorBody
+                ];
             }
 
         } catch (\Exception $e) {
@@ -733,6 +796,19 @@ class CarListingApiController extends Controller
 
             // Prepare data for Odoo API
             $odooData = $this->prepareOdooDataFromForm($carListing, $validatedData, $request);
+
+            // Check if Odoo data preparation failed
+            if (isset($odooData['error']) && $odooData['error']) {
+                DB::rollBack();
+                return $this->errorResponse(
+                    $odooData['message'],
+                    422,
+                    [
+                        'missing_odoo_ids' => $odooData['missing_odoo_ids'] ?? [],
+                        'details' => $odooData['details'] ?? null
+                    ]
+                );
+            }
 
             // Send to Odoo API
             $odooResponse = $this->sendToOdoo($odooData);
