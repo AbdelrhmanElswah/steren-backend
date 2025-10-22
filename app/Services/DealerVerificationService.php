@@ -497,7 +497,7 @@ class DealerVerificationService
             'owner_manager_name' => $data['owner_manager_name'],
             'vehicles_in_stock' => (int) ($data['vehicles_in_stock'] ?? 0),
             'years_in_business' => (int) ($data['years_in_business'] ?? 0),
-            'phone_number' => $data['phone_number'],
+            'phone_number' => $this->formatPhoneForOdoo($data['phone_number']),
             'email_address' => $data['email'],
             'city_address' => $data['city_address'],
             'subscription_plan_id' => $subscriptionPlan->odoo_id ?? $subscriptionPlan->id, 
@@ -910,5 +910,27 @@ class DealerVerificationService
                 'message' => 'Odoo notification exception: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Format phone number for Odoo submission
+     * Odoo requires at least 10 digits, so we pad with leading zeros if needed
+     */
+    protected function formatPhoneForOdoo(?string $phoneNumber): string
+    {
+        if (empty($phoneNumber)) {
+            return '0000000000'; // Default 10-digit number for empty phones
+        }
+
+        // Remove any non-digit characters
+        $cleaned = preg_replace('/[^0-9]/', '', $phoneNumber);
+        
+        // If already 10+ digits, return as is
+        if (strlen($cleaned) >= 10) {
+            return $cleaned;
+        }
+        
+        // Pad with leading zeros to make it 10 digits
+        return str_pad($cleaned, 10, '0', STR_PAD_LEFT);
     }
 }
