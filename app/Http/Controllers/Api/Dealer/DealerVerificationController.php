@@ -9,6 +9,8 @@ use App\Services\DealerVerificationService;
 use App\Models\DealerApplication;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Exception;
 
 class DealerVerificationController extends Controller
@@ -238,6 +240,9 @@ class DealerVerificationController extends Controller
                 $request->user()?->id
             );
 
+            // Call Odoo mark-paid API after successful approval
+            $this->callOdooMarkPaid($odooId);
+
             return $this->successResponse($result, 'Dealer application approved successfully');
 
         } catch (Exception $e) {
@@ -245,6 +250,56 @@ class DealerVerificationController extends Controller
                 'Failed to approve dealer application: ' . $e->getMessage(),
                 500
             );
+        }
+    }
+
+    /**
+     * Call Odoo mark-paid API
+     */
+    private function callOdooMarkPaid(string $odooId)
+    {
+        try {
+            $odooApiUrl = config('services.odoo.api_url');
+            $odooApiKey = config('services.odoo.api_key');
+            
+            if (!$odooApiUrl || !$odooApiKey) {
+                Log::warning('Odoo API configuration missing for mark-paid call', [
+                    'odoo_id' => $odooId
+                ]);
+                return;
+            }
+
+            $markPaidUrl = rtrim($odooApiUrl, '/') . "/api/verification/{$odooId}/mark-paid";
+            
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Authorization' => 'Bearer ' . $odooApiKey,
+                ])
+                ->post($markPaidUrl);
+
+            if ($response->successful()) {
+                Log::info('Odoo mark-paid API called successfully', [
+                    'odoo_id' => $odooId,
+                    'url' => $markPaidUrl,
+                    'status' => $response->status(),
+                    'response' => $response->json()
+                ]);
+            } else {
+                Log::error('Odoo mark-paid API call failed', [
+                    'odoo_id' => $odooId,
+                    'url' => $markPaidUrl,
+                    'status' => $response->status(),
+                    'response' => $response->body()
+                ]);
+            }
+
+        } catch (Exception $e) {
+            Log::error('Failed to call Odoo mark-paid API', [
+                'odoo_id' => $odooId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
         }
     }
 
