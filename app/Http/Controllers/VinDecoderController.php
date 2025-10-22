@@ -46,21 +46,33 @@ class VinDecoderController extends Controller
 
             $result = $this->vehicleDatabasesService->decodeVin($vin, $cache);
             
+            // Debug: Log the actual API response structure
+            Log::info('VIN API Response Structure', [
+                'vin' => $vin,
+                'response_structure' => $result,
+                'data_keys' => array_keys($result['data'] ?? [])
+            ]);
+            
             // Create a temporary VinDecoder model instance to use with the resource
             $vinDecoder = new \App\Models\VinDecoder();
-            $vinDecoder->vin = $vin;
-            $vinDecoder->make = $result['data']['make'] ?? '';
-            $vinDecoder->model = $result['data']['model'] ?? '';
-            $vinDecoder->year = $result['data']['year'] ?? null;
-            $vinDecoder->trim = $result['data']['trim'] ?? '';
-            $vinDecoder->body_type = $result['data']['body_type'] ?? '';
-            $vinDecoder->engine_type = $result['data']['engine_type'] ?? '';
-            $vinDecoder->transmission = $result['data']['transmission'] ?? '';
-            $vinDecoder->drive_type = $result['data']['drive_type'] ?? '';
-            $vinDecoder->fuel_type = $result['data']['fuel_type'] ?? '';
-            $vinDecoder->doors = $result['data']['doors'] ?? '';
-            $vinDecoder->cylinders = $result['data']['cylinders'] ?? '';
-            $vinDecoder->additional_data = $result['data'];
+            $apiData = $result['data'];
+            
+            // Use the same mapping logic as the service's prepareVinData method
+            $vinDecoder->vin = strtoupper($vin);
+            $vinDecoder->make = $apiData['make'] ?? $apiData['Make'] ?? '';
+            $vinDecoder->model = $apiData['model'] ?? $apiData['Model'] ?? '';
+            $vinDecoder->year = $apiData['year'] ?? $apiData['Year'] ?? null;
+            $vinDecoder->trim = $apiData['trim'] ?? $apiData['Trim'] ?? '';
+            $vinDecoder->body_type = $apiData['body_type'] ?? $apiData['BodyType'] ?? '';
+            $vinDecoder->engine_type = $apiData['engine_type'] ?? $apiData['EngineType'] ?? '';
+            $vinDecoder->transmission = $apiData['transmission'] ?? $apiData['Transmission'] ?? '';
+            $vinDecoder->drive_type = $apiData['drive_type'] ?? $apiData['DriveType'] ?? '';
+            $vinDecoder->fuel_type = $apiData['fuel_type'] ?? $apiData['FuelType'] ?? '';
+            $vinDecoder->doors = $apiData['doors'] ?? $apiData['Doors'] ?? '';
+            $vinDecoder->cylinders = $apiData['cylinders'] ?? $apiData['Cylinders'] ?? '';
+            $vinDecoder->manufacturer = $apiData['manufacturer'] ?? $apiData['Manufacturer'] ?? '';
+            $vinDecoder->plant = $apiData['plant'] ?? $apiData['Plant'] ?? '';
+            $vinDecoder->additional_data = $apiData;
             
             return $this->successResponse(
                 new VinDecoderResource($vinDecoder), 
