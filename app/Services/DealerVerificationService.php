@@ -52,83 +52,121 @@ class DealerVerificationService
                     'partner_id' => $data['partner_id']
                 ]);
                 
-                $subscriptionPlan = SubscriptionPlan::first() ?? $this->createFallbackSubscriptionPlan($data['subscription_plan_id']);
+                // Try to find a plan with matching odoo_id first
+                $subscriptionPlan = SubscriptionPlan::where('odoo_id', $data['subscription_plan_id'])->first();
+                
+                if (!$subscriptionPlan) {
+                    // Use first available plan as fallback
+                    $subscriptionPlan = SubscriptionPlan::first() ?? $this->createFallbackSubscriptionPlan($data['subscription_plan_id']);
+                }
             }
 
+            // First, create the local dealer application record
             try {
-                $odooResponse = $this->submitToOdoo($data, $user, $subscriptionPlan);
-
-                if (!$odooResponse['success']) {
-                    Log::error('Odoo submission failed', [
-                        'partner_id' => $data['partner_id'],
-                        'odoo_message' => $odooResponse['message'] ?? 'Unknown error',
-                        'odoo_error_code' => $odooResponse['error_code'] ?? null,
-                        'odoo_details' => $odooResponse['details'] ?? null,
-                    ]);
-                    
-                    throw new OdooServiceException('Odoo submission failed: ' . ($odooResponse['message'] ?? 'Unknown error'));
-                }
-
-                Log::info('Odoo accepted the dealer application', [
+                Log::info('Creating local dealer application first', [
                     'partner_id' => $data['partner_id'],
-                    'odoo_response' => $odooResponse,
-                    'odoo_success' => $odooResponse['success'],
-                    'odoo_id' => $odooResponse['odoo_id'] ?? 'NOT_SET'
+                    'user_id' => $user->id,
+                    'subscription_plan_id' => $subscriptionPlan->id ?? 'NOT_SET'
+                ]);
+                
+                $dealerApplication = $this->createDealerApplication($user, $data, $subscriptionPlan);
+                
+                $applicationAppliedStatus = Status::findByNameAndType('application_applied', 'dealer_application');
+                
+                $dealerApplication->update([
+                    'status_id' => $applicationAppliedStatus?->id,
+                    'odoo_id' => null, // Will be updated after Odoo response
+                    'synced_with_odoo' => false,
+                    'sync_error' => null
                 ]);
 
+                Log::info('Local dealer application created successfully', [
+                    'application_id' => $dealerApplication->id,
+                    'status' => 'application_applied'
+                ]);
+
+                // Now send to Odoo
                 try {
-                    Log::info('Attempting to create local dealer application', [
+                    $odooResponse = $this->submitToOdoo($data, $user, $subscriptionPlan);
+
+                    if (!$odooResponse['success']) {
+                        Log::error('Odoo submission failed', [
+                            'application_id' => $dealerApplication->id,
+                            'partner_id' => $data['partner_id'],
+                            'odoo_message' => $odooResponse['message'] ?? 'Unknown error',
+                            'odoo_error_code' => $odooResponse['error_code'] ?? null,
+                            'odoo_details' => $odooResponse['details'] ?? null,
+                        ]);
+                        
+                        // Update local record with error
+                        $dealerApplication->update([
+                            'sync_error' => $odooResponse['message'] ?? 'Odoo submission failed',
+                            'synced_with_odoo' => false
+                        ]);
+                        
+                        throw new OdooServiceException('Odoo submission failed: ' . ($odooResponse['message'] ?? 'Unknown error'));
+                    }
+
+                    // Odoo accepted the data - update local record with Odoo ID
+                    $odooId = $odooResponse['odoo_id'] ?? null;
+                    
+                    Log::info('Odoo accepted the dealer application', [
+                        'application_id' => $dealerApplication->id,
                         'partner_id' => $data['partner_id'],
-                        'user_id' => $user->id,
-                        'subscription_plan_id' => $subscriptionPlan->id ?? 'NOT_SET'
+                        'odoo_response' => $odooResponse,
+                        'odoo_id' => $odooId
                     ]);
-                    
-                    $dealerApplication = $this->createDealerApplication($user, $data, $subscriptionPlan);
-                    
+
                     $underReviewStatus = Status::findByNameAndType('under_review', 'dealer_application');
-                    
-                    $userOdooId = (string) $user->id;
                     
                     $dealerApplication->update([
                         'status_id' => $underReviewStatus?->id,
-                        'odoo_id' => $userOdooId,
+                        'odoo_id' => $odooId, // Use the actual Odoo ID from response
                         'synced_with_odoo' => true,
                         'sync_error' => null
                     ]);
 
-                    Log::info('Dealer application created and synced with Odoo successfully', [
+                    Log::info('Dealer application synced with Odoo successfully', [
                         'application_id' => $dealerApplication->id,
-                        'odoo_id' => $userOdooId,
+                        'odoo_id' => $odooId,
+                        'status' => 'under_review'
                     ]);
 
                     return [
                         'success' => true,
                         'message' => 'Dealer verification submitted successfully to Odoo',
                         'application_id' => $dealerApplication->id,
-                        'odoo_id' => $userOdooId,
+                        'odoo_id' => $odooId,
                         'status' => 'under_review',
                         'synced_with_odoo' => true
                     ];
-                } catch (\Exception $localError) {
-                    Log::error('Odoo accepted data but local database failed', [
+
+                } catch (\Exception $odooError) {
+                    Log::error('Odoo submission failed after local record creation', [
+                        'application_id' => $dealerApplication->id,
                         'partner_id' => $data['partner_id'],
-                        'user_id' => $user->id,
-                        'odoo_success' => true,
-                        'local_error' => $localError->getMessage(),
-                        'error_trace' => $localError->getTraceAsString(),
-                        'subscription_plan_id' => $subscriptionPlan->id ?? 'NOT_SET'
+                        'odoo_error' => $odooError->getMessage()
                     ]);
 
-                    return [
-                        'success' => true,
-                        'message' => 'Dealer verification submitted successfully to Odoo (local record creation failed)',
-                        'application_id' => null,
-                        'odoo_id' => $user->id,
-                        'status' => 'under_review',
-                        'synced_with_odoo' => true,
-                        'local_database_error' => $localError->getMessage()
-                    ];
+                    // Update local record with Odoo error
+                    $dealerApplication->update([
+                        'sync_error' => $odooError->getMessage(),
+                        'synced_with_odoo' => false
+                    ]);
+
+                    throw new OdooServiceException('Odoo submission failed: ' . $odooError->getMessage());
                 }
+
+            } catch (\Exception $localError) {
+                Log::error('Local dealer application creation failed', [
+                    'partner_id' => $data['partner_id'],
+                    'user_id' => $user->id,
+                    'local_error' => $localError->getMessage(),
+                    'error_trace' => $localError->getTraceAsString(),
+                    'subscription_plan_id' => $subscriptionPlan->id ?? 'NOT_SET'
+                ]);
+
+                throw new OdooServiceException('Failed to create dealer application: ' . $localError->getMessage());
             } catch (OdooConnectionException $e) {
                 Log::error('Odoo connection failed', [
                     'partner_id' => $data['partner_id'],
@@ -399,7 +437,7 @@ class DealerVerificationService
             'phone_number' => $data['phone_number'],
             'email_address' => $data['email_address'],
             'city_address' => $data['city_address'],
-            'subscription_plan_id' => $subscriptionPlan->odoo_id, 
+            'subscription_plan_id' => $subscriptionPlan->odoo_id ?? $subscriptionPlan->id, 
         ];
 
         if ($data['seller_type'] === 'authorized') {
