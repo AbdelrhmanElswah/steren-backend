@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Dealer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dealer\DealerVerificationRequest;
 use App\Http\Requests\Dealer\DealerApprovalRequest;
+use App\Http\Requests\Dealer\OdooDealerApprovalRequest;
 use App\Services\DealerVerificationService;
 use App\Models\DealerApplication;
 use App\Traits\ApiResponse;
@@ -309,16 +310,15 @@ class DealerVerificationController extends Controller
     /**
      * Reject a dealer application by Odoo ID
      */
-    public function rejectByOdooId(DealerApprovalRequest $request, string $odooId)
+    public function rejectByOdooId(Request $request, string $odooId)
     {
         try {
             $application = DealerApplication::where('odoo_id', $odooId)->firstOrFail();
-            $validated = $request->validated();
             
             $result = $this->dealerVerificationService->rejectApplication(
                 $application->id,
-                $validated['reason'] ?? 'No reason provided',
-                $request->user()?->id
+                'Rejected via Odoo integration', // Default reason for Odoo rejections
+                null // No specific reviewer for Odoo integration
             );
 
             // Add rejected_at timestamp to the result
@@ -340,24 +340,27 @@ class DealerVerificationController extends Controller
     /**
      * Process a dealer application by Odoo ID (unified endpoint)
      */
-    public function processByOdooId(DealerApprovalRequest $request, string $odooId)
+    public function processByOdooId(OdooDealerApprovalRequest $request, string $odooId)
     {
         try {
             $application = DealerApplication::where('odoo_id', $odooId)->firstOrFail();
             $validated = $request->validated();
             $action = $validated['action'];
-            $reason = $validated['reason'] ?? null;
-            $reviewedBy = $request->user()?->id;
 
             if ($action === 'approve') {
-                $result = $this->dealerVerificationService->approveApplication($application->id, $reviewedBy);
+                $result = $this->dealerVerificationService->approveApplication($application->id, null);
+                $result['approved_at'] = now()->toISOString();
             } else {
                 $result = $this->dealerVerificationService->rejectApplication(
                     $application->id, 
-                    $reason ?? 'No reason provided', 
-                    $reviewedBy
+                    'Rejected via Odoo integration', 
+                    null
                 );
+                $result['rejected_at'] = now()->toISOString();
             }
+
+            // Call Odoo mark-paid API after successful processing
+            $this->callOdooMarkPaid($odooId);
 
             return $this->successResponse($result, "Dealer application {$action}d successfully");
 

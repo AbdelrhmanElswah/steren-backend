@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('dealer_applications', function (Blueprint $table) {
-            $table->ttamp('rejected_at')->nullable()->after('approved_at');imes
+            $table->timestamp('rejected_at')->nullable()->after('approved_at');
         });
     }
 
