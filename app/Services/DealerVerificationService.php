@@ -469,7 +469,7 @@ class DealerVerificationService
             'phone_number' => $data['phone_number'],
             'email_address' => $data['email_address'],
             'city_address' => $data['city_address'],
-            'subscription_plan_id' => $subscriptionPlan->odoo_id ?? $subscriptionPlan->id, 
+            'subscription_plans_id' => $subscriptionPlan->odoo_id ?? $subscriptionPlan->id, 
         ];
 
         if ($data['seller_type'] === 'authorized') {
