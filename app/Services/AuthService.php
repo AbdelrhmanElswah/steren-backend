@@ -125,6 +125,26 @@ class AuthService
 
     public function verifyOtp(User $user, string $code, ?array $clientData = null): array
     {
+        if ($user->phone_verified_at) {
+            Log::info('Phone already verified, skipping OTP validation', [
+                'user_id' => $user->id,
+                'phone' => $user->phone,
+                'phone_verified_at' => $user->phone_verified_at,
+            ]);
+            
+            $token = $user->createToken('api')->plainTextToken;
+            
+            return [
+                'user' => $user,
+                'token' => $token,
+                'client_integration' => [
+                    'success' => true,
+                    'partner_id' => $user->partner_id,
+                    'message' => 'Phone already verified'
+                ]
+            ];
+        }
+
         if (!$this->validateOtp($this->phoneKey($user->phone), $code)) {
             throw ValidationException::withMessages([
                 'code' => ['Invalid code'],
