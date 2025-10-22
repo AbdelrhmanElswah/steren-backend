@@ -154,7 +154,12 @@ class DealerVerificationService
                         throw new OdooServiceException('Odoo submission failed: ' . ($odooResponse['message'] ?? 'Unknown error'));
                     }
 
-                    // Odoo accepted the data - update local record with Odoo ID
+                    Log::info('Raw Odoo response structure', [
+                        'full_response' => $odooResponse,
+                        'response_keys' => array_keys($odooResponse),
+                        'data_keys' => isset($odooResponse['data']) ? array_keys($odooResponse['data']) : 'no_data_key'
+                    ]);
+                    
                     $odooId = $odooResponse['data']['id'] ?? $odooResponse['odoo_id'] ?? null;
                     
                     Log::info('Odoo accepted the dealer application', [
@@ -166,12 +171,23 @@ class DealerVerificationService
 
                     $underReviewStatus = Status::findByNameAndType('under_review', 'dealer_application');
                     
-                    $dealerApplication->update([
+                    Log::info('Status lookup result', [
+                        'status_found' => $underReviewStatus ? true : false,
                         'status_id' => $underReviewStatus?->id,
-                        'odoo_id' => $odooId, // Use the actual Odoo ID from response
+                        'status_name' => $underReviewStatus?->name
+                    ]);
+                    
+                    $updateData = [
+                        'odoo_id' => $odooId,
                         'synced_with_odoo' => true,
                         'sync_error' => null
-                    ]);
+                    ];
+                    
+                    if ($underReviewStatus) {
+                        $updateData['status_id'] = $underReviewStatus->id;
+                    }
+                    
+                    $dealerApplication->update($updateData);
 
                     Log::info('Dealer application synced with Odoo successfully', [
                         'application_id' => $dealerApplication->id,
