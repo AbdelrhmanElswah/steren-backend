@@ -171,11 +171,17 @@ class DealerVerificationService
         try {
             $payload = $this->prepareOdooPayload($data, $user, $subscriptionPlan);
 
-            // Try the /api/steren/ endpoint pattern that works in seeders
-            $response = Http::timeout(30)->withHeaders([
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
-            ])->post($this->baseUrl . '/api/verification/submit', $payload);
+            $hasFiles = $this->hasFileUploads($data);
+            
+            if ($hasFiles) {
+                $response = Http::timeout(30)->attach($this->prepareFileAttachments($data))
+                    ->post($this->baseUrl . '/api/verification/submit', $payload);
+            } else {
+                $response = Http::timeout(30)->withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ])->post($this->baseUrl . '/api/verification/submit', $payload);
+            }
 
             if ($response->successful()) {
                 $responseData = $response->json();
@@ -268,23 +274,42 @@ class DealerVerificationService
             'phone_number' => $data['phone_number'],
             'email_address' => $data['email_address'],
             'city_address' => $data['city_address'],
-            'subscription_plan_id' => $subscriptionPlan->odoo_id, // Use odoo_id from subscription plan
+            'subscription_plan_id' => $subscriptionPlan->odoo_id, 
         ];
 
         if ($data['seller_type'] === 'authorized') {
             $payload['automotive_brand'] = $data['automotive_brand'] ?? null;
             $payload['business_license_name'] = $data['business_license_name'] ?? null;
             
-            if (isset($data['authorization_letter']) && $data['authorization_letter'] instanceof \Illuminate\Http\UploadedFile) {
-                $payload['authorization_letter'] = $data['authorization_letter'];
-            }
-            
-            if (isset($data['business_license']) && $data['business_license'] instanceof \Illuminate\Http\UploadedFile) {
-                $payload['business_license'] = $data['business_license'];
-            }
         }
 
         return $payload;
+    }
+
+    /**
+     * Check if the data contains file uploads
+     */
+    protected function hasFileUploads(array $data): bool
+    {
+        return isset($data['authorization_letter']) || isset($data['business_license']);
+    }
+
+    /**
+     * Prepare file attachments for multipart/form-data
+     */
+    protected function prepareFileAttachments(array $data): array
+    {
+        $attachments = [];
+        
+        if (isset($data['authorization_letter']) && $data['authorization_letter'] instanceof \Illuminate\Http\UploadedFile) {
+            $attachments['authorization_letter'] = $data['authorization_letter'];
+        }
+        
+        if (isset($data['business_license']) && $data['business_license'] instanceof \Illuminate\Http\UploadedFile) {
+            $attachments['business_license'] = $data['business_license'];
+        }
+        
+        return $attachments;
     }
 
     /**
