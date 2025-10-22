@@ -31,6 +31,7 @@ class DealerApplication extends Model
         'subscription_plan_id',
         'payment_completed',
         'approved_at',
+        'rejected_at',
         'expires_at',
         'terms_accepted',
         'information_confirmed',
@@ -44,6 +45,7 @@ class DealerApplication extends Model
         'information_confirmed' => 'boolean',
         'reviewed_at' => 'datetime',
         'approved_at' => 'datetime',
+        'rejected_at' => 'datetime',
         'expires_at' => 'datetime',
     ];
 
@@ -300,6 +302,7 @@ class DealerApplication extends Model
             'rejection_reason' => $reason,
             'reviewed_at' => now(),
             'reviewed_by' => $reviewedBy,
+            'rejected_at' => now(),
         ]);
 
         // Send notification

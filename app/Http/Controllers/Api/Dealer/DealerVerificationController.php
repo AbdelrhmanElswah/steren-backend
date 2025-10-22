@@ -240,6 +240,9 @@ class DealerVerificationController extends Controller
                 $request->user()?->id
             );
 
+            // Add approved_at timestamp to the result
+            $result['approved_at'] = now()->toISOString();
+
             // Call Odoo mark-paid API after successful approval
             $this->callOdooMarkPaid($odooId);
 
@@ -317,6 +320,12 @@ class DealerVerificationController extends Controller
                 $validated['reason'] ?? 'No reason provided',
                 $request->user()?->id
             );
+
+            // Add rejected_at timestamp to the result
+            $result['rejected_at'] = now()->toISOString();
+
+            // Call Odoo mark-paid API after successful rejection
+            $this->callOdooMarkPaid($odooId);
 
             return $this->successResponse($result, 'Dealer application rejected successfully');
 
