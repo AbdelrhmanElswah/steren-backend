@@ -209,6 +209,11 @@ class VinDecoderController extends Controller
         $transmission = $this->extractTransmissionFromStyle($style);
         $driveType = $this->extractDriveTypeFromStyle($style);
         
+        // Extract additional specifications from the nested data
+        $specifications = $additionalData['specifications'] ?? [];
+        $dimensions = $additionalData['dimensions'] ?? [];
+        $vehicle = $additionalData['vehicle'] ?? [];
+        
         // Extract other information
         $fuelType = 'Electric'; // Tesla is electric
         $exteriorColor = $vinData['exterior_color'] ?? '';
@@ -217,10 +222,16 @@ class VinDecoderController extends Controller
         $engineSize = $vinData['engine_size'] ?? null;
         $seatingCapacity = $vinData['seating_capacity'] ?? null;
         
-        // Extract additional specifications from the nested data
-        $specifications = $additionalData['specifications'] ?? [];
-        $dimensions = $additionalData['dimensions'] ?? [];
-        $vehicle = $additionalData['vehicle'] ?? [];
+        // Extract available colors
+        $availableColors = $this->extractAvailableColors($additionalData);
+        
+        // Set primary exterior color to the first available color (usually the standard/default color)
+        if (!empty($availableColors)) {
+            $exteriorColor = $availableColors[0]['name'];
+        }
+        
+        // Extract engine size (for electric vehicles, this might be battery capacity)
+        $engineSize = $this->extractEngineSize($specifications, $dimensions);
         
         // Extract performance data
         $horsepower = $this->extractHorsepowerFromDimensions($dimensions);
@@ -268,6 +279,7 @@ class VinDecoderController extends Controller
             'cylinders' => $cylinders,
             'transmission' => $mappedTransmission,
             'exteriorColor' => $exteriorColor,
+            'availableColors' => $availableColors,
             'driveType' => $mappedDriveType,
             'engineSize' => $engineSize,
             'seatingCapacity' => $seatingCapacity,
@@ -611,6 +623,65 @@ class VinDecoderController extends Controller
                 }
             }
         }
+        return null;
+    }
+
+    /**
+     * Extract available colors from additional data
+     */
+    private function extractAvailableColors(array $additionalData): array
+    {
+        $colors = $additionalData['exterior_colors'] ?? [];
+        $availableColors = [];
+        
+        foreach ($colors as $color) {
+            $availableColors[] = [
+                'name' => $color['generic_name'] ?? '',
+                'description' => $color['description'] ?? '',
+                'color_code' => $color['color_code'] ?? '',
+                'hex_value' => $color['hex_value'] ?? '',
+                'rgb_value' => $color['rgb_value'] ?? '',
+                'color_type' => $color['color_type'] ?? '',
+                'price' => $color['color_price'] ?? '',
+            ];
+        }
+        
+        return $availableColors;
+    }
+
+    /**
+     * Extract engine size (for electric vehicles, this might be battery capacity)
+     */
+    private function extractEngineSize(array $specifications, array $dimensions): ?string
+    {
+        // For electric vehicles, try to get battery capacity
+        foreach ($specifications as $spec) {
+            if (isset($spec['traction_battery']['battery_capacity_kwh'])) {
+                $batteryCapacity = $spec['traction_battery']['battery_capacity_kwh'];
+                if (!empty($batteryCapacity)) {
+                    return $batteryCapacity . ' kWh';
+                }
+            }
+        }
+        
+        // Check dimensions for traditional engine size
+        foreach ($dimensions as $dimension) {
+            if (isset($dimension['engine'])) {
+                foreach ($dimension['engine'] as $engineItem) {
+                    if (isset($engineItem['engine_size'])) {
+                        $engineSizeData = $engineItem['engine_size'];
+                        if (is_array($engineSizeData)) {
+                            foreach ($engineSizeData as $item) {
+                                if (isset($item['unit']) && $item['unit'] === 'l' && !empty($item['value'])) {
+                                    return $item['value'] . 'L';
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         return null;
     }
 }
