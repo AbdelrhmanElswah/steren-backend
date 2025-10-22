@@ -144,7 +144,7 @@ class DealerApplicationController extends Controller
         try {
             DB::beginTransaction();
 
-            $data = $request->validated();
+            $data = $request->all();
             
             // Handle file upload for authorization letter
             if ($request->hasFile('authorization_letter')) {
@@ -260,7 +260,7 @@ class DealerApplicationController extends Controller
         try {
             DB::beginTransaction();
 
-            $data = $request->validated();
+            $data = $request->all();
             
             // Handle file upload for authorization letter
             if ($request->hasFile('authorization_letter')) {

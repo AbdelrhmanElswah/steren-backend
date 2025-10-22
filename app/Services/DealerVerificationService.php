@@ -32,6 +32,13 @@ class DealerVerificationService
     public function submitVerification(array $data, ?User $authenticatedUser = null): array
     {
         try {
+            Log::info('DealerVerificationService received data', [
+                'data_keys' => array_keys($data),
+                'subscription_plan_id' => $data['subscription_plan_id'] ?? 'NOT_SET',
+                'partner_id' => $data['partner_id'] ?? 'NOT_SET',
+                'seller_type' => $data['seller_type'] ?? 'NOT_SET'
+            ]);
+
             $user = $authenticatedUser ?? User::where('partner_id', $data['partner_id'])->first();
             
             if (!$user) {
