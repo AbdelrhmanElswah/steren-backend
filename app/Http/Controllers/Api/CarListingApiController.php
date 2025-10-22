@@ -215,7 +215,7 @@ class CarListingApiController extends Controller
             'views' => 0,
             'is_verified' => ($validatedData['seller_info']['type'] ?? '') === 'verified_seller',
             'origin_country' => $carInfo['gcc_import'] ?? 'UAE', 
-            'location_id' => 1, 
+            'location_id' => $this->getOrCreateLocationId($validatedData), 
         ];
     }
 
@@ -969,7 +969,7 @@ class CarListingApiController extends Controller
             'is_inspected' => $data['is_inspected'] ?? false,
             'is_verified' => $data['is_verified'] ?? false,
             'has_insurance' => $data['has_insurance'] ?? false,
-            'location_id' => $data['city_id'] ?? null,
+            'location_id' => $this->getOrCreateLocationIdFromFormData($data),
             'import_type_id' => $data['import_type_id'] ?? null,
             'warranty_status_id' => $data['warranty_status_id'] ?? null,
             'engine_type' => $data['engine_type'] ?? null,
@@ -1148,6 +1148,86 @@ class CarListingApiController extends Controller
         ];
         
         return $fuelTypeMapping[$fuelType] ?? strtolower($fuelType);
+    }
+
+    /**
+     * Get or create location ID based on city_id
+     */
+    private function getOrCreateLocationId(array $validatedData): int
+    {
+        // If city_id is provided, find or create a location for it
+        if (isset($validatedData['car_info']['city_id']) && $validatedData['car_info']['city_id']) {
+            $cityId = $validatedData['car_info']['city_id'];
+            $city = \App\Models\City::find($cityId);
+            
+            if ($city) {
+                // Try to find existing location for this city
+                $location = \App\Models\Location::where('name', $city->name)->first();
+                
+                if (!$location) {
+                    // Create new location if none exists
+                    $location = \App\Models\Location::create([
+                        'name' => $city->name,
+                        'odoo_id' => $city->odoo_id
+                    ]);
+                }
+                
+                return $location->id;
+            }
+        }
+        
+        // Fallback to first available location or create a default one
+        $defaultLocation = \App\Models\Location::first();
+        
+        if (!$defaultLocation) {
+            // Create a default location if none exists
+            $defaultLocation = \App\Models\Location::create([
+                'name' => 'Default Location',
+                'odoo_id' => 'default'
+            ]);
+        }
+        
+        return $defaultLocation->id;
+    }
+
+    /**
+     * Get or create location ID from form data
+     */
+    private function getOrCreateLocationIdFromFormData(array $data): int
+    {
+        // If city_id is provided, find or create a location for it
+        if (isset($data['city_id']) && $data['city_id']) {
+            $cityId = $data['city_id'];
+            $city = \App\Models\City::find($cityId);
+            
+            if ($city) {
+                // Try to find existing location for this city
+                $location = \App\Models\Location::where('name', $city->name)->first();
+                
+                if (!$location) {
+                    // Create new location if none exists
+                    $location = \App\Models\Location::create([
+                        'name' => $city->name,
+                        'odoo_id' => $city->odoo_id
+                    ]);
+                }
+                
+                return $location->id;
+            }
+        }
+        
+        // Fallback to first available location or create a default one
+        $defaultLocation = \App\Models\Location::first();
+        
+        if (!$defaultLocation) {
+            // Create a default location if none exists
+            $defaultLocation = \App\Models\Location::create([
+                'name' => 'Default Location',
+                'odoo_id' => 'default'
+            ]);
+        }
+        
+        return $defaultLocation->id;
     }
 
     /**
