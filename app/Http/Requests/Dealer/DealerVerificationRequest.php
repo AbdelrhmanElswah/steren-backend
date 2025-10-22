@@ -31,8 +31,8 @@ class DealerVerificationRequest extends FormRequest
             'subscription_plan_id' => 'required|exists:subscription_plans,id',
             'automotive_brand' => 'nullable|string|max:255',
             'business_license_name' => 'nullable|string|max:255',
-            'vehicles_in_stock' => 'nullable|integer|min:0|max:9999',
-            'years_in_business' => 'nullable|integer|min:0|max:100',
+            'vehicles_in_stock' => 'nullable|numeric|min:0|max:9999',
+            'years_in_business' => 'nullable|numeric|min:0|max:100',
             'authorization_letter' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'business_license' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ];

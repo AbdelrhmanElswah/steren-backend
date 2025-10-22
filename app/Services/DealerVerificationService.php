@@ -39,7 +39,6 @@ class DealerVerificationService
                 'seller_type' => $data['seller_type'] ?? 'NOT_SET'
             ]);
 
-            // Map field names from Flutter app to expected database field names
             if (isset($data['email_address']) && !isset($data['email'])) {
                 $data['email'] = $data['email_address'];
             }
@@ -93,7 +92,6 @@ class DealerVerificationService
                     'available_plans' => SubscriptionPlan::all()->pluck('id', 'name')->toArray()
                 ]);
                 
-                // Use first available plan as fallback
                 $subscriptionPlan = SubscriptionPlan::first() ?? $this->createFallbackSubscriptionPlan($data['subscription_plan_id']);
                 
                 Log::warning('Using fallback subscription plan', [
@@ -252,8 +250,8 @@ class DealerVerificationService
                 'seller_type' => $data['seller_type'],
                 'owner_manager_name' => $data['owner_manager_name'],
                 'phone_number' => $data['phone_number'],
-                'email' => $data['email_address'],
-                'dealership_company_name' => $data['dealership_name'],
+                'email' => $data['email'],
+                'dealership_company_name' => $data['dealership_company_name'],
                 'vehicles_in_stock' => isset($data['vehicles_in_stock']) && $data['vehicles_in_stock'] !== '' 
                     ? (int) $data['vehicles_in_stock'] 
                     : null,
@@ -479,19 +477,19 @@ class DealerVerificationService
         $payload = [
             'partner_id' => $data['partner_id'],
             'seller_type' => $data['seller_type'],
-            'dealership_name' => $data['dealership_name'],
+            'dealership_name' => $data['dealership_company_name'],
             'owner_manager_name' => $data['owner_manager_name'],
             'vehicles_in_stock' => (int) ($data['vehicles_in_stock'] ?? 0),
             'years_in_business' => (int) ($data['years_in_business'] ?? 0),
             'phone_number' => $data['phone_number'],
-            'email_address' => $data['email_address'],
+            'email_address' => $data['email'],
             'city_address' => $data['city_address'],
             'subscription_plan_id' => $subscriptionPlan->odoo_id ?? $subscriptionPlan->id, 
         ];
 
         if ($data['seller_type'] === 'authorized') {
-            $payload['automotive_brand'] = $data['automotive_brand'] ?? null;
-            $payload['business_license_name'] = $data['business_license_name'] ?? null;
+            $payload['automotive_brand'] = $data['automotive_brand_represented'] ?? null;
+            $payload['business_license_name'] = $data['business_license_number'] ?? null;
             
         }
 
