@@ -499,24 +499,45 @@ class CarListingApiController extends Controller
         $model = \App\Models\CarModel::find($validatedData['car_model_id']);
         $bodyType = \App\Models\BodyType::find($validatedData['car_body_type_id']);
 
-        // Validate that Odoo IDs exist
+        // Validate that Odoo IDs exist (check for null, empty string, but allow 0)
         $missingOdooIds = [];
-        if (!$brand || !$brand->odoo_id) {
+        if (!$brand || is_null($brand->odoo_id) || $brand->odoo_id === '') {
             $missingOdooIds[] = "Brand (ID: {$validatedData['car_brand_id']})";
         }
-        if (!$model || !$model->odoo_id) {
+        if (!$model || is_null($model->odoo_id) || $model->odoo_id === '') {
             $missingOdooIds[] = "Model (ID: {$validatedData['car_model_id']})";
         }
-        if (!$bodyType || !$bodyType->odoo_id) {
+        if (!$bodyType || is_null($bodyType->odoo_id) || $bodyType->odoo_id === '') {
             $missingOdooIds[] = "Body Type (ID: {$validatedData['car_body_type_id']})";
         }
 
         if (!empty($missingOdooIds)) {
             Log::error('Missing Odoo IDs for car listing creation', [
                 'missing_odoo_ids' => $missingOdooIds,
-                'brand' => $brand ? ['id' => $brand->id, 'name' => $brand->name, 'odoo_id' => $brand->odoo_id] : null,
-                'model' => $model ? ['id' => $model->id, 'name' => $model->name, 'odoo_id' => $model->odoo_id] : null,
-                'body_type' => $bodyType ? ['id' => $bodyType->id, 'name' => $bodyType->name, 'odoo_id' => $bodyType->odoo_id] : null
+                'brand' => $brand ? [
+                    'id' => $brand->id, 
+                    'name' => $brand->name, 
+                    'odoo_id' => $brand->odoo_id,
+                    'odoo_id_type' => gettype($brand->odoo_id),
+                    'odoo_id_is_null' => is_null($brand->odoo_id),
+                    'odoo_id_is_empty' => $brand->odoo_id === ''
+                ] : null,
+                'model' => $model ? [
+                    'id' => $model->id, 
+                    'name' => $model->name, 
+                    'odoo_id' => $model->odoo_id,
+                    'odoo_id_type' => gettype($model->odoo_id),
+                    'odoo_id_is_null' => is_null($model->odoo_id),
+                    'odoo_id_is_empty' => $model->odoo_id === ''
+                ] : null,
+                'body_type' => $bodyType ? [
+                    'id' => $bodyType->id, 
+                    'name' => $bodyType->name, 
+                    'odoo_id' => $bodyType->odoo_id,
+                    'odoo_id_type' => gettype($bodyType->odoo_id),
+                    'odoo_id_is_null' => is_null($bodyType->odoo_id),
+                    'odoo_id_is_empty' => $bodyType->odoo_id === ''
+                ] : null
             ]);
             
             // Return error response instead of sending to Odoo
