@@ -21,43 +21,7 @@ class DealerVerificationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'partner_id' => 'required|exists:users,partner_id',
-            'seller_type' => ['required', 'string', Rule::in(['authorized', 'independent'])],
-            'dealership_name' => 'required|string|max:255',
-            'owner_manager_name' => 'required|string|max:255',
-            'vehicles_in_stock' => 'nullable|integer|min:0|max:99999',
-            'years_in_business' => 'nullable|integer|min:0|max:100',
-            'phone_number' => 'required|string|max:20',
-            'email_address' => 'required|email|max:255',
-            'city_address' => 'required|string|max:500',
-            'subscription_plan_id' => 'required|integer',
-            
-            'automotive_brand' => [
-                'nullable',
-                'string',
-                'max:255',
-                Rule::requiredIf($this->input('seller_type') === 'authorized')
-            ],
-            'authorization_letter' => [
-                'nullable',
-                'file',
-                'mimes:pdf,jpg,jpeg,png',
-                'max:10240', // 10MB max
-                Rule::requiredIf($this->input('seller_type') === 'authorized')
-            ],
-            'business_license' => [
-                'nullable',
-                'file',
-                'mimes:pdf,jpg,jpeg,png',
-                'max:10240', // 10MB max
-                Rule::requiredIf($this->input('seller_type') === 'authorized')
-            ],
-            'business_license_name' => [
-                'nullable',
-                'string',
-                'max:255',
-                Rule::requiredIf($this->input('seller_type') === 'authorized')
-            ],
+            // No validation - let Odoo handle everything
         ];
     }
 
