@@ -25,18 +25,7 @@ class DealerVerificationRequest extends FormRequest
             'seller_type' => ['required', 'string', Rule::in(['authorized', 'independent'])],
             'dealership_name' => 'required|string|max:255',
             'owner_manager_name' => 'required|string|max:255',
-            'vehicles_in_stock' => [
-                'nullable',
-                'integer',
-                'min:0',
-                'max:99999',
-                Rule::requiredIf($this->input('seller_type') === 'authorized'),
-                function ($attribute, $value, $fail) {
-                    if ($this->input('seller_type') === 'authorized' && $value < 40) {
-                        $fail('Authorized sellers must have at least 40 vehicles in stock.');
-                    }
-                },
-            ],
+            'vehicles_in_stock' => 'nullable|integer|min:0|max:99999',
             'years_in_business' => 'nullable|integer|min:0|max:100',
             'phone_number' => 'required|string|max:20',
             'email_address' => 'required|email|max:255',
@@ -101,8 +90,6 @@ class DealerVerificationRequest extends FormRequest
             'business_license.mimes' => 'Business license must be a PDF, JPG, JPEG, or PNG file.',
             'business_license.max' => 'Business license must not exceed 10MB.',
             'business_license_name.required' => 'Business license name is required for authorized sellers.',
-            'vehicles_in_stock.required' => 'Number of vehicles in stock is required for authorized sellers.',
-            'vehicles_in_stock.min' => 'Authorized sellers must have at least 40 vehicles in stock.',
         ];
     }
 
