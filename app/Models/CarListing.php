@@ -107,6 +107,10 @@ class CarListing extends Model
         'promotion_started_at' => 'datetime',
     ];
 
+    protected $appends = [
+        'inspection_sides',
+    ];
+
     public function user() {
         return $this->belongsTo(User::class);
     }
@@ -596,6 +600,24 @@ class CarListing extends Model
 
     public function scopeByMileageRange($query, $min, $max) {
         return $query->whereBetween('mileage', [$min, $max]);
+    }
+
+    /**
+     * Get inspection sides data
+     */
+    public function getInspectionSidesAttribute()
+    {
+        if (!$this->inspection) {
+            return null;
+        }
+
+        return [
+            'right_side' => $this->inspection->right_side,
+            'left_side' => $this->inspection->left_side,
+            'roof' => $this->inspection->roof,
+            'front' => $this->inspection->front,
+            'back' => $this->inspection->back,
+        ];
     }
 }
 
