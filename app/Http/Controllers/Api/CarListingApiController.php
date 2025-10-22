@@ -116,7 +116,6 @@ class CarListingApiController extends Controller
                     
                     $carListing->update([
                         'odoo_id' => $odooId,
-                        'odoo_response' => $odooResponse,
                         'odoo_listing_id' => $odooData['listing_id'] ?? null,
                         'odoo_vehicle_id' => $odooData['vehicle_id'] ?? null,
                         'odoo_seller_id' => $odooData['seller_id'] ?? null,
@@ -878,7 +877,6 @@ class CarListingApiController extends Controller
                     
                     $carListing->update([
                         'odoo_id' => $odooId,
-                        'odoo_response' => $odooResponse,
                         'odoo_listing_id' => $odooData['listing_id'] ?? null,
                         'odoo_vehicle_id' => $odooData['vehicle_id'] ?? null,
                         'odoo_seller_id' => $odooData['seller_id'] ?? null,

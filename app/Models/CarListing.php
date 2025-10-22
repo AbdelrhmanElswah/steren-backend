@@ -13,7 +13,6 @@ class CarListing extends Model
 
     protected $fillable = [
         'odoo_id',
-        'odoo_response',
         'odoo_listing_id',
         'odoo_vehicle_id',
         'odoo_seller_id',
@@ -88,7 +87,6 @@ class CarListing extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
-        'odoo_response' => 'array',
         'has_warranty' => 'boolean',
         'is_inspected' => 'boolean',
         'is_verified' => 'boolean',
