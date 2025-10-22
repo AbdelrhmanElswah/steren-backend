@@ -164,10 +164,24 @@ class AuthService
             try {
                 $email = $clientData['email'] ?? $clientData['phone'] . '@steren.app';
                 
+                Log::info('Creating Odoo client during OTP verification', [
+                    'user_id' => $user->id,
+                    'full_name' => $clientData['full_name'],
+                    'phone' => $clientData['phone'],
+                    'email' => $email
+                ]);
+                
                 $clientResult = $this->clientService->createClient([
                     'full_name' => $clientData['full_name'],
                     'phone' => $clientData['phone'],
                     'email' => $email
+                ]);
+                
+                Log::info('Odoo client creation result during OTP verification', [
+                    'user_id' => $user->id,
+                    'success' => $clientResult['success'],
+                    'partner_id' => $clientResult['partner_id'],
+                    'message' => $clientResult['message']
                 ]);
 
                 $clientIntegration = [
@@ -176,9 +190,18 @@ class AuthService
                     'message' => $clientResult['message']
                 ];
 
-                // Update user with partner_id
+                // Update user with partner_id and odoo_id
                 if ($clientResult['success'] && $clientResult['partner_id']) {
-                    $user->update(['partner_id' => $clientResult['partner_id']]);
+                    $user->update([
+                        'partner_id' => $clientResult['partner_id'],
+                        'odoo_id' => $clientResult['partner_id'] // Set odoo_id to the same value as partner_id
+                    ]);
+                    
+                    Log::info('User updated with Odoo partner_id during OTP verification', [
+                        'user_id' => $user->id,
+                        'partner_id' => $clientResult['partner_id'],
+                        'odoo_id' => $clientResult['partner_id']
+                    ]);
                 }
 
             } catch (\Exception $e) {
@@ -189,11 +212,95 @@ class AuthService
                     'error' => $e->getMessage()
                 ]);
 
+                // Set fallback partner_id and odoo_id using user ID
+                $fallbackPartnerId = 'PARTNER_' . $user->id;
+                $user->update([
+                    'partner_id' => $fallbackPartnerId,
+                    'odoo_id' => $fallbackPartnerId
+                ]);
+
                 $clientIntegration = [
                     'success' => false,
-                    'partner_id' => null,
-                    'message' => 'Client creation failed: ' . $e->getMessage()
+                    'partner_id' => $fallbackPartnerId,
+                    'message' => 'Client creation failed: ' . $e->getMessage() . '. Using fallback ID.'
                 ];
+                
+                Log::info('User updated with fallback partner_id during OTP verification', [
+                    'user_id' => $user->id,
+                    'partner_id' => $fallbackPartnerId,
+                    'odoo_id' => $fallbackPartnerId
+                ]);
+            }
+        } else {
+            // User doesn't have full_name, but we still want to create Odoo client
+            Log::info('User missing full_name, attempting Odoo client creation with available data', [
+                'user_id' => $user->id,
+                'phone' => $user->phone,
+                'email' => $user->email,
+                'full_name' => $user->full_name
+            ]);
+            
+            try {
+                $email = $user->email ?? $user->phone . '@steren.app';
+                $fullName = $user->full_name ?? 'User ' . $user->id;
+                
+                $clientResult = $this->clientService->createClient([
+                    'full_name' => $fullName,
+                    'phone' => $user->phone,
+                    'email' => $email
+                ]);
+                
+                Log::info('Odoo client creation result for user without full_name', [
+                    'user_id' => $user->id,
+                    'success' => $clientResult['success'],
+                    'partner_id' => $clientResult['partner_id'],
+                    'message' => $clientResult['message']
+                ]);
+                
+                $clientIntegration = [
+                    'success' => $clientResult['success'],
+                    'partner_id' => $clientResult['partner_id'],
+                    'message' => $clientResult['message']
+                ];
+                
+                // Update user with partner_id and odoo_id
+                if ($clientResult['success'] && $clientResult['partner_id']) {
+                    $user->update([
+                        'partner_id' => $clientResult['partner_id'],
+                        'odoo_id' => $clientResult['partner_id']
+                    ]);
+                    
+                    Log::info('User updated with Odoo partner_id (no full_name case)', [
+                        'user_id' => $user->id,
+                        'partner_id' => $clientResult['partner_id'],
+                        'odoo_id' => $clientResult['partner_id']
+                    ]);
+                }
+                
+            } catch (\Exception $e) {
+                Log::error('Client creation failed during OTP verification (no full_name case)', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage()
+                ]);
+
+                // Set fallback partner_id and odoo_id using user ID
+                $fallbackPartnerId = 'PARTNER_' . $user->id;
+                $user->update([
+                    'partner_id' => $fallbackPartnerId,
+                    'odoo_id' => $fallbackPartnerId
+                ]);
+
+                $clientIntegration = [
+                    'success' => false,
+                    'partner_id' => $fallbackPartnerId,
+                    'message' => 'Client creation failed: ' . $e->getMessage() . '. Using fallback ID.'
+                ];
+                
+                Log::info('User updated with fallback partner_id (no full_name case)', [
+                    'user_id' => $user->id,
+                    'partner_id' => $fallbackPartnerId,
+                    'odoo_id' => $fallbackPartnerId
+                ]);
             }
         }
 
