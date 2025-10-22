@@ -174,7 +174,6 @@ class DealerVerificationService
             $hasFiles = $this->hasFileUploads($data);
             
             if ($hasFiles) {
-                // Use multipart/form-data for file uploads
                 $response = Http::timeout(30);
                 
                 // Add file attachments
