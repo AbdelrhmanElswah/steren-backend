@@ -51,7 +51,11 @@ class VinDecoderResource extends JsonResource
                         'seating' => [
                             'number_of_seats' => $vehicleData['seating']['number_of_seats'] ?? $this->doors,
                             'max_seating_capacity' => $vehicleData['seating']['max_seating_capacity'] ?? $this->doors
-                        ]
+                        ],
+                        'wheels' => $this->buildWheelsData($vehicleData),
+                        'tires' => $this->buildTiresData($vehicleData),
+                        'exterior_colors' => $this->buildExteriorColorsData($vehicleData),
+                        'interior_colors' => $this->buildInteriorColorsData($vehicleData)
                     ]
                 ]
             ]
@@ -168,6 +172,83 @@ class VinDecoderResource extends JsonResource
                         'value' => $fuelData['tank_capacity']['l'] ?? ''
                     ]
                 ]
+            ];
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Build wheels data from vehicle data
+     */
+    private function buildWheelsData($vehicleData)
+    {
+        $wheelsData = $vehicleData['wheels'] ?? [];
+        
+        return [
+            'rear_wheel_material' => $wheelsData['rear_wheel_material'] ?? '',
+            'front_wheel_material' => $wheelsData['front_wheel_material'] ?? '',
+            'spare_wheel_material' => $wheelsData['spare_wheel_material'] ?? ''
+        ];
+    }
+    
+    /**
+     * Build tires data from vehicle data
+     */
+    private function buildTiresData($vehicleData)
+    {
+        $tiresData = $vehicleData['tires'] ?? [];
+        
+        return [
+            'type' => $tiresData['type'] ?? '',
+            'rear_tire_size' => $tiresData['rear_tire_size'] ?? '',
+            'front_tire_size' => $tiresData['front_tire_size'] ?? '',
+            'spare_tire_size' => $tiresData['spare_tire_size'] ?? ''
+        ];
+    }
+    
+    /**
+     * Build exterior colors data from vehicle data
+     */
+    private function buildExteriorColorsData($vehicleData)
+    {
+        $exteriorColors = $vehicleData['exterior_colors'] ?? [];
+        $result = [];
+        
+        foreach ($exteriorColors as $color) {
+            $result[] = [
+                'hex_value' => $color['hex_value'] ?? '',
+                'rgb_value' => $color['rgb_value'] ?? '',
+                'color_code' => $color['color_code'] ?? '',
+                'color_type' => $color['color_type'] ?? '',
+                'color_price' => $color['color_price'] ?? '',
+                'description' => $color['description'] ?? '',
+                'generic_name' => $color['generic_name'] ?? '',
+                'color_invoice' => $color['color_invoice'] ?? ''
+            ];
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Build interior colors data from vehicle data
+     */
+    private function buildInteriorColorsData($vehicleData)
+    {
+        $interiorColors = $vehicleData['interior_colors'] ?? [];
+        $result = [];
+        
+        foreach ($interiorColors as $color) {
+            $result[] = [
+                'hex_value' => $color['hex_value'] ?? '',
+                'rgb_value' => $color['rgb_value'] ?? '',
+                'color_code' => $color['color_code'] ?? '',
+                'color_type' => $color['color_type'] ?? '',
+                'color_price' => $color['color_price'] ?? '',
+                'description' => $color['description'] ?? '',
+                'generic_name' => $color['generic_name'] ?? '',
+                'color_invoice' => $color['color_invoice'] ?? ''
             ];
         }
         
