@@ -435,10 +435,11 @@ class User extends Authenticatable
 
     /**
      * Check if user is a dealer
+     * TEMPORARY: Skip payment requirement until payment system is implemented
      */
     public function isDealer()
     {
-        return $this->activeDealerApplication && $this->activeDealerApplication->isActive();
+        return $this->activeDealerApplication && $this->activeDealerApplication->isApproved();
     }
 
     /**

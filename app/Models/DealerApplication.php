@@ -241,6 +241,15 @@ class DealerApplication extends Model
     }
 
     /**
+     * Check if dealer can post listings (approved status, payment step skipped)
+     * TEMPORARY: Until payment system is implemented
+     */
+    public function canPostListings()
+    {
+        return $this->isApproved();
+    }
+
+    /**
      * Check if dealer status is about to expire (within 3 days)
      */
     public function isExpiringSoon()

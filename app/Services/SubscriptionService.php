@@ -56,11 +56,11 @@ class SubscriptionService
 
     /**
      * Check if user can create a new listing based on their subscription
-     * FREE USERS: Use slot system (1 free slot per month + purchased slots)
-     * DEALERS WITH "VERIFIED" STATUS: Use max_listings from their subscription plan
+     * ALL USERS: Use 20-slot system (max 20 active listings)
+     * DEALERS WITH "VERIFIED" STATUS: Can create up to 20 listings
      * DEALERS WITH "APPROVED" STATUS: Cannot post yet (need to complete payment)
-     * SUBSCRIBED USERS: Use max_listings from their subscription plan
-     * SUSPENDED USERS: Cannot create listings even with available slots
+     * SUBSCRIBED USERS: Can create up to 20 listings (subscription benefits still apply)
+     * SUSPENDED USERS: Cannot create listings
      */
     public function canCreateListing(User $user): array
     {
@@ -79,74 +79,94 @@ class SubscriptionService
         if ($user->is_dealer) {
             $dealerApplication = $user->activeDealerApplication;
             
-            // Dealer must have verified status (payment completed)
-            if (!$dealerApplication || !$dealerApplication->isVerified()) {
+            // TEMPORARY: Skip payment requirement until payment system is implemented
+            // Dealer must have approved status (payment step skipped for now)
+            if (!$dealerApplication || !$dealerApplication->isApproved()) {
                 return [
                     'can_create' => false,
-                    'reason' => $dealerApplication && $dealerApplication->isApproved() 
-                        ? 'Your dealer application is approved but you need to complete payment first to start posting listings.'
-                        : 'Your dealer account is not verified. Please complete the verification process.',
-                    'code' => 'DEALER_NOT_VERIFIED',
+                    'reason' => 'Your dealer account is not approved. Please complete the verification process.',
+                    'code' => 'DEALER_NOT_APPROVED',
                     'dealer_status' => $dealerApplication?->status?->name ?? 'no_application',
-                    'payment_completed' => $dealerApplication?->payment_completed ?? false,
+                    'payment_skipped' => true, // Indicates payment step is skipped
                 ];
             }
         }
 
-        // Check if user has active subscription (including grace period)
-        if (!$this->hasActiveSubscription($user)) {
-            // Free tier: Use slot system
-            return $this->checkFreeTierSlots($user);
-        }
+        // NEW 20-SLOT SYSTEM: All users can create up to 20 listings
+        return $this->checkTwentySlotSystem($user);
+    }
 
-        $plan = $this->getSubscriptionPlan($user);
-        
-        if (!$plan) {
-            return [
-                'can_create' => false,
-                'reason' => 'Subscription plan not found.',
-                'code' => 'PLAN_NOT_FOUND'
-            ];
-        }
-
-        // Count ALL user's listings including soft-deleted ones
-        // Deleted listings still count toward the limit
+    /**
+     * Check 20-slot system for all users
+     * Users can create up to 20 active listings
+     * When they reach 20, they must delete one to create a new one
+     */
+    private function checkTwentySlotSystem(User $user): array
+    {
+        // Count only ACTIVE listings (not soft-deleted ones)
         $currentListingsCount = CarListing::where('user_id', $user->id)
             ->whereIn('status', ['active', 'pending', 'rejected'])
-            ->count(); // Includes soft-deleted
+            ->count();
 
-        // Check if user has reached their listing limit
-        if ($plan->max_listings !== null && $currentListingsCount >= $plan->max_listings) {
+        $maxListings = 20;
+
+        // Check if user has reached the 20 listing limit
+        if ($currentListingsCount >= $maxListings) {
             return [
                 'can_create' => false,
-                'reason' => "You have reached your listing limit of {$plan->max_listings} listings. Please upgrade your plan.",
+                'reason' => "You have reached your listing limit of {$maxListings} listings. Please delete one of your existing listings to create a new one.",
                 'code' => 'LISTING_LIMIT_REACHED',
                 'current_listings' => $currentListingsCount,
-                'max_listings' => $plan->max_listings
+                'max_listings' => $maxListings,
+                'remaining_listings' => 0
             ];
         }
 
-        // Check if subscription is in grace period
-        $subscription = $this->getActiveSubscription($user);
-        $inGracePeriod = $subscription && $subscription->isInGracePeriod();
-        $gracePeriodInfo = [];
-        
-        if ($inGracePeriod) {
-            $gracePeriodInfo = [
-                'in_grace_period' => true,
-                'grace_period_days_remaining' => $subscription->grace_period_days_remaining,
-                'grace_period_ends_at' => $subscription->grace_period_ends_at,
-                'warning' => "Your subscription has expired. You have {$subscription->grace_period_days_remaining} day(s) remaining to renew before your account is suspended.",
+        // Check if user has active subscription for additional benefits
+        $subscriptionInfo = [];
+        if ($this->hasActiveSubscription($user)) {
+            $plan = $this->getSubscriptionPlan($user);
+            $subscription = $this->getActiveSubscription($user);
+            
+            $subscriptionInfo = [
+                'has_subscription' => true,
+                'plan_name' => $plan?->name ?? 'Unknown',
+                'subscription_benefits' => [
+                    'priority_support' => $plan?->is_priority_support ?? false,
+                    'analytics' => $plan?->is_analytics ?? false,
+                    'badge' => $plan?->is_badge ?? false,
+                    'search' => $plan?->is_search ?? false,
+                    'similar_cars' => $plan?->is_similar_cars ?? false,
+                    'top_picks' => $plan?->is_top_picks ?? false,
+                    'you_may_also_like' => $plan?->is_you_may_also_like ?? false,
+                ]
+            ];
+
+            // Check if subscription is in grace period
+            if ($subscription && $subscription->isInGracePeriod()) {
+                $subscriptionInfo['grace_period'] = [
+                    'in_grace_period' => true,
+                    'grace_period_days_remaining' => $subscription->grace_period_days_remaining,
+                    'grace_period_ends_at' => $subscription->grace_period_ends_at,
+                    'warning' => "Your subscription has expired. You have {$subscription->grace_period_days_remaining} day(s) remaining to renew before your account is suspended.",
+                ];
+            }
+        } else {
+            $subscriptionInfo = [
+                'has_subscription' => false,
+                'plan_name' => 'Free',
+                'subscription_benefits' => []
             ];
         }
 
         return array_merge([
             'can_create' => true,
             'current_listings' => $currentListingsCount,
-            'max_listings' => $plan->max_listings,
-            'remaining_listings' => $plan->max_listings ? ($plan->max_listings - $currentListingsCount) : null,
-            'plan_name' => $plan->name
-        ], $gracePeriodInfo);
+            'max_listings' => $maxListings,
+            'remaining_listings' => $maxListings - $currentListingsCount,
+            'uses_slots' => false, // Not using the old slot system
+            'slot_system' => 'twenty_listings' // New system identifier
+        ], $subscriptionInfo);
     }
 
     /**
@@ -214,96 +234,78 @@ class SubscriptionService
     }
 
     /**
-     * Consume a slot when free user creates a listing
-     * Should be called after listing is successfully created
+     * Consume a slot when user creates a listing
+     * With the new 20-slot system, no slot consumption is needed
+     * This method is kept for backward compatibility
      */
     public function consumeSlot(User $user): bool
     {
-        // Only consume slots for free users (no active subscription)
-        if ($this->hasActiveSubscription($user)) {
-            return true; // Subscribed users don't use slots
-        }
-
-        $userSlot = $user->userSlot;
-        
-        if (!$userSlot) {
-            return false;
-        }
-
-        return $userSlot->consumeSlot();
+        // NEW SYSTEM: No slot consumption needed
+        // Users can create up to 20 listings without consuming slots
+        // When they reach 20, they must delete one to create a new one
+        return true;
     }
 
     /**
      * Get subscription limits for a user
-     * Includes slot info for free tier
+     * NEW SYSTEM: All users get 20 listings max
      */
     public function getSubscriptionLimits(User $user): array
     {
-        // Free tier - use slot system
-        if (!$this->hasActiveSubscription($user)) {
-            $userSlot = $this->getOrCreateUserSlot($user);
-
-            // Check if monthly free slot needs reset
-            if ($userSlot->shouldResetMonthlyFreeSlot()) {
-                $userSlot->resetMonthlyFreeSlot();
-                $userSlot->refresh();
-            }
-            
-            return [
-                'has_subscription' => false,
-                'plan_name' => 'Free',
-                'uses_slots' => true,
-                'slots' => $userSlot->slot_breakdown,
-                'max_photos' => 5,
-                'features' => []
-            ];
-        }
-
-        $plan = $this->getSubscriptionPlan($user);
-        
-        if (!$plan) {
-            return [
-                'has_subscription' => false,
-                'plan_name' => 'Free',
-                'uses_slots' => true,
-                'slots' => [
-                    'monthly_free' => 1,
-                    'purchased' => 0,
-                    'total' => 1,
-                    'consumed' => 0,
-                    'available' => 1,
-                ],
-                'max_photos' => 5,
-                'features' => []
-            ];
-        }
-
-        // Count ALL listings (including soft-deleted)
+        // Count current active listings
         $currentListingsCount = CarListing::where('user_id', $user->id)
             ->whereIn('status', ['active', 'pending', 'rejected'])
             ->count();
 
-        return [
-            'has_subscription' => true,
-            'plan_name' => $plan->name,
+        $maxListings = 20;
+
+        // Base limits for all users
+        $baseLimits = [
+            'has_subscription' => false,
+            'plan_name' => 'Free',
             'uses_slots' => false,
-            'max_listings' => $plan->max_listings,
-            'max_listings_period' => 'total',
+            'slot_system' => 'twenty_listings',
+            'max_listings' => $maxListings,
             'current_listings' => $currentListingsCount,
-            'remaining_listings' => $plan->max_listings ? max(0, $plan->max_listings - $currentListingsCount) : null,
-            'max_photos' => $plan->max_photos,
-            'features' => [
-                'whatsapp_phone' => $plan->is_whatsapp_phone,
-                'badge' => $plan->is_badge,
-                'search' => $plan->is_search,
-                'similar_cars' => $plan->is_similar_cars,
-                'dedicated_account_rep' => $plan->is_dedicated_account_rep,
-                'analytics' => $plan->is_analytics,
-                'top_picks' => $plan->is_top_picks,
-                'priority_support' => $plan->is_priority_support,
-                'you_may_also_like' => $plan->is_you_may_also_like,
-            ]
+            'remaining_listings' => max(0, $maxListings - $currentListingsCount),
+            'max_photos' => 5,
+            'features' => []
         ];
+
+        // Add subscription benefits if user has active subscription
+        if ($this->hasActiveSubscription($user)) {
+            $plan = $this->getSubscriptionPlan($user);
+            
+            if ($plan) {
+                $baseLimits['has_subscription'] = true;
+                $baseLimits['plan_name'] = $plan->name;
+                $baseLimits['max_photos'] = $plan->max_photos ?? 5;
+                $baseLimits['features'] = [
+                    'whatsapp_phone' => $plan->is_whatsapp_phone ?? false,
+                    'badge' => $plan->is_badge ?? false,
+                    'search' => $plan->is_search ?? false,
+                    'similar_cars' => $plan->is_similar_cars ?? false,
+                    'dedicated_account_rep' => $plan->is_dedicated_account_rep ?? false,
+                    'analytics' => $plan->is_analytics ?? false,
+                    'top_picks' => $plan->is_top_picks ?? false,
+                    'priority_support' => $plan->is_priority_support ?? false,
+                    'you_may_also_like' => $plan->is_you_may_also_like ?? false,
+                ];
+
+                // Check grace period
+                $subscription = $this->getActiveSubscription($user);
+                if ($subscription && $subscription->isInGracePeriod()) {
+                    $baseLimits['grace_period'] = [
+                        'in_grace_period' => true,
+                        'grace_period_days_remaining' => $subscription->grace_period_days_remaining,
+                        'grace_period_ends_at' => $subscription->grace_period_ends_at,
+                        'warning' => "Your subscription has expired. You have {$subscription->grace_period_days_remaining} day(s) remaining to renew before your account is suspended.",
+                    ];
+                }
+            }
+        }
+
+        return $baseLimits;
     }
 
     /**
