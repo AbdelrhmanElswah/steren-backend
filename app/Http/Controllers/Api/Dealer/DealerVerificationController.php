@@ -321,9 +321,6 @@ class DealerVerificationController extends Controller
                 null // No specific reviewer for Odoo integration
             );
 
-            // Add rejected_at timestamp to the result
-            $result['rejected_at'] = now()->toISOString();
-
             // Call Odoo mark-paid API after successful rejection
             $this->callOdooMarkPaid($odooId);
 
@@ -349,14 +346,12 @@ class DealerVerificationController extends Controller
 
             if ($action === 'approve') {
                 $result = $this->dealerVerificationService->approveApplication($application->id, null);
-                $result['approved_at'] = now()->toISOString();
             } else {
                 $result = $this->dealerVerificationService->rejectApplication(
                     $application->id, 
                     'Rejected via Odoo integration', 
                     null
                 );
-                $result['rejected_at'] = now()->toISOString();
             }
 
             // Call Odoo mark-paid API after successful processing

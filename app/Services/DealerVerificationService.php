@@ -711,6 +711,7 @@ class DealerVerificationService
                 'rejection_reason' => $reason,
                 'reviewed_by' => $reviewedBy,
                 'approved_at' => null,
+                'rejected_at' => now(),
             ]);
 
             $application->user->update([
