@@ -51,6 +51,14 @@ class DealerVerificationService
                 $odooResponse = $this->submitToOdoo($data, $user, $subscriptionPlan);
 
                 if (!$odooResponse['success']) {
+                    // Log the Odoo error for debugging
+                    Log::error('Odoo submission failed', [
+                        'partner_id' => $data['partner_id'],
+                        'odoo_message' => $odooResponse['message'] ?? 'Unknown error',
+                        'odoo_error_code' => $odooResponse['error_code'] ?? null,
+                        'odoo_details' => $odooResponse['details'] ?? null,
+                    ]);
+                    
                     throw new OdooServiceException('Odoo submission failed: ' . ($odooResponse['message'] ?? 'Unknown error'));
                 }
 
@@ -198,6 +206,14 @@ class DealerVerificationService
     {
         try {
             $payload = $this->prepareOdooPayload($data, $user, $subscriptionPlan);
+            
+            // Log the payload being sent to Odoo
+            Log::info('Sending data to Odoo', [
+                'partner_id' => $data['partner_id'],
+                'seller_type' => $data['seller_type'],
+                'vehicles_in_stock' => $data['vehicles_in_stock'] ?? 'not_set',
+                'payload' => $payload
+            ]);
 
             $hasFiles = $this->hasFileUploads($data);
             
