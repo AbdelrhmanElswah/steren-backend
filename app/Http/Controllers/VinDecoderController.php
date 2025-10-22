@@ -46,7 +46,26 @@ class VinDecoderController extends Controller
 
             $result = $this->vehicleDatabasesService->decodeVin($vin, $cache);
             
-            return $this->successResponse($result['data'], 'VIN decoded successfully');
+            // Create a temporary VinDecoder model instance to use with the resource
+            $vinDecoder = new \App\Models\VinDecoder();
+            $vinDecoder->vin = $vin;
+            $vinDecoder->make = $result['data']['make'] ?? '';
+            $vinDecoder->model = $result['data']['model'] ?? '';
+            $vinDecoder->year = $result['data']['year'] ?? null;
+            $vinDecoder->trim = $result['data']['trim'] ?? '';
+            $vinDecoder->body_type = $result['data']['body_type'] ?? '';
+            $vinDecoder->engine_type = $result['data']['engine_type'] ?? '';
+            $vinDecoder->transmission = $result['data']['transmission'] ?? '';
+            $vinDecoder->drive_type = $result['data']['drive_type'] ?? '';
+            $vinDecoder->fuel_type = $result['data']['fuel_type'] ?? '';
+            $vinDecoder->doors = $result['data']['doors'] ?? '';
+            $vinDecoder->cylinders = $result['data']['cylinders'] ?? '';
+            $vinDecoder->additional_data = $result['data'];
+            
+            return $this->successResponse(
+                new VinDecoderResource($vinDecoder), 
+                'VIN decoded successfully'
+            );
 
         } catch (VehicleDatabasesException $e) {
             Log::error('VIN decode failed', [
