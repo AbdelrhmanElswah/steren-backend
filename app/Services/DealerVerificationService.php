@@ -57,7 +57,6 @@ class DealerVerificationService
                 'partner_id' => $data['partner_id']
             ]);
 
-            // First try to find by database ID (Flutter sends database IDs)
             $subscriptionPlan = SubscriptionPlan::find($data['subscription_plan_id']);
             
             if (!$subscriptionPlan) {
@@ -66,18 +65,25 @@ class DealerVerificationService
                     'trying_odoo_id' => true
                 ]);
                 
-                // Try to find by odoo_id as fallback
                 $subscriptionPlan = SubscriptionPlan::where('odoo_id', (string) $data['subscription_plan_id'])->first();
             }
             
             if (!$subscriptionPlan) {
-                Log::warning('Subscription plan not found by odoo_id or database ID, using fallback', [
+                Log::error('Subscription plan not found - this will cause issues', [
                     'requested_plan_id' => $data['subscription_plan_id'],
-                    'partner_id' => $data['partner_id']
+                    'requested_plan_type' => gettype($data['subscription_plan_id']),
+                    'partner_id' => $data['partner_id'],
+                    'available_plans' => SubscriptionPlan::all()->pluck('id', 'name')->toArray()
                 ]);
                 
                 // Use first available plan as fallback
                 $subscriptionPlan = SubscriptionPlan::first() ?? $this->createFallbackSubscriptionPlan($data['subscription_plan_id']);
+                
+                Log::warning('Using fallback subscription plan', [
+                    'fallback_plan_id' => $subscriptionPlan->id,
+                    'fallback_plan_name' => $subscriptionPlan->name,
+                    'requested_plan_id' => $data['subscription_plan_id']
+                ]);
             } else {
                 Log::info('Subscription plan found', [
                     'plan_id' => $subscriptionPlan->id,
