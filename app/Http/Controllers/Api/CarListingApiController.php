@@ -457,7 +457,7 @@ class CarListingApiController extends Controller
     /**
      * Prepare Odoo data from form data
      */
-    private function prepareOdooDataFromForm(CarListing $carListing, array $validatedData)
+    private function prepareOdooDataFromForm(CarListing $carListing, array $validatedData, $request)
     {
         // Get partner_id from user
         $user = \App\Models\User::find($validatedData['user_id']);
@@ -470,28 +470,62 @@ class CarListingApiController extends Controller
         $exteriorColorName = $this->getExteriorColorName($validatedData['exterior_color_id'] ?? null);
         $cylinderName = $this->getCylinderName($validatedData['cylinder_id'] ?? null);
 
+        // Get city_id from location
+        $cityId = null;
+        if (isset($validatedData['location_id'])) {
+            $location = \App\Models\Location::find($validatedData['location_id']);
+            $cityId = $location ? $location->city_id : null;
+        }
+
+        // Prepare inspection data
+        $inspectionData = [
+            'right_side' => $validatedData['inspection_right_side'] ?? false,
+            'left_side' => $validatedData['inspection_left_side'] ?? false,
+            'roof' => $validatedData['inspection_roof'] ?? false,
+            'front' => $validatedData['inspection_front'] ?? false,
+            'back' => $validatedData['inspection_back'] ?? false,
+        ];
+
+        // Get inspection file name if provided
+        $inspectionFileName = null;
+        if (isset($validatedData['inspection_file_name'])) {
+            $inspectionFileName = $validatedData['inspection_file_name'];
+        } elseif ($request->hasFile('inspection_file')) {
+            $inspectionFileName = $request->file('inspection_file')->getClientOriginalName();
+        }
+
+        // Prepare car_info with all required fields
+        $carInfo = [
+            'vin' => $validatedData['vin'] ?? '',
+            'brand' => $validatedData['car_brand_id'],
+            'model' => $validatedData['car_model_id'],
+            'condition' => $validatedData['condition_type'],
+            'year' => $validatedData['year'],
+            'gcc_import' => $validatedData['gcc_import'] ?? '',
+            'body_type' => $validatedData['car_body_type_id'],
+            'engine_size' => $validatedData['engine_size'] ?? 0,
+            'fuel_type' => $fuelTypeName,
+            'cylinders' => $cylinderName,
+            'transmission' => $transmissionName,
+            'seating_capacity' => $validatedData['seating_capacity'] ?? 0,
+            'exterior_colour' => $exteriorColorName,
+            'warranty' => ($validatedData['has_warranty'] ?? false) ? 'yes' : 'no',
+            'drive_type' => $driveTypeName,
+            'mileage_type' => $mileageTypeName,
+            'mileage' => $validatedData['mileage'],
+            'plate_status' => $validatedData['plate_status'] ?? '',
+            'inspection' => $inspectionData,
+        ];
+
+        // Add inspection file name if available
+        if ($inspectionFileName) {
+            $carInfo['inspection_file_name'] = $inspectionFileName;
+        }
+
         return [
             'partner_id' => $user->partner_id,
-            'car_info' => [
-                'vin' => $validatedData['vin'] ?? '',
-                'brand' => $validatedData['car_brand_id'],
-                'model' => $validatedData['car_model_id'],
-                'condition' => $validatedData['condition_type'],
-                'year' => $validatedData['year'],
-                'gcc_import' => $validatedData['gcc_import'] ?? '',
-                'body_type' => $validatedData['car_body_type_id'],
-                'engine_size' => $validatedData['engine_size'] ?? 0,
-                'fuel_type' => $fuelTypeName,
-                'cylinders' => $cylinderName,
-                'transmission' => $transmissionName,
-                'seating_capacity' => $validatedData['seating_capacity'] ?? 0,
-                'exterior_colour' => $exteriorColorName,
-                'warranty' => ($validatedData['has_warranty'] ?? false) ? 'yes' : 'no',
-                'drive_type' => $driveTypeName,
-                'mileage_type' => $mileageTypeName,
-                'mileage' => $validatedData['mileage'],
-                'plate_status' => $validatedData['plate_status'] ?? '',
-            ],
+            'city_id' => $cityId,
+            'car_info' => $carInfo,
             'price_currency' => $validatedData['price_currency'],
             'price' => $validatedData['price'],
             'seller_info' => [
@@ -500,13 +534,6 @@ class CarListingApiController extends Controller
             'title' => $validatedData['title'],
             'description' => $validatedData['description'] ?? '',
             'images' => $validatedData['images'] ?? [],
-            'inspection' => [
-                'right_side' => $validatedData['inspection_right_side'] ?? false,
-                'left_side' => $validatedData['inspection_left_side'] ?? false,
-                'roof' => $validatedData['inspection_roof'] ?? false,
-                'front' => $validatedData['inspection_front'] ?? false,
-                'back' => $validatedData['inspection_back'] ?? false,
-            ],
         ];
     }
 
@@ -705,7 +732,7 @@ class CarListingApiController extends Controller
             }
 
             // Prepare data for Odoo API
-            $odooData = $this->prepareOdooDataFromForm($carListing, $validatedData);
+            $odooData = $this->prepareOdooDataFromForm($carListing, $validatedData, $request);
 
             // Send to Odoo API
             $odooResponse = $this->sendToOdoo($odooData);
