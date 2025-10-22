@@ -110,6 +110,13 @@ class DealerVerificationService
     {
             $applicationAppliedStatus = Status::findByNameAndType('application_applied', 'dealer_application');
             
+            // Log the data being processed for debugging
+            Log::info('Creating dealer application with data', [
+                'vehicles_in_stock' => $data['vehicles_in_stock'] ?? 'not_set',
+                'years_in_business' => $data['years_in_business'] ?? 'not_set',
+                'seller_type' => $data['seller_type'] ?? 'not_set',
+            ]);
+            
             $applicationData = [
                 'partner_id' => $user->id,
                 'odoo_id' => (string) $user->id,
@@ -118,8 +125,12 @@ class DealerVerificationService
                 'phone_number' => $data['phone_number'],
                 'email' => $data['email_address'],
                 'dealership_company_name' => $data['dealership_name'],
-                'vehicles_in_stock' => $data['vehicles_in_stock'] ?? null,
-                'years_in_business' => $data['years_in_business'] ?? null,
+                'vehicles_in_stock' => isset($data['vehicles_in_stock']) && $data['vehicles_in_stock'] !== '' 
+                    ? (int) $data['vehicles_in_stock'] 
+                    : null,
+                'years_in_business' => isset($data['years_in_business']) && $data['years_in_business'] !== '' 
+                    ? (int) $data['years_in_business'] 
+                    : null,
                 'city_address' => $data['city_address'],
                 'subscription_plan_id' => $subscriptionPlan->id,
                 'status_id' => $applicationAppliedStatus?->id,
@@ -146,7 +157,24 @@ class DealerVerificationService
             }
         }
 
-        $dealerApplication = DealerApplication::create($applicationData);
+        try {
+            $dealerApplication = DealerApplication::create($applicationData);
+            
+            Log::info('Dealer application created successfully', [
+                'application_id' => $dealerApplication->id,
+                'vehicles_in_stock' => $dealerApplication->vehicles_in_stock,
+                'years_in_business' => $dealerApplication->years_in_business,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to create dealer application', [
+                'error' => $e->getMessage(),
+                'application_data' => $applicationData,
+                'vehicles_in_stock' => $applicationData['vehicles_in_stock'],
+                'years_in_business' => $applicationData['years_in_business'],
+            ]);
+            
+            throw new \Exception('Failed to create dealer application: ' . $e->getMessage());
+        }
 
         $this->firebaseService->syncDealerApplicationToFirebase(
             $dealerApplication->id,

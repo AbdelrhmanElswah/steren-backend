@@ -25,7 +25,7 @@ class DealerVerificationRequest extends FormRequest
             'seller_type' => ['required', 'string', Rule::in(['authorized', 'independent'])],
             'dealership_name' => 'required|string|max:255',
             'owner_manager_name' => 'required|string|max:255',
-            'vehicles_in_stock' => 'nullable|integer|min:0|max:9999',
+            'vehicles_in_stock' => 'nullable|integer|min:0|max:99999',
             'years_in_business' => 'nullable|integer|min:0|max:100',
             'phone_number' => 'required|string|max:20',
             'email_address' => 'required|email|max:255',
