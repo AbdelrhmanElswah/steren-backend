@@ -159,7 +159,17 @@ class CarListingService extends OdooCrudService
     {
         if (!$fuelTypeId) return null;
         $fuelType = \App\Models\FuelType::find($fuelTypeId);
-        return $fuelType ? strtolower($fuelType->name) : null;
+        if (!$fuelType) return null;
+        
+        // Map fuel type names to Odoo-compatible values
+        $fuelTypeMapping = [
+            'Petrol' => 'gasoline',
+            'Diesel' => 'diesel', 
+            'Electric' => 'electric',
+            'Hybrid' => 'hybrid'
+        ];
+        
+        return $fuelTypeMapping[$fuelType->name] ?? strtolower($fuelType->name);
     }
 
     private function getCylinderCount($cylinderId): ?int

@@ -11,38 +11,99 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Add columns in batches to avoid timeout issues
         Schema::table('car_listings', function (Blueprint $table) {
-            // Car specifications fields
-            $table->string('engine_size')->nullable(); // e.g., "4.0L", "3.5L V6"
-            $table->string('engine_type')->nullable(); // e.g., "V6", "Twin-Turbo"
-            $table->integer('horsepower')->nullable(); // e.g., 326, 409
-            $table->string('torque')->nullable(); // e.g., "650 Nm"
-            $table->decimal('acceleration_0_100', 4, 1)->nullable(); // seconds
-            $table->integer('top_speed')->nullable(); // km/h
-            $table->integer('seating_capacity')->nullable(); // e.g., 7
-            $table->decimal('mileage_efficiency', 5, 2)->nullable(); // e.g., 9.8 Km/L
-            
+            // Car specifications fields - batch 1
+            if (!Schema::hasColumn('car_listings', 'engine_size')) {
+                $table->string('engine_size')->nullable();
+            }
+            if (!Schema::hasColumn('car_listings', 'engine_type')) {
+                $table->string('engine_type')->nullable();
+            }
+            if (!Schema::hasColumn('car_listings', 'horsepower')) {
+                $table->integer('horsepower')->nullable();
+            }
+            if (!Schema::hasColumn('car_listings', 'torque')) {
+                $table->string('torque')->nullable();
+            }
+        });
+        
+        Schema::table('car_listings', function (Blueprint $table) {
+            // Car specifications fields - batch 2
+            if (!Schema::hasColumn('car_listings', 'acceleration_0_100')) {
+                $table->decimal('acceleration_0_100', 4, 1)->nullable();
+            }
+            if (!Schema::hasColumn('car_listings', 'top_speed')) {
+                $table->integer('top_speed')->nullable();
+            }
+            if (!Schema::hasColumn('car_listings', 'seating_capacity')) {
+                $table->integer('seating_capacity')->nullable();
+            }
+            if (!Schema::hasColumn('car_listings', 'mileage_efficiency')) {
+                $table->decimal('mileage_efficiency', 5, 2)->nullable();
+            }
+        });
+        
+        Schema::table('car_listings', function (Blueprint $table) {
             // Dimensions
-            $table->decimal('length', 6, 2)->nullable(); // mm
-            $table->decimal('width', 6, 2)->nullable(); // mm
-            $table->decimal('height', 6, 2)->nullable(); // mm
-            
+            if (!Schema::hasColumn('car_listings', 'length')) {
+                $table->decimal('length', 6, 2)->nullable();
+            }
+            if (!Schema::hasColumn('car_listings', 'width')) {
+                $table->decimal('width', 6, 2)->nullable();
+            }
+            if (!Schema::hasColumn('car_listings', 'height')) {
+                $table->decimal('height', 6, 2)->nullable();
+            }
+        });
+        
+        Schema::table('car_listings', function (Blueprint $table) {
             // Status fields
-            $table->string('status')->default('active');
-            $table->boolean('is_featured')->default(false);
-            $table->boolean('is_new_arrival')->default(false);
-            
+            if (!Schema::hasColumn('car_listings', 'status')) {
+                $table->string('status')->default('active');
+            }
+            if (!Schema::hasColumn('car_listings', 'is_featured')) {
+                $table->boolean('is_featured')->default(false);
+            }
+            if (!Schema::hasColumn('car_listings', 'is_new_arrival')) {
+                $table->boolean('is_new_arrival')->default(false);
+            }
+        });
+        
+        Schema::table('car_listings', function (Blueprint $table) {
             // Additional metadata
-            $table->text('description')->nullable();
-            $table->json('features')->nullable(); // Array of features
-            $table->json('specifications')->nullable(); // Additional specs
-            $table->string('seller_name')->nullable(); // e.g., "Erbill", "AUTO MOBILE"
-            $table->string('seller_phone')->nullable();
-            $table->string('seller_email')->nullable();
-            
+            if (!Schema::hasColumn('car_listings', 'description')) {
+                $table->text('description')->nullable();
+            }
+            if (!Schema::hasColumn('car_listings', 'features')) {
+                $table->json('features')->nullable();
+            }
+            if (!Schema::hasColumn('car_listings', 'specifications')) {
+                $table->json('specifications')->nullable();
+            }
+        });
+        
+        Schema::table('car_listings', function (Blueprint $table) {
+            // Seller information
+            if (!Schema::hasColumn('car_listings', 'seller_name')) {
+                $table->string('seller_name')->nullable();
+            }
+            if (!Schema::hasColumn('car_listings', 'seller_phone')) {
+                $table->string('seller_phone')->nullable();
+            }
+            if (!Schema::hasColumn('car_listings', 'seller_email')) {
+                $table->string('seller_email')->nullable();
+            }
+        });
+        
+        Schema::table('car_listings', function (Blueprint $table) {
             // Timestamps for status changes
-            $table->timestamp('sold_at')->nullable();
-            $table->timestamp('featured_at')->nullable();
+            if (!Schema::hasColumn('car_listings', 'sold_at')) {
+                $table->timestamp('sold_at')->nullable();
+            }
+            if (!Schema::hasColumn('car_listings', 'featured_at')) {
+                $table->timestamp('featured_at')->nullable();
+            }
         });
     }
 

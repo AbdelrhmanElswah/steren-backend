@@ -429,7 +429,7 @@ class CarListingApiController extends Controller
                 'gcc_import' => $carInfo['gcc_import'] ?? '',
                 'body_type' => $carInfo['body_type'],
                 'engine_size' => $carInfo['engine_size'] ?? 0,
-                'fuel_type' => $carInfo['fuel_type'] ?? '',
+                'fuel_type' => $this->mapFuelTypeForOdoo($carInfo['fuel_type'] ?? ''),
                 'cylinders' => $carInfo['cylinders'] ?? 0,
                 'transmission' => $carInfo['transmission'] ?? '',
                 'seating_capacity' => $carInfo['seating_capacity'] ?? 0,
@@ -1066,7 +1066,39 @@ class CarListingApiController extends Controller
         if (!$fuelTypeId) return '';
         
         $fuelType = \App\Models\FuelType::find($fuelTypeId);
-        return $fuelType ? strtolower($fuelType->name) : '';
+        if (!$fuelType) return '';
+        
+        // Map fuel type names to Odoo-compatible values
+        $fuelTypeMapping = [
+            'Petrol' => 'gasoline',
+            'Diesel' => 'diesel', 
+            'Electric' => 'electric',
+            'Hybrid' => 'hybrid'
+        ];
+        
+        return $fuelTypeMapping[$fuelType->name] ?? strtolower($fuelType->name);
+    }
+
+    /**
+     * Map fuel type string to Odoo-compatible value
+     */
+    private function mapFuelTypeForOdoo(string $fuelType): string
+    {
+        if (empty($fuelType)) return '';
+        
+        // Map fuel type names to Odoo-compatible values
+        $fuelTypeMapping = [
+            'petrol' => 'gasoline',
+            'Petrol' => 'gasoline',
+            'diesel' => 'diesel',
+            'Diesel' => 'diesel',
+            'electric' => 'electric',
+            'Electric' => 'electric',
+            'hybrid' => 'hybrid',
+            'Hybrid' => 'hybrid'
+        ];
+        
+        return $fuelTypeMapping[$fuelType] ?? strtolower($fuelType);
     }
 
     /**
