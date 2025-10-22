@@ -424,10 +424,24 @@ class AuthService
             ];
 
             try {
+                Log::info('Creating Odoo client for pending account completion', [
+                    'user_id' => $user->id,
+                    'full_name' => $fullName,
+                    'phone' => $phone,
+                    'email' => $user->email
+                ]);
+                
                 $clientResult = $this->clientService->createClient([
                     'full_name' => $fullName,
                     'phone' => $phone,
                     'email' => $user->email
+                ]);
+                
+                Log::info('Odoo client creation result', [
+                    'user_id' => $user->id,
+                    'success' => $clientResult['success'],
+                    'partner_id' => $clientResult['partner_id'],
+                    'message' => $clientResult['message']
                 ]);
                 
                 $clientIntegration = [
@@ -436,7 +450,16 @@ class AuthService
                     'message' => $clientResult['message']
                 ];
                 
-                $user->update(['partner_id' => $clientResult['partner_id']]);
+                $user->update([
+                    'partner_id' => $clientResult['partner_id'],
+                    'odoo_id' => $clientResult['partner_id'] 
+                ]);
+                
+                Log::info('User updated with Odoo partner_id', [
+                    'user_id' => $user->id,
+                    'partner_id' => $clientResult['partner_id'],
+                    'odoo_id' => $clientResult['partner_id']
+                ]);
                 
             } catch (\Exception $e) {
                 Log::error('Client creation failed during pending account completion', [
@@ -444,11 +467,24 @@ class AuthService
                     'error' => $e->getMessage()
                 ]);
                 
+                // Set fallback partner_id and odoo_id using user ID
+                $fallbackPartnerId = 'PARTNER_' . $user->id;
+                $user->update([
+                    'partner_id' => $fallbackPartnerId,
+                    'odoo_id' => $fallbackPartnerId
+                ]);
+                
                 $clientIntegration = [
                     'success' => false,
-                    'partner_id' => null,
-                    'message' => 'Client creation failed: ' . $e->getMessage()
+                    'partner_id' => $fallbackPartnerId,
+                    'message' => 'Client creation failed: ' . $e->getMessage() . '. Using fallback ID.'
                 ];
+                
+                Log::info('User updated with fallback partner_id', [
+                    'user_id' => $user->id,
+                    'partner_id' => $fallbackPartnerId,
+                    'odoo_id' => $fallbackPartnerId
+                ]);
             }
 
             DB::commit();
