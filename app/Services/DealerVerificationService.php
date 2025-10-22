@@ -71,10 +71,18 @@ class DealerVerificationService
 
                 Log::info('Odoo accepted the dealer application', [
                     'partner_id' => $data['partner_id'],
-                    'odoo_response' => $odooResponse
+                    'odoo_response' => $odooResponse,
+                    'odoo_success' => $odooResponse['success'],
+                    'odoo_id' => $odooResponse['odoo_id'] ?? 'NOT_SET'
                 ]);
 
                 try {
+                    Log::info('Attempting to create local dealer application', [
+                        'partner_id' => $data['partner_id'],
+                        'user_id' => $user->id,
+                        'subscription_plan_id' => $subscriptionPlan->id ?? 'NOT_SET'
+                    ]);
+                    
                     $dealerApplication = $this->createDealerApplication($user, $data, $subscriptionPlan);
                     
                     $underReviewStatus = Status::findByNameAndType('under_review', 'dealer_application');
@@ -102,10 +110,13 @@ class DealerVerificationService
                         'synced_with_odoo' => true
                     ];
                 } catch (\Exception $localError) {
-                    Log::warning('Odoo accepted data but local database failed', [
+                    Log::error('Odoo accepted data but local database failed', [
                         'partner_id' => $data['partner_id'],
+                        'user_id' => $user->id,
                         'odoo_success' => true,
-                        'local_error' => $localError->getMessage()
+                        'local_error' => $localError->getMessage(),
+                        'error_trace' => $localError->getTraceAsString(),
+                        'subscription_plan_id' => $subscriptionPlan->id ?? 'NOT_SET'
                     ]);
 
                     return [
@@ -299,17 +310,23 @@ class DealerVerificationService
                     'response_data' => $responseData,
                     'success_field' => $responseData['success'] ?? 'NOT SET',
                     'partner_id' => $data['partner_id'] ?? null,
-                    'partner_id' => $user->id ?? null
+                    'user_id' => $user->id ?? null
                 ]);
                 
                 if (isset($responseData['success']) && $responseData['success'] === true) {
                     $odooId = $this->extractOdooId($responseData);
                     
+                    Log::info('Odoo response processed successfully', [
+                        'odoo_id' => $odooId,
+                        'response_data' => $responseData,
+                        'data_id' => $responseData['data']['id'] ?? 'NOT_FOUND'
+                    ]);
+                    
                     if (!$odooId) {
                         Log::warning('Odoo API Response Missing ID', [
                             'response_data' => $responseData,
                             'partner_id' => $data['partner_id'] ?? null,
-                            'partner_id' => $user->id ?? null
+                            'user_id' => $user->id ?? null
                         ]);
                     }
                     
