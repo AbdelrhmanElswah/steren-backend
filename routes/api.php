@@ -376,10 +376,14 @@ Route::prefix('dealer-applications')->middleware('auth:sanctum')->group(function
     Route::post('/{applicationId}/reject', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'reject']);
     Route::post('/{applicationId}/process', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'processApplication']);
     
+});
+Route::prefix('dealer-applications')->group(function () {
+
+
     // Routes by Odoo ID (for Odoo integration)
-    Route::post('/odoo/{odooId}/approve', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'approveByOdooId']);
-    Route::post('/odoo/{odooId}/reject', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'rejectByOdooId']);
-    Route::post('/odoo/{odooId}/process', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'processByOdooId']);
+    Route::post('/odoo/{odooId}/approve', [DealerVerificationController::class, 'approveByOdooId']);
+    Route::post('/odoo/{odooId}/reject', [DealerVerificationController::class, 'rejectByOdooId']);
+    Route::post('/odoo/{odooId}/process', [DealerVerificationController::class, 'processByOdooId']);
 });
 
 // Singular listing routes (for Odoo compatibility) - No auth required
