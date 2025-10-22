@@ -28,9 +28,11 @@ class DealerApplicationRequest extends FormRequest
             'owner_manager_name' => 'required|string|max:255',
             'phone_number' => 'required|string|max:20',
             'email' => 'required|email|max:255',
+            'email_address' => 'required|email|max:255',
             
             // Business Details (required for both types)
             'dealership_company_name' => 'required|string|max:255',
+            'dealership_name' => 'required|string|max:255',
             'vehicles_in_stock' => 'nullable|integer|min:0|max:9999',
             'years_in_business' => 'nullable|integer|min:0|max:100',
             'city_address' => 'required|string|max:500',

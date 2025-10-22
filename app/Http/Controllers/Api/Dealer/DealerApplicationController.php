@@ -146,6 +146,16 @@ class DealerApplicationController extends Controller
 
             $data = $request->all();
             
+            // Map email_address to email if provided
+            if (isset($data['email_address']) && !isset($data['email'])) {
+                $data['email'] = $data['email_address'];
+            }
+            
+            // Map dealership_name to dealership_company_name if provided
+            if (isset($data['dealership_name']) && !isset($data['dealership_company_name'])) {
+                $data['dealership_company_name'] = $data['dealership_name'];
+            }
+            
             // Handle file upload for authorization letter
             if ($request->hasFile('authorization_letter')) {
                 $file = $request->file('authorization_letter');
