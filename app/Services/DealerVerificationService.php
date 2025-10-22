@@ -155,7 +155,7 @@ class DealerVerificationService
                     }
 
                     // Odoo accepted the data - update local record with Odoo ID
-                    $odooId = $odooResponse['odoo_id'] ?? null;
+                    $odooId = $odooResponse['data']['id'] ?? $odooResponse['odoo_id'] ?? null;
                     
                     Log::info('Odoo accepted the dealer application', [
                         'application_id' => $dealerApplication->id,
