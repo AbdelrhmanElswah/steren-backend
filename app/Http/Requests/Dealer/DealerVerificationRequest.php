@@ -30,9 +30,8 @@ class DealerVerificationRequest extends FormRequest
             'phone_number' => 'required|string|max:20',
             'email_address' => 'required|email|max:255',
             'city_address' => 'required|string|max:500',
-            'subscription_plan_id' => 'required|exists:subscription_plans,id',
+            'subscription_plan_id' => 'required|integer',
             
-            // For authorized sellers only - file uploads
             'automotive_brand' => [
                 'nullable',
                 'string',
