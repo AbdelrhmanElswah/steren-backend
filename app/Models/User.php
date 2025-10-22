@@ -200,7 +200,7 @@ class User extends Authenticatable
      */
     public function dealerApplications()
     {
-        return $this->hasMany(DealerApplication::class);
+        return $this->hasMany(DealerApplication::class, 'partner_id');
     }
 
     /**
@@ -208,7 +208,7 @@ class User extends Authenticatable
      */
     public function latestDealerApplication()
     {
-        return $this->hasOne(DealerApplication::class)->latest();
+        return $this->hasOne(DealerApplication::class, 'partner_id')->latest();
     }
 
     /**
@@ -216,7 +216,7 @@ class User extends Authenticatable
      */
     public function activeDealerApplication()
     {
-        return $this->hasOne(DealerApplication::class)->active();
+        return $this->hasOne(DealerApplication::class, 'partner_id')->active();
     }
 
     /**
