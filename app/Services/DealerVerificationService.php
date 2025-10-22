@@ -174,8 +174,16 @@ class DealerVerificationService
             $hasFiles = $this->hasFileUploads($data);
             
             if ($hasFiles) {
-                $response = Http::timeout(30)->attach($this->prepareFileAttachments($data))
-                    ->post($this->baseUrl . '/api/verification/submit', $payload);
+                // Use multipart/form-data for file uploads
+                $response = Http::timeout(30);
+                
+                // Add file attachments
+                $attachments = $this->prepareFileAttachments($data);
+                foreach ($attachments as $fieldName => $file) {
+                    $response = $response->attach($fieldName, $file->getPathname(), $file->getClientOriginalName());
+                }
+                
+                $response = $response->post($this->baseUrl . '/api/verification/submit', $payload);
             } else {
                 $response = Http::timeout(30)->withHeaders([
                     'Content-Type' => 'application/json',
