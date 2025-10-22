@@ -5,13 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\ExcludesSoftDeleted;
 
 class CarListing extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, ExcludesSoftDeleted;
 
     protected $fillable = [
         'odoo_id',
+        'odoo_response',
+        'odoo_listing_id',
+        'odoo_vehicle_id',
+        'odoo_seller_id',
+        'odoo_city_id',
+        'odoo_listing_state',
         'title',
         'vin',
         'price',
@@ -81,6 +88,7 @@ class CarListing extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
+        'odoo_response' => 'array',
         'has_warranty' => 'boolean',
         'is_inspected' => 'boolean',
         'is_verified' => 'boolean',

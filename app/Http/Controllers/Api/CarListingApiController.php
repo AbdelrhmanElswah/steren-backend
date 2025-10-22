@@ -111,10 +111,23 @@ class CarListingApiController extends Controller
             if ($odooResponse) {
                 $odooId = $this->extractOdooListingId($odooResponse);
                 if ($odooId) {
-                    $carListing->update(['odoo_id' => $odooId]);
-                    Log::info('Saved Odoo ID to listing', [
+                    // Extract Odoo response data
+                    $odooData = $this->extractOdooResponseData($odooResponse);
+                    
+                    $carListing->update([
+                        'odoo_id' => $odooId,
+                        'odoo_response' => $odooResponse,
+                        'odoo_listing_id' => $odooData['listing_id'] ?? null,
+                        'odoo_vehicle_id' => $odooData['vehicle_id'] ?? null,
+                        'odoo_seller_id' => $odooData['seller_id'] ?? null,
+                        'odoo_city_id' => $odooData['city_id'] ?? null,
+                        'odoo_listing_state' => $odooData['listing_state'] ?? null,
+                    ]);
+                    
+                    Log::info('Saved Odoo data to listing', [
                         'listing_id' => $carListing->id,
-                        'odoo_id' => $odooId
+                        'odoo_id' => $odooId,
+                        'odoo_data' => $odooData
                     ]);
                 }
             }
@@ -691,6 +704,29 @@ class CarListingApiController extends Controller
     }
 
     /**
+     * Extract Odoo response data for storage
+     */
+    private function extractOdooResponseData(array $response): array
+    {
+        $data = data_get($response, 'result.data', []);
+        
+        return [
+            'listing_id' => $data['listing_id'] ?? null,
+            'vehicle_id' => $data['vehicle_id'] ?? null,
+            'seller_id' => $data['seller_id'] ?? null,
+            'city_id' => $data['city_id'] ?? null,
+            'listing_state' => $data['listing_state'] ?? null,
+            'listing_name' => $data['listing_name'] ?? null,
+            'vehicle_name' => $data['vehicle_name'] ?? null,
+            'seller_name' => $data['seller_name'] ?? null,
+            'city_name' => $data['city_name'] ?? null,
+            'price' => $data['price'] ?? null,
+            'currency' => $data['currency'] ?? null,
+            'create_date' => $data['create_date'] ?? null,
+        ];
+    }
+
+    /**
      * Handle promotion selection for car listing
      */
     private function handlePromotionSelection(array $validatedData, $user)
@@ -837,10 +873,23 @@ class CarListingApiController extends Controller
             if ($odooResponse) {
                 $odooId = $this->extractOdooListingId($odooResponse);
                 if ($odooId) {
-                    $carListing->update(['odoo_id' => $odooId]);
-                    Log::info('Saved Odoo ID to listing', [
+                    // Extract Odoo response data
+                    $odooData = $this->extractOdooResponseData($odooResponse);
+                    
+                    $carListing->update([
+                        'odoo_id' => $odooId,
+                        'odoo_response' => $odooResponse,
+                        'odoo_listing_id' => $odooData['listing_id'] ?? null,
+                        'odoo_vehicle_id' => $odooData['vehicle_id'] ?? null,
+                        'odoo_seller_id' => $odooData['seller_id'] ?? null,
+                        'odoo_city_id' => $odooData['city_id'] ?? null,
+                        'odoo_listing_state' => $odooData['listing_state'] ?? null,
+                    ]);
+                    
+                    Log::info('Saved Odoo data to listing', [
                         'listing_id' => $carListing->id,
-                        'odoo_id' => $odooId
+                        'odoo_id' => $odooId,
+                        'odoo_data' => $odooData
                     ]);
                 }
             }
