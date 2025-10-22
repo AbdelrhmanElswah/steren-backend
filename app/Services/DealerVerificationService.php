@@ -282,8 +282,8 @@ class DealerVerificationService
             ];
 
         if ($data['seller_type'] === 'authorized') {
-            $applicationData['automotive_brand_represented'] = $data['automotive_brand'];
-            $applicationData['business_license_number'] = $data['business_license_name'] ?? null;
+            $applicationData['automotive_brand_represented'] = $data['automotive_brand_represented'] ?? null;
+            $applicationData['business_license_number'] = $data['business_license_number'] ?? null;
             
             if (isset($data['authorization_letter']) && $data['authorization_letter'] instanceof \Illuminate\Http\UploadedFile) {
                 $applicationData['authorization_letter_path'] = $this->storeUploadedFile(
