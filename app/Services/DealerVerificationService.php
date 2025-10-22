@@ -44,21 +44,38 @@ class DealerVerificationService
             
             $data['partner_id'] = $user->partner_id;
 
-            $subscriptionPlan = SubscriptionPlan::find($data['subscription_plan_id']);
+            Log::info('Looking up subscription plan', [
+                'requested_plan_id' => $data['subscription_plan_id'],
+                'requested_plan_type' => gettype($data['subscription_plan_id']),
+                'partner_id' => $data['partner_id']
+            ]);
+
+            $subscriptionPlan = SubscriptionPlan::where('odoo_id', (string) $data['subscription_plan_id'])->first();
             
             if (!$subscriptionPlan) {
-                Log::warning('Subscription plan not found, using fallback', [
+                Log::info('Plan not found by odoo_id, trying database ID', [
+                    'odoo_id_search' => $data['subscription_plan_id'],
+                    'trying_database_id' => true
+                ]);
+                
+                $subscriptionPlan = SubscriptionPlan::find($data['subscription_plan_id']);
+            }
+            
+            if (!$subscriptionPlan) {
+                Log::warning('Subscription plan not found by odoo_id or database ID, using fallback', [
                     'requested_plan_id' => $data['subscription_plan_id'],
                     'partner_id' => $data['partner_id']
                 ]);
                 
-                // Try to find a plan with matching odoo_id first
-                $subscriptionPlan = SubscriptionPlan::where('odoo_id', $data['subscription_plan_id'])->first();
-                
-                if (!$subscriptionPlan) {
-                    // Use first available plan as fallback
-                    $subscriptionPlan = SubscriptionPlan::first() ?? $this->createFallbackSubscriptionPlan($data['subscription_plan_id']);
-                }
+                // Use first available plan as fallback
+                $subscriptionPlan = SubscriptionPlan::first() ?? $this->createFallbackSubscriptionPlan($data['subscription_plan_id']);
+            } else {
+                Log::info('Subscription plan found', [
+                    'plan_id' => $subscriptionPlan->id,
+                    'plan_odoo_id' => $subscriptionPlan->odoo_id,
+                    'plan_name' => $subscriptionPlan->name,
+                    'requested_id' => $data['subscription_plan_id']
+                ]);
             }
 
             // First, create the local dealer application record
