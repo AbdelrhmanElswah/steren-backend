@@ -194,14 +194,14 @@ class VinDecoderController extends Controller
      */
     private function filterVinDataForListing(array $vinData): array
     {
-        // Extract data from the nested structure
         $additionalData = $vinData['additional_data']['data'] ?? [];
+        $basicData = $vinData['data'] ?? [];
         
-        // Extract basic vehicle information
-        $make = $additionalData['make'] ?? '';
-        $model = $additionalData['model'] ?? '';
-        $year = $additionalData['year'] ?? $vinData['year'] ?? null;
-        $style = $additionalData['style'] ?? '';
+        // Extract basic vehicle information from either structure
+        $make = $additionalData['make'] ?? $basicData['make'] ?? '';
+        $model = $additionalData['model'] ?? $basicData['model'] ?? '';
+        $year = $additionalData['year'] ?? $basicData['year'] ?? $vinData['year'] ?? null;
+        $style = $additionalData['style'] ?? $basicData['style'] ?? '';
         
         // Parse style to extract trim and other details
         $trim = $this->extractTrimFromStyle($style);
@@ -212,15 +212,16 @@ class VinDecoderController extends Controller
         // Extract additional specifications from the nested data
         $specifications = $additionalData['specifications'] ?? [];
         $dimensions = $additionalData['dimensions'] ?? [];
-        $vehicle = $additionalData['vehicle'] ?? [];
+        $vehicle = $additionalData['vehicle'] ?? $basicData['vehicle'] ?? [];
+        $standardFeatures = $basicData['standard_features'] ?? [];
         
-        // Extract other information
-        $fuelType = 'Electric'; // Tesla is electric
-        $exteriorColor = $vinData['exterior_color'] ?? '';
-        $cylinders = $vinData['cylinders'] ?? null;
-        $doors = $vinData['doors'] ?? null;
-        $engineSize = $vinData['engine_size'] ?? null;
-        $seatingCapacity = $vinData['seating_capacity'] ?? null;
+        // Extract other information from either structure
+        $fuelType = $basicData['fuel_type'] ?? 'Gasoline'; // Default to Gasoline for non-Tesla
+        $exteriorColor = $basicData['exterior_color'] ?? $vinData['exterior_color'] ?? '';
+        $cylinders = $basicData['cylinders'] ?? $vinData['cylinders'] ?? null;
+        $doors = $basicData['doors'] ?? $vinData['doors'] ?? null;
+        $engineSize = $basicData['engine_size'] ?? $vinData['engine_size'] ?? null;
+        $seatingCapacity = $basicData['seating_capacity'] ?? $vinData['seating_capacity'] ?? null;
         
         // Extract available colors
         $availableColors = $this->extractAvailableColors($additionalData);
@@ -230,15 +231,27 @@ class VinDecoderController extends Controller
             $exteriorColor = $availableColors[0]['name'];
         }
         
-        // Extract engine size (for electric vehicles, this might be battery capacity)
-        $engineSize = $this->extractEngineSize($specifications, $dimensions);
-        
         // Extract performance data
         $horsepower = $this->extractHorsepowerFromDimensions($dimensions);
         $torque = $this->extractTorqueFromDimensions($dimensions);
         $acceleration = $this->extractAcceleration($specifications);
         $topSpeed = $this->extractTopSpeed($specifications);
         $mileageEfficiency = $this->extractMileageEfficiency($specifications);
+        
+        // Extract engine size (for electric vehicles, this might be battery capacity)
+        $engineSize = $this->extractEngineSize($specifications, $dimensions);
+        
+        // Extract additional data from standard features
+        $extractedEngineSize = $this->extractEngineSizeFromFeatures($standardFeatures);
+        $extractedHorsepower = $this->extractHorsepowerFromFeatures($standardFeatures);
+        $extractedTorque = $this->extractTorqueFromFeatures($standardFeatures);
+        $extractedCylinders = $this->extractCylindersFromFeatures($standardFeatures);
+        
+        // Use extracted data if available
+        $engineSize = $extractedEngineSize ?? $engineSize;
+        $horsepower = $extractedHorsepower ?? $horsepower;
+        $torque = $extractedTorque ?? $torque;
+        $cylinders = $extractedCylinders ?? $cylinders;
         
         // Extract dimensions
         $length = $this->extractDimension($dimensions, 'overall_length');
@@ -248,8 +261,8 @@ class VinDecoderController extends Controller
         // Extract seating capacity from specifications
         $seatingCapacity = $this->extractSeatingCapacity($specifications) ?? $seatingCapacity;
         
-        // Extract doors from vehicle data
-        $doors = $vehicle['doors'] ?? $doors;
+        // Extract doors from vehicle data or basic data
+        $doors = $vehicle['doors'] ?? $basicData['doors'] ?? $doors;
         
         // Extract body type from vehicle data (more reliable than style parsing)
         $bodyType = $vehicle['body_type'] ?? $bodyType;
@@ -258,6 +271,7 @@ class VinDecoderController extends Controller
         $brandId = $this->getBrandIdByName($make);
         $modelId = $this->getModelIdByName($model, $brandId);
         $bodyTypeId = $this->getBodyTypeIdByName($bodyType);
+        $bodyTypeName = $this->getBodyTypeNameById($bodyTypeId);
 
         // Map fuel type to match your system
         $mappedFuelType = $this->mapFuelType($fuelType);
@@ -269,22 +283,26 @@ class VinDecoderController extends Controller
         $mappedDriveType = $this->mapDriveType($driveType);
 
         return [
-            'vinNumber' => $vinData['vin'] ?? '',
+            // Frontend required fields (matching CarSummaryPage)
+            'vinNumber' => $basicData['vin'] ?? $vinData['vin'] ?? '',
             'selectedCar' => trim($make . ' ' . $model . ' ' . $trim),
             'brandLogoUrl' => $this->getBrandLogoUrl($brandId),
-            'year' => $year,
-            'selectedBodyTypeId' => $bodyTypeId,
+            'year' => $year ? (string)$year : '',
+            'selectedBodyType' => $bodyTypeName,
             'gccImport' => 'UAE', // Default value, can be modified
             'fuelType' => $mappedFuelType,
-            'cylinders' => $cylinders,
+            'cylinders' => $cylinders ? (string)$cylinders : '',
             'transmission' => $mappedTransmission,
             'exteriorColor' => $exteriorColor,
-            'availableColors' => $availableColors,
             'driveType' => $mappedDriveType,
-            'engineSize' => $engineSize,
+            'engineSize' => $engineSize ? (float)$engineSize : null,
             'seatingCapacity' => $seatingCapacity,
-            'brandId' => $brandId,
-            'modelId' => $modelId,
+            'brandId' => $brandId ? (string)$brandId : null,
+            'modelId' => $modelId ? (string)$modelId : null,
+            
+            // Additional useful fields
+            'bodyTypeName' => $bodyTypeName,
+            'availableColors' => $availableColors,
             'doors' => $doors,
             'trim' => $trim,
             'condition' => 'used', // Default to used, can be modified
@@ -297,7 +315,7 @@ class VinDecoderController extends Controller
             'isVerified' => false,
             'hasInsurance' => false,
             'originCountry' => 'UAE', // Default value
-            'engineType' => $vinData['engine_type'] ?? 'Electric',
+            'engineType' => $vinData['engine_type'] ?? 'Gasoline',
             'horsepower' => $horsepower,
             'torque' => $torque,
             'acceleration_0_100' => $acceleration,
@@ -360,14 +378,22 @@ class VinDecoderController extends Controller
      */
     private function getBrandIdByName(string $brandName): ?int
     {
-        $brand = \App\Models\CarBrand::where('name', 'like', '%' . $brandName . '%')->first();
+        if (empty($brandName)) {
+            return null;
+        }
         
-        if (!$brand && !empty($brandName)) {
-            // Create the brand if it doesn't exist
-            $brand = \App\Models\CarBrand::create([
-                'name' => $brandName,
-                'odoo_id' => null // Will be updated when synced with Odoo
-            ]);
+        // Try exact match first
+        $brand = \App\Models\CarBrand::whereRaw('LOWER(name) = ?', [strtolower($brandName)])->first();
+        
+        if (!$brand) {
+            // Try partial matches for common variations
+            $variations = $this->getBrandVariations($brandName);
+            foreach ($variations as $variation) {
+                $brand = \App\Models\CarBrand::whereRaw('LOWER(name) = ?', [strtolower($variation)])->first();
+                if ($brand) {
+                    break;
+                }
+            }
         }
         
         return $brand ? $brand->id : null;
@@ -382,17 +408,22 @@ class VinDecoderController extends Controller
             return null;
         }
         
-        $model = \App\Models\CarModel::where('name', 'like', '%' . $modelName . '%')
+        // Try exact match first
+        $model = \App\Models\CarModel::whereRaw('LOWER(name) = ?', [strtolower($modelName)])
             ->where('car_brand_id', $brandId)
             ->first();
-            
+        
         if (!$model) {
-            // Create the model if it doesn't exist
-            $model = \App\Models\CarModel::create([
-                'name' => $modelName,
-                'car_brand_id' => $brandId,
-                'odoo_id' => null // Will be updated when synced with Odoo
-            ]);
+            // Try variations for common model name patterns
+            $variations = $this->getModelVariations($modelName);
+            foreach ($variations as $variation) {
+                $model = \App\Models\CarModel::whereRaw('LOWER(name) = ?', [strtolower($variation)])
+                    ->where('car_brand_id', $brandId)
+                    ->first();
+                if ($model) {
+                    break;
+                }
+            }
         }
         
         return $model ? $model->id : null;
@@ -403,17 +434,27 @@ class VinDecoderController extends Controller
      */
     private function getBodyTypeIdByName(string $bodyTypeName): ?int
     {
-        $bodyType = \App\Models\BodyType::where('name', 'like', '%' . $bodyTypeName . '%')->first();
-        
-        if (!$bodyType && !empty($bodyTypeName)) {
-            // Create the body type if it doesn't exist
-            $bodyType = \App\Models\BodyType::create([
-                'name' => $bodyTypeName,
-                'odoo_id' => null // Will be updated when synced with Odoo
-            ]);
+        if (empty($bodyTypeName)) {
+            return null;
         }
         
+        $bodyType = \App\Models\BodyType::whereRaw('LOWER(name) = ?', [strtolower($bodyTypeName)])->first();
+        
         return $bodyType ? $bodyType->id : null;
+    }
+
+    /**
+     * Get body type name by ID
+     */
+    private function getBodyTypeNameById(?int $bodyTypeId): ?string
+    {
+        if (!$bodyTypeId) {
+            return null;
+        }
+        
+        $bodyType = \App\Models\BodyType::find($bodyTypeId);
+        
+        return $bodyType ? $bodyType->name : null;
     }
 
     /**
@@ -682,6 +723,113 @@ class VinDecoderController extends Controller
             }
         }
         
+        return null;
+    }
+
+    /**
+     * Get brand name variations for fuzzy matching
+     */
+    private function getBrandVariations(string $brandName): array
+    {
+        $variations = [];
+        $lowerName = strtolower($brandName);
+        
+        // Common brand name variations
+        $brandMappings = [
+            'mercedes-benz' => ['mercedes', 'benz'],
+            'bmw' => ['bayerische motoren werke'],
+            'land rover' => ['landrover'],
+            'mini' => ['mini cooper'],
+        ];
+        
+        foreach ($brandMappings as $key => $values) {
+            if (strpos($lowerName, $key) !== false) {
+                $variations = array_merge($variations, $values);
+            }
+        }
+        
+        return $variations;
+    }
+
+    /**
+     * Get model name variations for fuzzy matching
+     */
+    private function getModelVariations(string $modelName): array
+    {
+        $variations = [];
+        $lowerName = strtolower($modelName);
+        
+        // Common model name variations
+        $modelMappings = [
+            'c-class' => ['class c'],
+            'e-class' => ['class e'],
+            's-class' => ['class s'],
+            'a-class' => ['class a'],
+            'b-class' => ['class b'],
+            'gl-class' => ['class gl'],
+            'cls-class' => ['class cls'],
+            'cl-class' => ['class cl'],
+            'glk-class' => ['class glk'],
+        ];
+        
+        foreach ($modelMappings as $key => $values) {
+            if (strpos($lowerName, $key) !== false) {
+                $variations = array_merge($variations, $values);
+            }
+        }
+        
+        return $variations;
+    }
+
+    /**
+     * Extract engine size from standard features
+     */
+    private function extractEngineSizeFromFeatures(array $standardFeatures): ?float
+    {
+        foreach ($standardFeatures as $feature) {
+            if (preg_match('/(\d+\.?\d*)\s*L\s*I-?\d*\s*Engine/i', $feature, $matches)) {
+                return (float) $matches[1];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extract horsepower from standard features
+     */
+    private function extractHorsepowerFromFeatures(array $standardFeatures): ?int
+    {
+        foreach ($standardFeatures as $feature) {
+            if (preg_match('/(\d+)\s*@\s*[\d,]+\s*rpm\s*Horsepower/i', $feature, $matches)) {
+                return (int) $matches[1];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extract torque from standard features
+     */
+    private function extractTorqueFromFeatures(array $standardFeatures): ?int
+    {
+        foreach ($standardFeatures as $feature) {
+            if (preg_match('/(\d+)\s*@\s*[\d,]+\s*rpm\s*Torque/i', $feature, $matches)) {
+                return (int) $matches[1];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extract cylinders from standard features
+     */
+    private function extractCylindersFromFeatures(array $standardFeatures): ?int
+    {
+        foreach ($standardFeatures as $feature) {
+            if (preg_match('/(\d+\.?\d*)\s*L\s*I-(\d+)\s*Engine/i', $feature, $matches)) {
+                return (int) $matches[2];
+            }
+        }
         return null;
     }
 }
