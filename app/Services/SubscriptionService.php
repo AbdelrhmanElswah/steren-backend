@@ -75,21 +75,10 @@ class SubscriptionService
             ];
         }
 
-        // Check if user is a dealer
-        if ($user->is_dealer) {
-            $dealerApplication = $user->activeDealerApplication;
-            
-            // TEMPORARY: Skip payment requirement until payment system is implemented
-            // Dealer must have approved status (payment step skipped for now)
-            if (!$dealerApplication || !$dealerApplication->isApproved()) {
-                return [
-                    'can_create' => false,
-                    'reason' => 'Your dealer account is not approved. Please complete the verification process.',
-                    'code' => 'DEALER_NOT_APPROVED',
-                    'dealer_status' => $dealerApplication?->status?->name ?? 'no_application',
-                    'payment_skipped' => true, // Indicates payment step is skipped
-                ];
-            }
+        // Check if user is a dealer (using approved dealer application)
+        if ($user->isDealer()) {
+            // Dealers with approved applications can create listings
+            // No additional checks needed since approved application is the source of truth
         }
 
         // NEW 20-SLOT SYSTEM: All users can create up to 20 listings

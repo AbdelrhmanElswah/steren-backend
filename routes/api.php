@@ -355,6 +355,22 @@ Route::prefix('dealer')->middleware(['auth:sanctum', 'phone.verified'])->group(f
     Route::get('/subscription/billing-history', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'billingHistory']);
 });
 
+// Dealer Management Routes - Using is_dealer field
+Route::prefix('dealer-management')->middleware('auth:sanctum')->group(function () {
+    // User can check/manage their own dealer status
+    Route::get('/status', [App\Http\Controllers\Api\DealerManagementController::class, 'checkDealerStatus']);
+    Route::post('/make-dealer', [App\Http\Controllers\Api\DealerManagementController::class, 'makeDealer']);
+    Route::delete('/remove-dealer', [App\Http\Controllers\Api\DealerManagementController::class, 'removeDealerStatus']);
+    Route::get('/statistics', [App\Http\Controllers\Api\DealerManagementController::class, 'getDealerStatistics']);
+    
+    // Admin routes for managing other users
+    Route::get('/all-dealers', [App\Http\Controllers\Api\DealerManagementController::class, 'getAllDealers']);
+    Route::post('/make-user-dealer', [App\Http\Controllers\Api\DealerManagementController::class, 'makeUserDealer']);
+    Route::delete('/remove-user-dealer', [App\Http\Controllers\Api\DealerManagementController::class, 'removeUserDealerStatus']);
+    Route::post('/bulk-make-dealers', [App\Http\Controllers\Api\DealerManagementController::class, 'bulkMakeDealers']);
+    Route::delete('/bulk-remove-dealers', [App\Http\Controllers\Api\DealerManagementController::class, 'bulkRemoveDealerStatus']);
+});
+
 // Dealer Verification Routes
 Route::prefix('verification')->group(function () {
     // Public route for Odoo webhook

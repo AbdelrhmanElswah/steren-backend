@@ -19,51 +19,63 @@ class SubscriptionBasedListingService
     }
 
     /**
-     * Check if user is a dealer (either by subscription or approved application)
+     * Check if user is a dealer using is_dealer field
      */
     protected function isDealer(User $user): bool
     {
-        // Check if user has active dealer subscription
-        $plan = $this->subscriptionService->getSubscriptionPlan($user);
-        if ($plan && $plan->name === 'Dealer') {
-            return true;
-        }
-
-        // Check if user has approved dealer application (fallback)
+        // Check if user has is_dealer = 1 (true)
         return $user->isDealer();
     }
 
     /**
      * Get car listings based on user's subscription plan
+     * COMMENTED OUT: No subscription plans currently
      */
     public function getCarListingsForUser(User $user, array $filters = [])
     {
-        $plan = $this->subscriptionService->getSubscriptionPlan($user);
-        
-        if (!$plan) {
-            return $this->getFreeTierListings($filters);
+        // COMMENTED OUT: Subscription plan system
+        // $plan = $this->subscriptionService->getSubscriptionPlan($user);
+        // 
+        // if (!$plan) {
+        //     return $this->getFreeTierListings($filters);
+        // }
+        //
+        // return match ($plan->name) {
+        //     'Start' => $this->getStartPlanListings($user, $filters),
+        //     'Pro' => $this->getProPlanListings($user, $filters),
+        //     'Dealer' => $this->getDealerPlanListings($user, $filters),
+        //     default => $this->getFreeTierListings($filters),
+        // };
+
+        // SIMPLIFIED: Check if user is dealer, otherwise return free tier
+        if ($this->isDealer($user)) {
+            return $this->getDealerPlanListings($user, $filters);
         }
 
-        return match ($plan->name) {
-            'Start' => $this->getStartPlanListings($user, $filters),
-            'Pro' => $this->getProPlanListings($user, $filters),
-            'Dealer' => $this->getDealerPlanListings($user, $filters),
-            default => $this->getFreeTierListings($filters),
-        };
+        return $this->getFreeTierListings($filters);
     }
 
     /**
      * Get top picks for user based on subscription plan
+     * COMMENTED OUT: No subscription plans currently
      */
     public function getTopPicksForUser(User $user, int $limit = 10)
     {
-        $plan = $this->subscriptionService->getSubscriptionPlan($user);
-        
-        if (!$plan || !$plan->is_top_picks) {
-            return collect();
-        }
+        // COMMENTED OUT: Subscription plan system
+        // $plan = $this->subscriptionService->getSubscriptionPlan($user);
+        // 
+        // if (!$plan || !$plan->is_top_picks) {
+        //     return collect();
+        // }
+        //
+        // if ($plan->name === 'Dealer') {
+        //     return $this->getDealerTopPicks($user, $limit);
+        // }
+        //
+        // return $this->getGeneralTopPicks($limit);
 
-        if ($plan->name === 'Dealer') {
+        // SIMPLIFIED: Dealers get dealer top picks, others get general
+        if ($this->isDealer($user)) {
             return $this->getDealerTopPicks($user, $limit);
         }
 
@@ -72,16 +84,25 @@ class SubscriptionBasedListingService
 
     /**
      * Get "You May Also Like" recommendations for user
+     * COMMENTED OUT: No subscription plans currently
      */
     public function getYouMayAlsoLikeForUser(User $user, CarListing $excludeListing, int $limit = 6)
     {
-        $plan = $this->subscriptionService->getSubscriptionPlan($user);
-        
-        if (!$plan || !$plan->is_you_may_also_like) {
-            return collect();
-        }
+        // COMMENTED OUT: Subscription plan system
+        // $plan = $this->subscriptionService->getSubscriptionPlan($user);
+        // 
+        // if (!$plan || !$plan->is_you_may_also_like) {
+        //     return collect();
+        // }
+        //
+        // if ($plan->name === 'Dealer') {
+        //     return $this->getDealerRecommendations($user, $excludeListing, $limit);
+        // }
+        //
+        // return $this->getGeneralRecommendations($excludeListing, $limit);
 
-        if ($plan->name === 'Dealer') {
+        // SIMPLIFIED: Dealers get dealer recommendations, others get general
+        if ($this->isDealer($user)) {
             return $this->getDealerRecommendations($user, $excludeListing, $limit);
         }
 

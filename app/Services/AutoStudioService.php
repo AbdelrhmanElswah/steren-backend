@@ -17,17 +17,11 @@ class AutoStudioService
     }
 
     /**
-     * Check if user is a dealer (either by subscription or approved application)
+     * Check if user is a dealer using is_dealer field
      */
     protected function isDealer(User $user): bool
     {
-        // Check if user has active dealer subscription
-        $plan = $this->subscriptionService->getSubscriptionPlan($user);
-        if ($plan && $plan->name === 'Dealer') {
-            return true;
-        }
-
-        // Check if user has approved dealer application (fallback)
+        // Check if user has is_dealer = 1 (true)
         return $user->isDealer();
     }
 

@@ -436,11 +436,29 @@ class User extends Authenticatable
 
     /**
      * Check if user is a dealer
-     * TEMPORARY: Skip payment requirement until payment system is implemented
+     * User is dealer if they have an approved dealer application
      */
     public function isDealer()
     {
-        return $this->activeDealerApplication && $this->activeDealerApplication->isApproved();
+        return $this->hasApprovedDealerApplication();
+    }
+
+    /**
+     * Mark user as a dealer
+     */
+    public function markAsDealer()
+    {
+        $this->update(['is_dealer' => 1]);
+        return $this;
+    }
+
+    /**
+     * Remove dealer status from user
+     */
+    public function removeDealerStatus()
+    {
+        $this->update(['is_dealer' => 0]);
+        return $this;
     }
 
     /**
