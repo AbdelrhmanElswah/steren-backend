@@ -55,8 +55,8 @@ class VerifyDealer
                 'message' => $this->getAccessDeniedMessage($level, $validation),
                 'data' => [
                     'required_level' => $level,
-                    'current_status' => $validation['validation_status']['status'],
-                    'missing_requirements' => $validation['validation_status']['missing_requirements'],
+                    'current_status' => $validation['validation_status']['status'] ?? 'unknown',
+                    'missing_requirements' => $validation['validation_status']['missing_requirements'] ?? [],
                     'validation_details' => $validation['validation_status']
                 ]
             ], 403);
@@ -73,8 +73,8 @@ class VerifyDealer
      */
     protected function getAccessDeniedMessage(string $level, array $validation): string
     {
-        $status = $validation['validation_status']['status'];
-        $missing = $validation['validation_status']['missing_requirements'];
+        $status = $validation['validation_status']['status'] ?? 'unknown';
+        $missing = $validation['validation_status']['missing_requirements'] ?? [];
 
         $baseMessage = match($level) {
             'basic' => 'You must be a dealer to access this feature.',

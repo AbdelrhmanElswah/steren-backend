@@ -114,9 +114,9 @@ class SubscriptionBasedListingController extends Controller
         try {
             $user = Auth::user();
             
-            // Check if user is a verified dealer (strict validation for studio access)
-            if (!$user->isVerifiedDealer()) {
-                return $this->errorResponse('Only verified dealers can access studios. Please complete your dealer verification (documents and business info).', 403);
+            // Check if user is a dealer (basic validation for studio access)
+            if (!$user->isDealer()) {
+                return $this->errorResponse('Only dealers can access studios. Please complete your dealer application.', 403);
             }
 
             $studios = $this->listingService->getDealerStudios($user);
@@ -242,7 +242,6 @@ class SubscriptionBasedListingController extends Controller
             
             // Check if user is a dealer (basic validation for features)
             $isDealer = $user->isDealer();
-            $isVerifiedDealer = $user->isVerifiedDealer();
             
             if (!$isDealer) {
                 return $this->successResponse([
@@ -266,20 +265,20 @@ class SubscriptionBasedListingController extends Controller
             // Dealer features (based on verification level)
             $features = [
                 'can_view_basic_listings' => true,
-                'can_view_featured_listings' => $isVerifiedDealer, // Only verified dealers
-                'can_view_sponsored_listings' => $isVerifiedDealer, // Only verified dealers
-                'can_view_top_picks' => $isVerifiedDealer, // Only verified dealers
-                'can_view_recommendations' => $isVerifiedDealer, // Only verified dealers
-                'can_create_studios' => $isVerifiedDealer, // Only verified dealers
-                'auto_studio_creation' => $isVerifiedDealer, // Only verified dealers
-                'auto_listing_association' => $isVerifiedDealer, // Only verified dealers
-                'auto_top_picks' => $isVerifiedDealer, // Only verified dealers
-                'max_listings' => $isVerifiedDealer ? 0 : 10, // Unlimited for verified, limited for basic dealers
-                'max_photos_per_listing' => $isVerifiedDealer ? 20 : 10, // More photos for verified dealers
-                'has_analytics' => $isVerifiedDealer, // Only verified dealers
-                'has_priority_support' => $isVerifiedDealer, // Only verified dealers
-                'has_dedicated_account_rep' => $isVerifiedDealer, // Only verified dealers
-                'verification_status' => $isVerifiedDealer ? 'verified' : 'pending_verification',
+                'can_view_featured_listings' => $isDealer, // Only dealers
+                'can_view_sponsored_listings' => $isDealer, // Only dealers
+                'can_view_top_picks' => $isDealer, // Only dealers
+                'can_view_recommendations' => $isDealer, // Only dealers
+                'can_create_studios' => $isDealer, // Only dealers
+                'auto_studio_creation' => $isDealer, // Only dealers
+                'auto_listing_association' => $isDealer, // Only dealers
+                'auto_top_picks' => $isDealer, // Only dealers
+                'max_listings' => $isDealer ? 0 : 10, // Unlimited for dealers, limited for basic users
+                'max_photos_per_listing' => $isDealer ? 20 : 10, // More photos for dealers
+                'has_analytics' => $isDealer, // Only dealers
+                'has_priority_support' => $isDealer, // Only dealers
+                'has_dedicated_account_rep' => $isDealer, // Only dealers
+                'verification_status' => $isDealer ? 'dealer' : 'not_dealer',
             ];
 
             // Get auto-studio info for dealers
@@ -325,9 +324,9 @@ class SubscriptionBasedListingController extends Controller
         try {
             $user = Auth::user();
             
-            // Check if user is a verified dealer (strict validation for auto studio)
-            if (!$user->isVerifiedDealer()) {
-                return $this->errorResponse('Only verified dealers can access auto studio features. Please complete your dealer verification (documents and business info).', 403);
+            // Check if user is a dealer (basic validation for auto studio)
+            if (!$user->isDealer()) {
+                return $this->errorResponse('Only dealers can access auto studio features. Please complete your dealer application.', 403);
             }
 
             $defaultStudio = \App\Models\DealerStudio::where('dealer_id', $user->id)
@@ -376,9 +375,9 @@ class SubscriptionBasedListingController extends Controller
         try {
             $user = Auth::user();
             
-            // Check if user is a verified dealer (strict validation for auto studio processing)
-            if (!$user->isVerifiedDealer()) {
-                return $this->errorResponse('Only verified dealers can process auto studio. Please complete your dealer verification (documents and business info).', 403);
+            // Check if user is a dealer (basic validation for auto studio processing)
+            if (!$user->isDealer()) {
+                return $this->errorResponse('Only dealers can process auto studio. Please complete your dealer application.', 403);
             }
 
             $autoStudioService = app(\App\Services\AutoStudioService::class);

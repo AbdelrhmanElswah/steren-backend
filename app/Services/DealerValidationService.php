@@ -48,9 +48,15 @@ class DealerValidationService
                 'message' => 'User is not a dealer',
                 'requirements' => [
                     'approved_application' => false,
-                    'payment_completed' => false,
                     'documents_verified' => false,
                     'business_info_complete' => false,
+                    'not_expired' => false,
+                ],
+                'missing_requirements' => [
+                    'Dealer application must be approved',
+                    'All required documents must be verified',
+                    'Business information must be complete',
+                    'Dealer application has expired'
                 ]
             ];
         }
@@ -118,19 +124,19 @@ class DealerValidationService
     {
         $missing = [];
         
-        if (!$requirements['approved_application']) {
+        if (!isset($requirements['approved_application']) || !$requirements['approved_application']) {
             $missing[] = 'Dealer application must be approved';
         }
         
-        if (!$requirements['documents_verified']) {
+        if (!isset($requirements['documents_verified']) || !$requirements['documents_verified']) {
             $missing[] = 'All required documents must be verified';
         }
         
-        if (!$requirements['business_info_complete']) {
+        if (!isset($requirements['business_info_complete']) || !$requirements['business_info_complete']) {
             $missing[] = 'Business information must be complete';
         }
         
-        if (!$requirements['not_expired']) {
+        if (!isset($requirements['not_expired']) || !$requirements['not_expired']) {
             $missing[] = 'Dealer application has expired';
         }
         
