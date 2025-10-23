@@ -261,7 +261,7 @@ class AnalyticsController extends Controller
                     'carTrim:id,name,car_model_id',
                     'features:id,name,category,description,icon',
                     'specifications:id,name,value,unit,specification_type,description,is_highlighted',
-                    'badges:id,name,type,color,icon',
+                    'badges:id,name',
                     'status', 
                     'listingPromotion'
                 ])
@@ -383,8 +383,8 @@ class AnalyticsController extends Controller
                     'detailed_specifications' => $detailedSpecifications,
                     'features_by_category' => $featuresByCategory,
                     'specifications_by_type' => $specificationsByType,
-                    'status_badge' => $listing->status_badge,
-                    'active_badges' => $listing->active_badges,
+                    'status_badge' => $listing->getStatusBadgeAttribute(),
+                    'active_badges' => $listing->getActiveBadgesAttribute(),
                 ];
             });
             

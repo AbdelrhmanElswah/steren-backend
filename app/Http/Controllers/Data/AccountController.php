@@ -124,7 +124,7 @@ class AccountController extends Controller
                     'carTrim:id,name,car_model_id',
                     'features:id,name,category,description,icon',
                     'specifications:id,name,value,unit,specification_type,description,is_highlighted',
-                    'badges:id,name,type,color,icon'
+                    'badges:id,name'
                 ])
                 ->orderBy('created_at', 'desc')
                 ->paginate(20);
@@ -185,9 +185,9 @@ class AccountController extends Controller
                 }
                 $listing->specifications_by_type = $specificationsByType;
 
-                // Add status and badge information
-                $listing->status_badge = $listing->status_badge;
-                $listing->active_badges = $listing->active_badges;
+                // Add status and badge information (these are computed attributes, not relationships)
+                $listing->status_badge = $listing->getStatusBadgeAttribute();
+                $listing->active_badges = $listing->getActiveBadgesAttribute();
             }
 
             $data = [
