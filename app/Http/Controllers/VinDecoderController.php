@@ -223,8 +223,11 @@ class VinDecoderController extends Controller
         $engineSize = $basicData['engine_size'] ?? $vinData['engine_size'] ?? null;
         $seatingCapacity = $basicData['seating_capacity'] ?? $vinData['seating_capacity'] ?? null;
         
-        // Extract available colors
+        // Extract available colors from both additional data and basic data
         $availableColors = $this->extractAvailableColors($additionalData);
+        if (empty($availableColors)) {
+            $availableColors = $this->extractAvailableColors($basicData);
+        }
         
         // Set primary exterior color to the first available color (usually the standard/default color)
         if (!empty($availableColors)) {
@@ -247,11 +250,16 @@ class VinDecoderController extends Controller
         $extractedTorque = $this->extractTorqueFromFeatures($standardFeatures);
         $extractedCylinders = $this->extractCylindersFromFeatures($standardFeatures);
         
+        // Extract standard options for additional data
+        $standardOptions = $basicData['standard_options'] ?? [];
+        $extractedSeatingCapacity = $this->extractSeatingCapacityFromFeatures($standardFeatures, $standardOptions);
+        
         // Use extracted data if available
         $engineSize = $extractedEngineSize ?? $engineSize;
         $horsepower = $extractedHorsepower ?? $horsepower;
         $torque = $extractedTorque ?? $torque;
         $cylinders = $extractedCylinders ?? $cylinders;
+        $seatingCapacity = $extractedSeatingCapacity ?? $seatingCapacity;
         
         // Extract dimensions
         $length = $this->extractDimension($dimensions, 'overall_length');
@@ -260,6 +268,11 @@ class VinDecoderController extends Controller
         
         // Extract seating capacity from specifications
         $seatingCapacity = $this->extractSeatingCapacity($specifications) ?? $seatingCapacity;
+        
+        // Fallback: For sedans, default to 5 passengers if not found
+        if ($seatingCapacity === null && $bodyType && strtolower($bodyType) === 'sedan') {
+            $seatingCapacity = 5;
+        }
         
         // Extract doors from vehicle data or basic data
         $doors = $vehicle['doors'] ?? $basicData['doors'] ?? $doors;
@@ -830,6 +843,34 @@ class VinDecoderController extends Controller
                 return (int) $matches[2];
             }
         }
+        return null;
+    }
+
+    /**
+     * Extract seating capacity from standard features and options
+     */
+    private function extractSeatingCapacityFromFeatures(array $standardFeatures, array $standardOptions = []): ?int
+    {
+        // Look for seating capacity in standard features
+        foreach ($standardFeatures as $feature) {
+            if (preg_match('/(\d+)\s*passenger/i', $feature, $matches)) {
+                return (int) $matches[1];
+            }
+            if (preg_match('/(\d+)\s*seat/i', $feature, $matches)) {
+                return (int) $matches[1];
+            }
+        }
+        
+        // Look for seating capacity in standard options
+        foreach ($standardOptions as $option) {
+            if (preg_match('/(\d+)\s*passenger/i', $option['description'] ?? '', $matches)) {
+                return (int) $matches[1];
+            }
+            if (preg_match('/(\d+)\s*seat/i', $option['description'] ?? '', $matches)) {
+                return (int) $matches[1];
+            }
+        }
+        
         return null;
     }
 }
