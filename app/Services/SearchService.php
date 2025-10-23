@@ -192,19 +192,18 @@ class SearchService
         
         return Cache::remember($cacheKey, 300, function () use ($filters, $page, $perPage) {
             $query = CarListing::with([
-                'brand',
-                'carModel',
-                'bodyType',
-                'location',
-                'media' => function ($query) {
-                    $query->where('file_type', 'like', 'image/%');
-                },
-                'fuelType',
-                'transmission',
-                'exteriorColor',
-                'driveType',
-                'cylinder',
-                'carCondition'
+                'brand:id,name,odoo_id',
+                'carModel:id,name,car_brand_id',
+                'bodyType:id,name',
+                'location:id,name',
+                'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order',
+                'fuelType:id,name',
+                'transmission:id,name',
+                'exteriorColor:id,name',
+                'driveType:id,name',
+                'cylinder:id,name',
+                'carCondition:id,name',
+                'user:id,full_name,email,phone'
             ]);
 
             // Apply filters

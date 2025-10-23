@@ -4,9 +4,12 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Traits\ResourceMediaTrait;
 
 class SearchResultResource extends JsonResource
 {
+    use ResourceMediaTrait;
+
     /**
      * Transform the resource into an array.
      *
@@ -14,6 +17,9 @@ class SearchResultResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $useTemporaryUrl = $this->shouldUseTemporaryUrls($request);
+        $expirationMinutes = $this->getExpirationMinutes($request);
+
         return [
             'id' => $this->id,
             'title' => $this->title,
@@ -32,31 +38,42 @@ class SearchResultResource extends JsonResource
             'status_label' => $this->status_label,
             'created_at' => $this->created_at?->toISOString(),
             
-            // Relationships
+            // User information - matching /car-listings format
+            'user' => $this->when($this->user, [
+                'id' => $this->user?->id,
+                'full_name' => $this->user?->full_name,
+                'email' => $this->user?->email,
+                'phone' => $this->user?->phone,
+            ]),
+            'location' => $this->whenLoaded('location', [
+                'id' => $this->location?->id,
+                'name' => $this->location?->name,
+            ]),
+            
+            // Relationships - matching /car-listings format
             'brand' => $this->when($this->brand, [
                 'id' => $this->brand?->id,
                 'name' => $this->brand?->name,
-                'logo' => $this->brand?->media ? asset('storage/' . $this->brand->media->file_path) : null,
+                'odoo_id' => $this->brand?->odoo_id,
             ]),
             
-            'car_model' => $this->when($this->carModel, [
+            'carModel' => $this->when($this->carModel, [
                 'id' => $this->carModel?->id,
                 'name' => $this->carModel?->name,
+                'car_brand_id' => $this->carModel?->car_brand_id,
             ]),
             
-            'body_type' => $this->when($this->bodyType, [
+            'bodyType' => $this->when($this->bodyType, [
                 'id' => $this->bodyType?->id,
                 'name' => $this->bodyType?->name,
-                'icon' => $this->bodyType?->media ? asset('storage/' . $this->bodyType->media->file_path) : null,
             ]),
             
             'location' => $this->when($this->location, [
                 'id' => $this->location?->id,
-                'city' => $this->location?->city?->name,
-                'area' => $this->location?->area,
+                'name' => $this->location?->name,
             ]),
             
-            'fuel_type' => $this->when($this->fuelType, [
+            'fuelType' => $this->when($this->fuelType, [
                 'id' => $this->fuelType?->id,
                 'name' => $this->fuelType?->name,
             ]),
@@ -66,35 +83,48 @@ class SearchResultResource extends JsonResource
                 'name' => $this->transmission?->name,
             ]),
             
-            'exterior_color' => $this->when($this->exteriorColor, [
+            'exteriorColor' => $this->when($this->exteriorColor, [
                 'id' => $this->exteriorColor?->id,
                 'name' => $this->exteriorColor?->name,
-                'hex_code' => $this->exteriorColor?->hex_code,
             ]),
             
-            'drive_type' => $this->when($this->driveType, [
+            'driveType' => $this->when($this->driveType, [
                 'id' => $this->driveType?->id,
                 'name' => $this->driveType?->name,
             ]),
             
-            // Media
-            'images' => $this->when($this->media, $this->media->map(function ($media) {
-                return [
-                    'id' => $media->id,
-                    'url' => asset('storage/' . $media->file_path),
-                    'alt_text' => $media->alt_text,
-                    'is_primary' => $media->order === 1,
-                ];
-            })),
+            'cylinder' => $this->when($this->cylinder, [
+                'id' => $this->cylinder?->id,
+                'name' => $this->cylinder?->name,
+            ]),
             
-            'primary_image' => $this->when($this->media && $this->media->count() > 0, function () {
-                $primaryMedia = $this->media->where('order', 1)->first() ?? $this->media->first();
-                return [
-                    'id' => $primaryMedia->id,
-                    'url' => asset('storage/' . $primaryMedia->file_path),
-                    'alt_text' => $primaryMedia->alt_text,
-                ];
-            }),
+            'carCondition' => $this->when($this->carCondition, [
+                'id' => $this->carCondition?->id,
+                'name' => $this->carCondition?->name,
+            ]),
+            
+            // Media - using S3 URLs like Media model accessors
+            'media' => $this->when(
+                $this->relationLoaded('media') && $this->media->isNotEmpty(),
+                $this->media->map(function ($media) {
+                    return [
+                        'id' => $media->id,
+                        'modelable_type' => $media->modelable_type,
+                        'modelable_id' => $media->modelable_id,
+                        'media' => $media->media,
+                        'path_file_name' => $media->path_file_name,
+                        'file_type' => $media->file_type,
+                        'info' => $media->info,
+                        'order' => $media->order,
+                        'media_link' => $media->media_link, // S3 temporary URL
+                        'media_temporary_url' => $media->media_temporary_url, // S3 temporary URL
+                        'public_url' => $media->public_url, // S3 public URL
+                        'file_size' => $media->file_size,
+                        'mime_type' => $media->mime_type,
+                        'exists' => $media->file_exists,
+                    ];
+                })
+            ),
             
             // Badges
             'badges' => $this->active_badges,
