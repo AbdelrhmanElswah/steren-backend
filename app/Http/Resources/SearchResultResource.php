@@ -17,118 +17,59 @@ class SearchResultResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $useTemporaryUrl = $this->shouldUseTemporaryUrls($request);
-        $expirationMinutes = $this->getExpirationMinutes($request);
-
+        // Pre-calculate expensive operations
+        $media = $this->whenLoaded('media');
+        $primaryImage = $media ? $media->where('info', 'primary')->first()?->path_file_name : null;
+        $images = $media ? $media->pluck('path_file_name')->toArray() : [];
+        
         return [
             'id' => $this->id,
             'title' => $this->title,
-            'full_title' => $this->full_title,
-            'price' => (float) $this->price,
+            'price' => $this->price,
+            'price_currency' => $this->price_currency,
             'formatted_price' => $this->formatted_price,
-            'year' => $this->year,
             'mileage' => $this->mileage,
+            'mileage_type' => $this->whenLoaded('mileageType', fn() => $this->mileageType?->name),
             'formatted_mileage' => $this->formatted_mileage,
-            'condition_type' => $this->condition_type,
+            'origin_country' => $this->origin_country,
             'has_warranty' => $this->has_warranty,
             'is_inspected' => $this->is_inspected,
             'is_verified' => $this->is_verified,
-            'is_sponsored' => $this->is_sponsored,
+            'has_insurance' => $this->has_insurance,
+            'is_featured' => $this->is_featured,
+            'is_new_arrival' => $this->is_new_arrival,
+            'is_promoted' => $this->is_promoted,
             'status' => $this->status,
-            'status_label' => $this->status_label,
+            'views' => $this->views,
+            'formatted_views' => $this->formatted_views,
             'created_at' => $this->created_at?->toISOString(),
-            
-            // User information - matching /car-listings format
-            'user' => $this->when($this->user, [
-                'id' => $this->user?->id,
-                'full_name' => $this->user?->full_name,
-                'email' => $this->user?->email,
-                'phone' => $this->user?->phone,
-            ]),
-            
-            // Relationships - matching /car-listings format
-            'brand' => $this->when($this->brand, [
-                'id' => $this->brand?->id,
-                'name' => $this->brand?->name,
-                'odoo_id' => $this->brand?->odoo_id,
-            ]),
-            
-            'carModel' => $this->when($this->carModel, [
-                'id' => $this->carModel?->id,
-                'name' => $this->carModel?->name,
-                'car_brand_id' => $this->carModel?->car_brand_id,
-            ]),
-            
-            'bodyType' => $this->when($this->bodyType, [
-                'id' => $this->bodyType?->id,
-                'name' => $this->bodyType?->name,
-            ]),
-            
-            'location' => $this->when($this->location, [
+            'updated_at' => $this->updated_at?->toISOString(),
+            'location' => $this->whenLoaded('location', [
                 'id' => $this->location?->id,
                 'name' => $this->location?->name,
             ]),
-            
-            'fuelType' => $this->when($this->fuelType, [
-                'id' => $this->fuelType?->id,
-                'name' => $this->fuelType?->name,
-            ]),
-            
-            'transmission' => $this->when($this->transmission, [
-                'id' => $this->transmission?->id,
-                'name' => $this->transmission?->name,
-            ]),
-            
-            'exteriorColor' => $this->when($this->exteriorColor, [
-                'id' => $this->exteriorColor?->id,
-                'name' => $this->exteriorColor?->name,
-            ]),
-            
-            'driveType' => $this->when($this->driveType, [
-                'id' => $this->driveType?->id,
-                'name' => $this->driveType?->name,
-            ]),
-            
-            'cylinder' => $this->when($this->cylinder, [
-                'id' => $this->cylinder?->id,
-                'name' => $this->cylinder?->name,
-            ]),
-            
-            'carCondition' => $this->when($this->carCondition, [
-                'id' => $this->carCondition?->id,
-                'name' => $this->carCondition?->name,
-            ]),
-            
-            // Media - using S3 URLs like Media model accessors
-            'media' => $this->when(
-                $this->relationLoaded('media') && $this->media->isNotEmpty(),
-                $this->media->map(function ($media) {
+            // Odoo integration data
+            'odoo_id' => $this->odoo_id,
+            'odoo_listing_id' => $this->odoo_listing_id,
+            'odoo_vehicle_id' => $this->odoo_vehicle_id,
+            'odoo_seller_id' => $this->odoo_seller_id,
+            'odoo_city_id' => $this->odoo_city_id,
+            'odoo_listing_state' => $this->odoo_listing_state,
+            'odoo_response' => $this->when($this->odoo_response, $this->odoo_response),
+            // Optimized media handling
+            'media' => $this->whenLoaded('media', function() use ($media) {
+                return $media ? $media->map(function ($media) {
                     return [
                         'id' => $media->id,
-                        'modelable_type' => $media->modelable_type,
-                        'modelable_id' => $media->modelable_id,
-                        'media' => $media->media,
-                        'path_file_name' => $media->path_file_name,
+                        'file_path' => $media->path_file_name,
+                        'url' => $media->path_file_name, // Use path_file_name as URL for now
                         'file_type' => $media->file_type,
+                        'is_primary' => $media->info === 'primary',
+                        'order' => $media->order ?? 0,
                         'info' => $media->info,
-                        'order' => $media->order,
-                        'media_link' => $media->media_link, // S3 temporary URL
-                        'media_temporary_url' => $media->media_temporary_url, // S3 temporary URL
-                        'public_url' => $media->public_url, // S3 public URL
-                        'file_size' => $media->file_size,
-                        'mime_type' => $media->mime_type,
-                        'exists' => $media->file_exists,
                     ];
-                })
-            ),
-            
-            // Badges
-            'badges' => $this->active_badges,
-            'status_badge' => $this->status_badge,
-            
-            // Analytics
-            'views_count' => $this->total_views ?? 0,
-            'days_active' => $this->days_active ?? 0,
+                }) : collect();
+            }),
         ];
     }
 }
