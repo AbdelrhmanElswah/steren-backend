@@ -43,7 +43,8 @@ class CarListingController extends Controller
                 'transmission:id,name',
                 'exteriorColor:id,name',
                 'driveType:id,name',
-                'cylinder:id,name'
+                'cylinder:id,name',
+                'user:id,full_name,email,phone'
             ]);
 
             // Apply filters

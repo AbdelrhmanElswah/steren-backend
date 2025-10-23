@@ -32,31 +32,38 @@ class SearchResultResource extends JsonResource
             'status_label' => $this->status_label,
             'created_at' => $this->created_at?->toISOString(),
             
-            // Relationships
+            // User information - matching /car-listings format
+            'user' => $this->when($this->user, [
+                'id' => $this->user?->id,
+                'full_name' => $this->user?->full_name,
+                'email' => $this->user?->email,
+                'phone' => $this->user?->phone,
+            ]),
+            
+            // Relationships - matching /car-listings format
             'brand' => $this->when($this->brand, [
                 'id' => $this->brand?->id,
                 'name' => $this->brand?->name,
-                'logo' => $this->brand?->media ? asset('storage/' . $this->brand->media->file_path) : null,
+                'odoo_id' => $this->brand?->odoo_id,
             ]),
             
-            'car_model' => $this->when($this->carModel, [
+            'carModel' => $this->when($this->carModel, [
                 'id' => $this->carModel?->id,
                 'name' => $this->carModel?->name,
+                'car_brand_id' => $this->carModel?->car_brand_id,
             ]),
             
-            'body_type' => $this->when($this->bodyType, [
+            'bodyType' => $this->when($this->bodyType, [
                 'id' => $this->bodyType?->id,
                 'name' => $this->bodyType?->name,
-                'icon' => $this->bodyType?->media ? asset('storage/' . $this->bodyType->media->file_path) : null,
             ]),
             
             'location' => $this->when($this->location, [
                 'id' => $this->location?->id,
-                'city' => $this->location?->city?->name,
-                'area' => $this->location?->area,
+                'name' => $this->location?->name,
             ]),
             
-            'fuel_type' => $this->when($this->fuelType, [
+            'fuelType' => $this->when($this->fuelType, [
                 'id' => $this->fuelType?->id,
                 'name' => $this->fuelType?->name,
             ]),
@@ -66,35 +73,39 @@ class SearchResultResource extends JsonResource
                 'name' => $this->transmission?->name,
             ]),
             
-            'exterior_color' => $this->when($this->exteriorColor, [
+            'exteriorColor' => $this->when($this->exteriorColor, [
                 'id' => $this->exteriorColor?->id,
                 'name' => $this->exteriorColor?->name,
-                'hex_code' => $this->exteriorColor?->hex_code,
             ]),
             
-            'drive_type' => $this->when($this->driveType, [
+            'driveType' => $this->when($this->driveType, [
                 'id' => $this->driveType?->id,
                 'name' => $this->driveType?->name,
             ]),
             
-            // Media
-            'images' => $this->when($this->media, $this->media->map(function ($media) {
+            'cylinder' => $this->when($this->cylinder, [
+                'id' => $this->cylinder?->id,
+                'name' => $this->cylinder?->name,
+            ]),
+            
+            'carCondition' => $this->when($this->carCondition, [
+                'id' => $this->carCondition?->id,
+                'name' => $this->carCondition?->name,
+            ]),
+            
+            // Media - matching /car-listings format
+            'media' => $this->when($this->media, $this->media->map(function ($media) {
                 return [
                     'id' => $media->id,
-                    'url' => asset('storage/' . $media->file_path),
-                    'alt_text' => $media->alt_text,
-                    'is_primary' => $media->order === 1,
+                    'modelable_type' => $media->modelable_type,
+                    'modelable_id' => $media->modelable_id,
+                    'media' => $media->media,
+                    'path_file_name' => $media->path_file_name,
+                    'file_type' => $media->file_type,
+                    'info' => $media->info,
+                    'order' => $media->order,
                 ];
             })),
-            
-            'primary_image' => $this->when($this->media && $this->media->count() > 0, function () {
-                $primaryMedia = $this->media->where('order', 1)->first() ?? $this->media->first();
-                return [
-                    'id' => $primaryMedia->id,
-                    'url' => asset('storage/' . $primaryMedia->file_path),
-                    'alt_text' => $primaryMedia->alt_text,
-                ];
-            }),
             
             // Badges
             'badges' => $this->active_badges,
