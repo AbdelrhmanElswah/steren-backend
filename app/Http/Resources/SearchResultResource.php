@@ -99,10 +99,27 @@ class SearchResultResource extends JsonResource
                 'name' => $this->carCondition?->name,
             ]),
             
-            // Media - using S3 URLs like other resources
+            // Media - using S3 URLs like Media model accessors
             'media' => $this->when(
                 $this->relationLoaded('media') && $this->media->isNotEmpty(),
-                $this->getMultipleMediaData($this->media, $request, $useTemporaryUrl, $expirationMinutes)
+                $this->media->map(function ($media) {
+                    return [
+                        'id' => $media->id,
+                        'modelable_type' => $media->modelable_type,
+                        'modelable_id' => $media->modelable_id,
+                        'media' => $media->media,
+                        'path_file_name' => $media->path_file_name,
+                        'file_type' => $media->file_type,
+                        'info' => $media->info,
+                        'order' => $media->order,
+                        'media_link' => $media->media_link, // S3 temporary URL
+                        'media_temporary_url' => $media->media_temporary_url, // S3 temporary URL
+                        'public_url' => $media->public_url, // S3 public URL
+                        'file_size' => $media->file_size,
+                        'mime_type' => $media->mime_type,
+                        'exists' => $media->file_exists,
+                    ];
+                })
             ),
             
             // Badges
