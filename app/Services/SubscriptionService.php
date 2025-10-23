@@ -387,14 +387,15 @@ class SubscriptionService
             'payment_details' => $paymentDetails,
         ]);
 
-        // Auto-create default studio for dealers
-        if ($plan->name === 'Dealer') {
-            $this->createDefaultStudioForDealer($user);
-            
-            // Process existing listings for new dealers
-            $autoStudioService = app(\App\Services\AutoStudioService::class);
-            $autoStudioService->processExistingDealerListings($user);
-        }
+        // COMMENTED OUT: Auto-create default studio for dealers
+        // This is now handled automatically when dealer application is approved
+        // if ($plan->name === 'Dealer') {
+        //     $this->createDefaultStudioForDealer($user);
+        //     
+        //     // Process existing listings for new dealers
+        //     $autoStudioService = app(\App\Services\AutoStudioService::class);
+        //     $autoStudioService->processExistingDealerListings($user);
+        // }
 
         return $subscription;
     }

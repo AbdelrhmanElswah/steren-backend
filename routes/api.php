@@ -472,14 +472,14 @@ Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(functi
     Route::get('/you-may-also-like/{listingId}', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getYouMayAlsoLike']);
     Route::get('/plan-features', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getPlanFeatures']);
     
-    // Dealer-specific routes
-    Route::prefix('dealer')->group(function () {
+    // Dealer-specific routes (verified dealers only)
+    Route::prefix('dealer')->middleware('verify.dealer:verified')->group(function () {
         Route::get('/studios', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getDealerStudios']);
         Route::post('/studios', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'createStudio']);
         Route::get('/studios/{studioId}/listings', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getStudioListings']);
         Route::post('/listings/{listingId}/associate-studio', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'associateListingWithStudio']);
         
-        // Auto-studio routes
+        // Auto-studio routes (verified dealers only)
         Route::get('/auto-studio/status', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getAutoStudioStatus']);
         Route::post('/auto-studio/process', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'processAutoStudio']);
     });

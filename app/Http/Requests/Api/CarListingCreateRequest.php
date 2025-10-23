@@ -49,13 +49,25 @@ class CarListingCreateRequest extends FormRequest
                 'nullable',
                 'array',
                 function ($attribute, $value, $fail) {
-                    // Dynamic validation based on user's subscription plan
+                    // Dynamic validation based on user's dealer verification status
                     if ($this->user()) {
-                        $subscriptionService = app(\App\Services\SubscriptionService::class);
-                        $plan = $subscriptionService->getSubscriptionPlan($this->user());
+                        $user = $this->user();
+                        $maxPhotos = 5; // Default for non-dealers
                         
-                        if ($plan && $plan->max_photos !== null && count($value) > $plan->max_photos) {
-                            $fail("You can upload a maximum of {$plan->max_photos} photos per listing with your current subscription plan.");
+                        // Basic dealers get limited photos
+                        if ($user->isDealer()) {
+                            $maxPhotos = 10; // Basic dealers get 10 photos
+                        }
+                        
+                        // Verified dealers get more photos
+                        if ($user->isVerifiedDealer()) {
+                            $maxPhotos = 20; // Verified dealers get 20 photos
+                        }
+                        
+                        if (count($value) > $maxPhotos) {
+                            $fail("You can upload a maximum of {$maxPhotos} photos per listing. " . 
+                                  ($user->isDealer() && !$user->isVerifiedDealer() ? 
+                                   "Complete your dealer verification to upload more photos." : ""));
                         }
                     }
                 }

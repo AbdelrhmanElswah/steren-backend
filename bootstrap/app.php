@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
             'odoo.tracking' => \App\Http\Middleware\OdooRequestTracking::class,
             'phone.verified' => \App\Http\Middleware\RequirePhoneVerification::class,
+            'verify.dealer' => \App\Http\Middleware\VerifyDealer::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

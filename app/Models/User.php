@@ -435,12 +435,68 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is a dealer
-     * User is dealer if they have an approved dealer application
+     * Check if user is a dealer with comprehensive validation
+     * User is dealer if they have an approved, active, and non-expired dealer application
      */
     public function isDealer()
     {
-        return $this->hasApprovedDealerApplication();
+        return $this->hasActiveDealerApplication();
+    }
+
+    /**
+     * Check if user has active dealer application (approved, not expired, can post listings)
+     * NO PAYMENT REQUIREMENT
+     */
+    public function hasActiveDealerApplication()
+    {
+        return $this->dealerApplications()
+            ->whereHas('status', function ($query) {
+                $query->where('name', 'approved')
+                      ->where('type', 'dealer_application');
+            })
+            ->where(function ($query) {
+                $query->whereNull('expires_at')
+                      ->orWhere('expires_at', '>', now());
+            })
+            ->exists();
+    }
+
+    /**
+     * Check if user is a verified dealer (strictest validation)
+     * Only for critical operations that require full verification
+     * NO PAYMENT REQUIREMENT
+     */
+    public function isVerifiedDealer()
+    {
+        $application = $this->activeDealerApplication;
+        
+        if (!$application) {
+            return false;
+        }
+
+        // Must be approved
+        if (!$application->isApproved()) {
+            return false;
+        }
+
+        // Must not be expired
+        if ($application->isExpired()) {
+            return false;
+        }
+
+        // Must have all required documents verified
+        if (!$application->hasAllDocumentsVerified()) {
+            return false;
+        }
+
+        // Must have valid business information
+        if (empty($application->business_license_number) || 
+            empty($application->dealership_company_name) ||
+            empty($application->phone_number)) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

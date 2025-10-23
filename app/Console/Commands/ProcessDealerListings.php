@@ -55,10 +55,9 @@ class ProcessDealerListings extends Command
             return;
         }
 
-        $plan = $this->subscriptionService->getSubscriptionPlan($user);
-        
-        if (!$plan || $plan->name !== 'Dealer') {
-            $this->error("User {$user->full_name} is not a dealer");
+        // Check if user is a verified dealer (strict validation for processing)
+        if (!$user->isVerifiedDealer()) {
+            $this->error("User {$user->full_name} is not a verified dealer. Verification required: approved application, documents verified, and valid business info.");
             return;
         }
 
@@ -73,8 +72,16 @@ class ProcessDealerListings extends Command
     {
         $this->info('Processing all dealers...');
 
-        $dealers = User::whereHas('activeSubscription.subscriptionPlan', function ($query) {
-            $query->where('name', 'Dealer');
+        // Get all verified dealers (users with approved, active, verified dealer applications)
+        $dealers = User::whereHas('dealerApplications', function ($query) {
+            $query->whereHas('status', function ($q) {
+                $q->where('name', 'approved')
+                  ->where('type', 'dealer_application');
+            })
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>', now());
+            });
         })->get();
 
         $this->info("Found {$dealers->count()} dealers");
