@@ -19,6 +19,21 @@ class SubscriptionBasedListingService
     }
 
     /**
+     * Check if user is a dealer (either by subscription or approved application)
+     */
+    protected function isDealer(User $user): bool
+    {
+        // Check if user has active dealer subscription
+        $plan = $this->subscriptionService->getSubscriptionPlan($user);
+        if ($plan && $plan->name === 'Dealer') {
+            return true;
+        }
+
+        // Check if user has approved dealer application (fallback)
+        return $user->isDealer();
+    }
+
+    /**
      * Get car listings based on user's subscription plan
      */
     public function getCarListingsForUser(User $user, array $filters = [])
@@ -164,9 +179,8 @@ class SubscriptionBasedListingService
      */
     public function createStudio(User $dealer, array $data)
     {
-        $plan = $this->subscriptionService->getSubscriptionPlan($dealer);
-        
-        if (!$plan || $plan->name !== 'Dealer') {
+        // Check if user is a dealer (either by subscription or approved application)
+        if (!$this->isDealer($dealer)) {
             throw new \Exception('Only dealers can create studios');
         }
 

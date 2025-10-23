@@ -17,15 +17,29 @@ class AutoStudioService
     }
 
     /**
+     * Check if user is a dealer (either by subscription or approved application)
+     */
+    protected function isDealer(User $user): bool
+    {
+        // Check if user has active dealer subscription
+        $plan = $this->subscriptionService->getSubscriptionPlan($user);
+        if ($plan && $plan->name === 'Dealer') {
+            return true;
+        }
+
+        // Check if user has approved dealer application (fallback)
+        return $user->isDealer();
+    }
+
+    /**
      * Auto-associate car listing with dealer's default studio
      */
     public function autoAssociateListingWithStudio(CarListing $listing): void
     {
         $user = $listing->user;
-        $plan = $this->subscriptionService->getSubscriptionPlan($user);
-
+        
         // Only for dealers
-        if (!$plan || $plan->name !== 'Dealer') {
+        if (!$this->isDealer($user)) {
             return;
         }
 
@@ -43,10 +57,9 @@ class AutoStudioService
     public function autoPromoteListingToTopPicks(CarListing $listing): void
     {
         $user = $listing->user;
-        $plan = $this->subscriptionService->getSubscriptionPlan($user);
-
+        
         // Only for dealers
-        if (!$plan || $plan->name !== 'Dealer') {
+        if (!$this->isDealer($user)) {
             return;
         }
 
@@ -111,10 +124,9 @@ class AutoStudioService
     public function processNewDealerListing(CarListing $listing): void
     {
         $user = $listing->user;
-        $plan = $this->subscriptionService->getSubscriptionPlan($user);
-
-        // Only for dealers
-        if (!$plan || $plan->name !== 'Dealer') {
+        
+        // Check if user is a dealer (either by subscription or approved application)
+        if (!$this->isDealer($user)) {
             return;
         }
 
@@ -130,10 +142,8 @@ class AutoStudioService
      */
     public function processExistingDealerListings(User $user): void
     {
-        $plan = $this->subscriptionService->getSubscriptionPlan($user);
-
         // Only for dealers
-        if (!$plan || $plan->name !== 'Dealer') {
+        if (!$this->isDealer($user)) {
             return;
         }
 
