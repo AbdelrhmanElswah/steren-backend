@@ -109,12 +109,89 @@ class AccountController extends Controller
             $user = auth()->user();
             
             $listings = $user->carListings()
-                ->with(['brand', 'carModel', 'bodyType', 'media'])
+                ->with([
+                    'brand:id,name,odoo_id',
+                    'carModel:id,name,car_brand_id', 
+                    'bodyType:id,name',
+                    'location:id,name',
+                    'media:id,modelable_id,path_file_name,file_type,order',
+                    'carCondition:id,name',
+                    'fuelType:id,name',
+                    'transmission:id,name',
+                    'exteriorColor:id,name',
+                    'driveType:id,name',
+                    'cylinder:id,name',
+                    'carTrim:id,name,car_model_id',
+                    'features:id,name,category,description,icon',
+                    'specifications:id,name,value,unit,specification_type,description,is_highlighted',
+                    'badges:id,name,type,color,icon'
+                ])
                 ->orderBy('created_at', 'desc')
                 ->paginate(20);
 
+            // Transform listings to include detailed specifications and features
+            $transformedListings = $listings->items();
+            foreach ($transformedListings as $listing) {
+                // Add detailed specifications
+                $listing->detailed_specifications = [
+                    'engine_size' => $listing->engine_size,
+                    'engine_type' => $listing->engine_type,
+                    'horsepower' => $listing->horsepower,
+                    'torque' => $listing->torque,
+                    'transmission' => $listing->transmission?->name,
+                    'cylinders' => $listing->cylinder?->name,
+                    'drive_type' => $listing->driveType?->name,
+                    'acceleration_0_100' => $listing->acceleration_0_100,
+                    'top_speed' => $listing->top_speed,
+                    'seating_capacity' => $listing->seating_capacity,
+                    'mileage_efficiency' => $listing->formatted_mileage_efficiency,
+                    'dimensions' => $listing->formatted_dimensions,
+                ];
+
+                // Group features by category
+                $featuresByCategory = collect();
+                if ($listing->relationLoaded('features') && $listing->features instanceof \Illuminate\Database\Eloquent\Collection && $listing->features->isNotEmpty()) {
+                    $featuresByCategory = $listing->features->groupBy('category')->map(function ($features) {
+                        return $features->map(function ($feature) {
+                            return [
+                                'id' => $feature->id,
+                                'name' => $feature->name,
+                                'description' => $feature->description,
+                                'icon' => $feature->icon,
+                                'is_included' => $feature->pivot->is_included ?? false,
+                                'notes' => $feature->pivot->notes ?? null,
+                            ];
+                        });
+                    });
+                }
+                $listing->features_by_category = $featuresByCategory;
+
+                // Group specifications by type
+                $specificationsByType = collect();
+                if ($listing->relationLoaded('specifications') && $listing->specifications instanceof \Illuminate\Database\Eloquent\Collection && $listing->specifications->isNotEmpty()) {
+                    $specificationsByType = $listing->specifications->groupBy('specification_type')->map(function ($specs) {
+                        return $specs->map(function ($spec) {
+                            return [
+                                'id' => $spec->id,
+                                'name' => $spec->name,
+                                'value' => $spec->value,
+                                'unit' => $spec->unit,
+                                'formatted_value' => $spec->formatted_value,
+                                'description' => $spec->description,
+                                'is_highlighted' => $spec->is_highlighted,
+                            ];
+                        });
+                    });
+                }
+                $listing->specifications_by_type = $specificationsByType;
+
+                // Add status and badge information
+                $listing->status_badge = $listing->status_badge;
+                $listing->active_badges = $listing->active_badges;
+            }
+
             $data = [
-                'listings' => $listings->items(),
+                'listings' => $transformedListings,
                 'total' => $listings->total(),
                 'per_page' => $listings->perPage(),
                 'current_page' => $listings->currentPage(),

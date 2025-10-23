@@ -246,7 +246,25 @@ class AnalyticsController extends Controller
             $sort = $request->get('sort', 'latest'); // latest, oldest, views, price
             
             $query = $user->carListings()
-                ->with(['brand', 'carModel', 'media', 'status', 'listingPromotion'])
+                ->with([
+                    'brand:id,name,odoo_id',
+                    'carModel:id,name,car_brand_id', 
+                    'bodyType:id,name',
+                    'location:id,name',
+                    'media:id,modelable_id,path_file_name,file_type,order',
+                    'carCondition:id,name',
+                    'fuelType:id,name',
+                    'transmission:id,name',
+                    'exteriorColor:id,name',
+                    'driveType:id,name',
+                    'cylinder:id,name',
+                    'carTrim:id,name,car_model_id',
+                    'features:id,name,category,description,icon',
+                    'specifications:id,name,value,unit,specification_type,description,is_highlighted',
+                    'badges:id,name,type,color,icon',
+                    'status', 
+                    'listingPromotion'
+                ])
                 ->withCount('favorites');
             
             // Apply filters
@@ -284,6 +302,57 @@ class AnalyticsController extends Controller
             }
             
             $listings = $query->get()->map(function ($listing) {
+                // Add detailed specifications
+                $detailedSpecifications = [
+                    'engine_size' => $listing->engine_size,
+                    'engine_type' => $listing->engine_type,
+                    'horsepower' => $listing->horsepower,
+                    'torque' => $listing->torque,
+                    'transmission' => $listing->transmission?->name,
+                    'cylinders' => $listing->cylinder?->name,
+                    'drive_type' => $listing->driveType?->name,
+                    'acceleration_0_100' => $listing->acceleration_0_100,
+                    'top_speed' => $listing->top_speed,
+                    'seating_capacity' => $listing->seating_capacity,
+                    'mileage_efficiency' => $listing->formatted_mileage_efficiency,
+                    'dimensions' => $listing->formatted_dimensions,
+                ];
+
+                // Group features by category
+                $featuresByCategory = collect();
+                if ($listing->relationLoaded('features') && $listing->features instanceof \Illuminate\Database\Eloquent\Collection && $listing->features->isNotEmpty()) {
+                    $featuresByCategory = $listing->features->groupBy('category')->map(function ($features) {
+                        return $features->map(function ($feature) {
+                            return [
+                                'id' => $feature->id,
+                                'name' => $feature->name,
+                                'description' => $feature->description,
+                                'icon' => $feature->icon,
+                                'is_included' => $feature->pivot->is_included ?? false,
+                                'notes' => $feature->pivot->notes ?? null,
+                            ];
+                        });
+                    });
+                }
+
+                // Group specifications by type
+                $specificationsByType = collect();
+                if ($listing->relationLoaded('specifications') && $listing->specifications instanceof \Illuminate\Database\Eloquent\Collection && $listing->specifications->isNotEmpty()) {
+                    $specificationsByType = $listing->specifications->groupBy('specification_type')->map(function ($specs) {
+                        return $specs->map(function ($spec) {
+                            return [
+                                'id' => $spec->id,
+                                'name' => $spec->name,
+                                'value' => $spec->value,
+                                'unit' => $spec->unit,
+                                'formatted_value' => $spec->formatted_value,
+                                'description' => $spec->description,
+                                'is_highlighted' => $spec->is_highlighted,
+                            ];
+                        });
+                    });
+                }
+
                 return [
                     'id' => $listing->id,
                     'title' => $listing->full_title,
@@ -299,6 +368,23 @@ class AnalyticsController extends Controller
                     'seller_name' => $listing->seller_name,
                     'created_at' => $listing->created_at->toISOString(),
                     'updated_at' => $listing->updated_at->toISOString(),
+                    // Add comprehensive data like car-listings endpoint
+                    'brand' => $listing->brand,
+                    'carModel' => $listing->carModel,
+                    'bodyType' => $listing->bodyType,
+                    'location' => $listing->location,
+                    'carCondition' => $listing->carCondition,
+                    'fuelType' => $listing->fuelType,
+                    'transmission' => $listing->transmission,
+                    'exteriorColor' => $listing->exteriorColor,
+                    'driveType' => $listing->driveType,
+                    'cylinder' => $listing->cylinder,
+                    'carTrim' => $listing->carTrim,
+                    'detailed_specifications' => $detailedSpecifications,
+                    'features_by_category' => $featuresByCategory,
+                    'specifications_by_type' => $specificationsByType,
+                    'status_badge' => $listing->status_badge,
+                    'active_badges' => $listing->active_badges,
                 ];
             });
             
