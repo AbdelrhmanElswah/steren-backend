@@ -129,16 +129,8 @@ trait NotificationTrait
                     'title' => $title,
                     'message' => $body,
                     'user_id' => $targetUserId,
-                    'status_id' => 1, // Assuming 1 is 'sent' status
-                    'type_id' => $notificationTypeId,
+                    'type' => $notificationType->name ?? 'general',
                     'data' => $data,
-                    'channel' => 'push',
-                    'sent_at' => now(),
-                    'delivery_status' => [
-                        'success_count' => $successCount,
-                        'failed_tokens' => $failedTokens,
-                        'total_tokens' => count($deviceTokens)
-                    ]
                 ]);
             }
 
