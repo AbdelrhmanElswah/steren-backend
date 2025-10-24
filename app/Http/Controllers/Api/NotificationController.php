@@ -256,11 +256,14 @@ class NotificationController extends Controller
     {
         try {
             $user = $request->user();
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
+
             $perPage = $request->get('per_page', 15);
             $page = $request->get('page', 1);
 
             $notifications = Notification::where('user_id', $user->id)
-                ->with(['type', 'status'])
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
