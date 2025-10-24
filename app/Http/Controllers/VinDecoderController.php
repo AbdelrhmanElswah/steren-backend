@@ -143,11 +143,47 @@ class VinDecoderController extends Controller
      */
     public function decodeForListing(VinDecodeRequest $request): JsonResponse
     {
-        return response()->json([
-            "success" => false,
-            "message" => "Record(s) were not found for this vehicle (HTTP 400)",
-            "data" => null
-        ], 400);
+        try {
+            $vin = $request->validated()['vin'];
+            $cache = $request->validated()['cache'] ?? true;
+
+            // Get the full VIN decode data
+            $result = $this->vehicleDatabasesService->decodeVin($vin, $cache);
+            
+            if (!$result || !isset($result['data'])) {
+                return $this->errorResponse('Failed to decode VIN', 400);
+            }
+
+            $vinData = $result['data'];
+            
+            // Filter and map the data for car listing creation
+            $filteredData = $this->filterVinDataForListing($vinData);
+            
+            return $this->successResponse($filteredData, 'VIN decoded and filtered for listing creation');
+
+        } catch (VehicleDatabasesException $e) {
+            Log::error('VIN decode for listing failed', [
+                'vin' => $request->input('vin'),
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+
+            return $this->errorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Exception $e) {
+            Log::error('Unexpected error during VIN decode for listing', [
+                'vin' => $request->input('vin'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->errorResponse(
+                'An unexpected error occurred while decoding the VIN',
+                500
+            );
+        }
     }
 
     /**
