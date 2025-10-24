@@ -97,6 +97,7 @@ class TestNotificationController extends Controller
 
             // Register FCM token
             $fcmToken = $this->registerFcmToken($userId, $token, $deviceInfo);
+            dd($fcmToken);
 
             Log::info('FCM token registered for testing', [
                 'user_id' => $userId,
