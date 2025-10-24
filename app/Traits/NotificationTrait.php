@@ -217,7 +217,7 @@ trait NotificationTrait
     private function getFireBaseAccessToken()
     {
         try {
-            $filepath = public_path(env('GOOGLE_CREDENTIALS_PATH'));
+            $filepath = storage_path('app/private/google-services.json');
             if (!file_exists($filepath)) {
                 throw new Exception("Google credentials file not found at: {$filepath}");
             }
