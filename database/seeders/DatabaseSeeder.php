@@ -41,6 +41,7 @@ class DatabaseSeeder extends Seeder
             BodyTypeSeeder::class,
             BudgetSeeder::class,
             CarouselSeeder::class,
+            NotificationTypeSeeder::class,
         ]);
     }
 }
