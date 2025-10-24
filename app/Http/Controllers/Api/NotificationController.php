@@ -11,17 +11,37 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 use Exception;
 
 class NotificationController extends Controller
 {
     use ApiResponse;
 
-    protected FirebaseNotificationService $firebaseService;
+    protected ?FirebaseNotificationService $firebaseService = null;
 
-    public function __construct(FirebaseNotificationService $firebaseService)
+    public function __construct()
     {
-        $this->firebaseService = $firebaseService;
+        // Firebase service is optional - only inject if Firebase is configured
+        try {
+            if (env('FIREBASE_SERVER_KEY') || config('services.firebase.server_key')) {
+                $this->firebaseService = app(FirebaseNotificationService::class);
+            }
+        } catch (\Exception $e) {
+            // Firebase not configured - continue without it
+            Log::warning('Firebase service not available', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Check if Firebase service is available
+     */
+    private function checkFirebaseService()
+    {
+        if (!$this->firebaseService) {
+            return $this->errorResponse('Firebase service not configured', 503);
+        }
+        return null;
     }
 
     /**
@@ -41,6 +61,10 @@ class NotificationController extends Controller
 
             if ($validator->fails()) {
                 return $this->errorResponse('Validation failed', 422, $validator->errors());
+            }
+
+            if ($error = $this->checkFirebaseService()) {
+                return $error;
             }
 
             $result = $this->firebaseService->sendToUser(
@@ -82,6 +106,10 @@ class NotificationController extends Controller
                 return $this->errorResponse('Validation failed', 422, $validator->errors());
             }
 
+            if ($error = $this->checkFirebaseService()) {
+                return $error;
+            }
+
             $result = $this->firebaseService->sendToUsers(
                 $request->user_ids,
                 $request->title,
@@ -117,6 +145,10 @@ class NotificationController extends Controller
 
             if ($validator->fails()) {
                 return $this->errorResponse('Validation failed', 422, $validator->errors());
+            }
+
+            if ($error = $this->checkFirebaseService()) {
+                return $error;
             }
 
             $result = $this->firebaseService->sendToAllUsers(
@@ -155,6 +187,10 @@ class NotificationController extends Controller
                 return $this->errorResponse('Validation failed', 422, $validator->errors());
             }
 
+            if ($error = $this->checkFirebaseService()) {
+                return $error;
+            }
+
             $result = $this->firebaseService->sendToDealers(
                 $request->title,
                 $request->body,
@@ -188,6 +224,10 @@ class NotificationController extends Controller
 
             if ($validator->fails()) {
                 return $this->errorResponse('Validation failed', 422, $validator->errors());
+            }
+
+            if ($error = $this->checkFirebaseService()) {
+                return $error;
             }
 
             $result = $this->firebaseService->sendTemplateNotification(
@@ -225,6 +265,10 @@ class NotificationController extends Controller
 
             if ($validator->fails()) {
                 return $this->errorResponse('Validation failed', 422, $validator->errors());
+            }
+
+            if ($error = $this->checkFirebaseService()) {
+                return $error;
             }
 
             $scheduleTime = new \DateTime($request->schedule_time);
@@ -375,6 +419,10 @@ class NotificationController extends Controller
     public function getAnalytics(Request $request): JsonResponse
     {
         try {
+            if ($error = $this->checkFirebaseService()) {
+                return $error;
+            }
+
             $filters = $request->only(['date_from', 'date_to', 'user_id', 'type_id']);
             
             $result = $this->firebaseService->getAnalytics($filters);
@@ -427,6 +475,10 @@ class NotificationController extends Controller
                 return $this->errorResponse('Validation failed', 422, $validator->errors());
             }
 
+            if ($error = $this->checkFirebaseService()) {
+                return $error;
+            }
+
             $user = $request->user();
             $deviceInfo = $request->only(['device_id', 'device_type', 'platform', 'app_version', 'os_version']);
 
@@ -462,6 +514,10 @@ class NotificationController extends Controller
 
             if ($validator->fails()) {
                 return $this->errorResponse('Validation failed', 422, $validator->errors());
+            }
+
+            if ($error = $this->checkFirebaseService()) {
+                return $error;
             }
 
             $result = $this->firebaseService->deactivateFcmToken($request->token);

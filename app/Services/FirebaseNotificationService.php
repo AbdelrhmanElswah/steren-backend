@@ -24,9 +24,9 @@ class FirebaseNotificationService
 
     public function __construct()
     {
-        $this->projectId = config('services.firebase.project_id');
-        $this->serverKey = config('services.firebase.server_key');
-        $this->databaseUrl = config('services.firebase.database_url');
+        $this->projectId = config('services.firebase.project_id') ?? env('FIREBASE_PROJECT_ID', '');
+        $this->serverKey = config('services.firebase.server_key') ?? env('FIREBASE_SERVER_KEY', '');
+        $this->databaseUrl = config('services.firebase.database_url') ?? env('FIREBASE_DATABASE_URL', '');
     }
 
     /**
