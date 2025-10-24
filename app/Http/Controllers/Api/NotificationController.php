@@ -304,7 +304,6 @@ class NotificationController extends Controller
                 return $this->errorResponse('User not authenticated', 401);
             }
 
-            dd($user->id);
             $perPage = $request->get('per_page', 15);
             $page = $request->get('page', 1);
 
