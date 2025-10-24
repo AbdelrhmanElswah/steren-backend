@@ -304,6 +304,7 @@ class NotificationController extends Controller
                 return $this->errorResponse('User not authenticated', 401);
             }
 
+            dd($user->id);
             $perPage = $request->get('per_page', 15);
             $page = $request->get('page', 1);
 
@@ -311,7 +312,6 @@ class NotificationController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
-                dd($notifications);
             return $this->successResponse([
                 'notifications' => $notifications->items(),
                 'pagination' => [
