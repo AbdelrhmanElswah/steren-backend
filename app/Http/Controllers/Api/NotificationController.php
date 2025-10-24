@@ -311,6 +311,7 @@ class NotificationController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
+                dd($notifications);
             return $this->successResponse([
                 'notifications' => $notifications->items(),
                 'pagination' => [
