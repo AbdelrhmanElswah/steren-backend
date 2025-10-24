@@ -10,6 +10,8 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class VinDecoderController extends Controller
 {
@@ -192,6 +194,135 @@ class VinDecoderController extends Controller
                 'An unexpected error occurred while decoding the VIN',
                 500
             );
+        }
+    }
+
+    /**
+     * Extract VIN from image using OCR and decode it for listing
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function ocrAndDecodeForListing(Request $request): JsonResponse
+    {
+        try {
+            // Validate file upload
+            $request->validate([
+                'file' => 'required|file|mimes:png,jpg,jpeg|max:10240'
+            ]);
+
+            $file = $request->file('file');
+            
+            // Step 1: Extract VIN from image using OCR
+            $vinResult = $this->extractVinFromImage($file);
+
+            if (!$vinResult['success']) {
+                return $this->errorResponse(
+                    'Unable to extract VIN from image: ' . $vinResult['message'],
+                    400
+                );
+            }
+
+            $vin = $vinResult['data']['vin'];
+            
+            // Step 2: Decode the extracted VIN
+            $result = $this->vehicleDatabasesService->decodeVin($vin, true);
+            
+            if (!$result || !isset($result['data'])) {
+                return $this->errorResponse('Failed to decode VIN', 400);
+            }
+
+            $vinData = $result['data'];
+            
+            // Step 3: Filter and map the data for car listing creation
+            $filteredData = $this->filterVinDataForListing($vinData);
+            
+            // Step 4: Check if the brand exists in our system
+            if (!$this->validateBrandExists($filteredData)) {
+                return response()->json([
+                    "success" => false,
+                    "message" => "This vehicle brand is not supported in our system",
+                    "data" => null
+                ], 422);
+            }
+            
+            return $this->successResponse($filteredData, 'VIN extracted from image and decoded successfully');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->errorResponse(
+                'Invalid file: ' . implode(', ', $e->errors()['file']),
+                400
+            );
+        } catch (VehicleDatabasesException $e) {
+            Log::error('VIN OCR and decode failed', [
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+
+            return $this->errorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Exception $e) {
+            Log::error('Unexpected error during VIN OCR and decode', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->errorResponse(
+                'An unexpected error occurred while processing the image',
+                500
+            );
+        }
+    }
+
+    /**
+     * Extract VIN from image using OCR
+     *
+     * @param \Illuminate\Http\UploadedFile $file
+     * @return array
+     */
+    private function extractVinFromImage($file): array
+    {
+        try {
+            // Store file temporarily
+            $tempPath = $file->store('temp', 'local');
+            $fullPath = Storage::disk('local')->path($tempPath);
+
+            $response = Http::timeout(30)
+                ->attach('file', fopen($fullPath, 'r'), $file->getClientOriginalName())
+                ->post(config('services.vin_ocr.base_url') . '/vin-ocr');
+
+            // Clean up temp file
+            Storage::disk('local')->delete($tempPath);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                if ($data['status'] === 'success' && isset($data['data']['vin'])) {
+                    return [
+                        'success' => true,
+                        'data' => [
+                            'vin' => $data['data']['vin']
+                        ]
+                    ];
+                }
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Failed to extract VIN from image'
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('VIN OCR extraction failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'OCR service unavailable'
+            ];
         }
     }
 
