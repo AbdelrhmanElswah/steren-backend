@@ -159,6 +159,15 @@ class VinDecoderController extends Controller
             // Filter and map the data for car listing creation
             $filteredData = $this->filterVinDataForListing($vinData);
             
+            // Check if the brand exists in our system
+            if (!$this->validateBrandExists($filteredData)) {
+                return response()->json([
+                    "success" => false,
+                    "message" => "This vehicle brand is not supported in our system",
+                    "data" => null
+                ], 422);
+            }
+            
             return $this->successResponse($filteredData, 'VIN decoded and filtered for listing creation');
 
         } catch (VehicleDatabasesException $e) {
@@ -184,6 +193,25 @@ class VinDecoderController extends Controller
                 500
             );
         }
+    }
+
+    /**
+     * Validate if the brand exists in our system
+     *
+     * @param array $filteredData
+     * @return bool
+     */
+    private function validateBrandExists(array $filteredData): bool
+    {
+        // Check if brandId exists and is not null
+        if (empty($filteredData['brandId'])) {
+            return false;
+        }
+        
+        // Verify the brand exists in our database
+        $brand = \App\Models\CarBrand::find($filteredData['brandId']);
+        
+        return $brand !== null;
     }
 
     /**
