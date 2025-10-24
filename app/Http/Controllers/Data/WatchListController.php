@@ -6,12 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Favorite;
 use App\Models\SearchHistory;
 use App\Traits\ApiResponse;
+use App\Traits\NotificationTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class WatchListController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, NotificationTrait;
 
     /**
      * Get user's watch list (favorites)
@@ -146,6 +147,9 @@ class WatchListController extends Controller
                 'last_searched_at' => now(),
             ]);
 
+            // Send notification to user about saved search
+            $this->sendSearchSavedNotification($searchHistory, $user);
+
             return $this->successResponse($searchHistory, 'Search saved successfully');
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to save search: ' . $e->getMessage(), 500);
@@ -245,6 +249,9 @@ class WatchListController extends Controller
                 'carListing.badges'
             ]);
 
+            // Send notification to user about adding to watch list
+            $this->sendWatchListAddedNotification($favorite, $user);
+
             return $this->successResponse($favorite, 'Added to watch list successfully');
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to add to watch list: ' . $e->getMessage(), 500);
@@ -321,6 +328,148 @@ class WatchListController extends Controller
             return $this->successResponse($sortOptions, 'Sort options retrieved successfully');
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to retrieve sort options: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Send notification to user about saved search
+     */
+    private function sendSearchSavedNotification(SearchHistory $searchHistory, $user)
+    {
+        try {
+            // Get or create search saved notification type
+            $notificationType = \App\Models\NotificationType::firstOrCreate(
+                ['name' => 'search_saved'],
+                [
+                    'name' => 'search_saved',
+                    'display_name' => 'Search Saved',
+                    'description' => 'Your search has been saved successfully',
+                    'icon' => 'bookmark',
+                    'color' => '#3B82F6',
+                    'is_active' => true,
+                    'default_template' => [
+                        'title' => 'Search Saved Successfully!',
+                        'body' => 'Your search "{{search_title}}" has been saved. You can find it in your saved searches.'
+                    ],
+                    'channels' => ['push'],
+                    'sort_order' => 16
+                ]
+            );
+
+            // Prepare notification data
+            $title = 'Search Saved Successfully!';
+            $body = "Your search \"{$searchHistory->title}\" has been saved successfully. ";
+            
+            if ($searchHistory->notifications_enabled) {
+                $body .= "You'll receive notifications when new cars matching your criteria are listed.";
+            } else {
+                $body .= "You can enable notifications to get alerts about new matching cars.";
+            }
+
+            // Send notification to user
+            $this->sendNotificationToUser(
+                $user->id,
+                $title,
+                $body,
+                $notificationType->id,
+                [
+                    'search_history_id' => $searchHistory->id,
+                    'search_title' => $searchHistory->title,
+                    'search_query' => $searchHistory->search_query,
+                    'notifications_enabled' => $searchHistory->notifications_enabled,
+                    'filters' => $searchHistory->filters,
+                    'saved_at' => now()->toISOString()
+                ]
+            );
+
+            \Illuminate\Support\Facades\Log::info('Search saved notification sent', [
+                'user_id' => $user->id,
+                'search_history_id' => $searchHistory->id,
+                'search_title' => $searchHistory->title,
+                'notifications_enabled' => $searchHistory->notifications_enabled
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send search saved notification', [
+                'search_history_id' => $searchHistory->id,
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Send notification to user about adding to watch list
+     */
+    private function sendWatchListAddedNotification($favorite, $user)
+    {
+        try {
+            // Get or create watch list added notification type
+            $notificationType = \App\Models\NotificationType::firstOrCreate(
+                ['name' => 'watchlist_added'],
+                [
+                    'name' => 'watchlist_added',
+                    'display_name' => 'Added to Watch List',
+                    'description' => 'A car has been added to your watch list',
+                    'icon' => 'favorite',
+                    'color' => '#EC4899',
+                    'is_active' => true,
+                    'default_template' => [
+                        'title' => 'Added to Watch List!',
+                        'body' => '{{car_name}} has been added to your watch list.'
+                    ],
+                    'channels' => ['push'],
+                    'sort_order' => 17
+                ]
+            );
+
+            // Get car name for notification
+            $carName = $favorite->carListing->title;
+            if ($favorite->carListing->brand && $favorite->carListing->carModel) {
+                $carName = $favorite->carListing->brand->name . ' ' . $favorite->carListing->carModel->name . ' ' . $favorite->carListing->year;
+            }
+
+            // Prepare notification data
+            $title = 'Added to Watch List!';
+            $body = "Great choice! {$carName} has been added to your watch list. ";
+            
+            if ($favorite->notifications_enabled) {
+                $body .= "You'll receive notifications about price changes and updates for this car.";
+            } else {
+                $body .= "You can enable notifications to get alerts about price changes and updates.";
+            }
+
+            // Send notification to user
+            $this->sendNotificationToUser(
+                $user->id,
+                $title,
+                $body,
+                $notificationType->id,
+                [
+                    'favorite_id' => $favorite->id,
+                    'car_listing_id' => $favorite->car_listing_id,
+                    'car_name' => $carName,
+                    'price' => $favorite->carListing->price,
+                    'currency' => $favorite->carListing->price_currency,
+                    'notifications_enabled' => $favorite->notifications_enabled,
+                    'added_at' => now()->toISOString()
+                ]
+            );
+
+            \Illuminate\Support\Facades\Log::info('Watch list added notification sent', [
+                'user_id' => $user->id,
+                'favorite_id' => $favorite->id,
+                'car_listing_id' => $favorite->car_listing_id,
+                'car_name' => $carName,
+                'notifications_enabled' => $favorite->notifications_enabled
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send watch list added notification', [
+                'favorite_id' => $favorite->id,
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }

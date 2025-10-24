@@ -14,6 +14,20 @@ class NotificationTypeSeeder extends Seeder
     {
         $notificationTypes = [
             [
+                'name' => 'listing_created',
+                'display_name' => 'Listing Created',
+                'description' => 'Your car listing has been created successfully',
+                'icon' => 'add_circle',
+                'color' => '#10B981',
+                'is_active' => true,
+                'default_template' => [
+                    'title' => 'Listing Created Successfully!',
+                    'body' => 'Your {{car_name}} listing has been created and is pending approval.'
+                ],
+                'channels' => ['push'],
+                'sort_order' => 1,
+            ],
+            [
                 'name' => 'listing_approved',
                 'display_name' => 'Listing Approved',
                 'description' => 'Your car listing has been approved and is now live',
@@ -25,7 +39,7 @@ class NotificationTypeSeeder extends Seeder
                     'body' => 'Your {{car_name}} listing is now live and visible to buyers.'
                 ],
                 'channels' => ['push', 'email'],
-                'sort_order' => 1,
+                'sort_order' => 2,
             ],
             [
                 'name' => 'listing_rejected',
@@ -39,7 +53,7 @@ class NotificationTypeSeeder extends Seeder
                     'body' => 'Your {{car_name}} listing was rejected. Reason: {{reason}}'
                 ],
                 'channels' => ['push', 'email'],
-                'sort_order' => 2,
+                'sort_order' => 3,
             ],
             [
                 'name' => 'price_drop',
@@ -53,7 +67,7 @@ class NotificationTypeSeeder extends Seeder
                     'body' => '{{car_name}} price dropped from {{old_price}} to {{new_price}}'
                 ],
                 'channels' => ['push'],
-                'sort_order' => 3,
+                'sort_order' => 4,
             ],
             [
                 'name' => 'new_match',
@@ -67,7 +81,7 @@ class NotificationTypeSeeder extends Seeder
                     'body' => 'A new {{car_name}} matching your search "{{search_title}}" is available'
                 ],
                 'channels' => ['push'],
-                'sort_order' => 4,
+                'sort_order' => 13,
             ],
             [
                 'name' => 'message_received',
@@ -81,7 +95,7 @@ class NotificationTypeSeeder extends Seeder
                     'body' => 'You have a new message about {{car_name}}'
                 ],
                 'channels' => ['push'],
-                'sort_order' => 5,
+                'sort_order' => 13,
             ],
             [
                 'name' => 'offer_received',
@@ -95,7 +109,7 @@ class NotificationTypeSeeder extends Seeder
                     'body' => 'You received an offer of {{offer_amount}} for {{car_name}}'
                 ],
                 'channels' => ['push', 'email'],
-                'sort_order' => 6,
+                'sort_order' => 13,
             ],
             [
                 'name' => 'listing_expiring',
@@ -109,7 +123,7 @@ class NotificationTypeSeeder extends Seeder
                     'body' => 'Your {{car_name}} listing expires in {{days}} days'
                 ],
                 'channels' => ['push', 'email'],
-                'sort_order' => 7,
+                'sort_order' => 13,
             ],
             [
                 'name' => 'boost_activated',
@@ -123,7 +137,7 @@ class NotificationTypeSeeder extends Seeder
                     'body' => 'Your {{car_name}} listing is now boosted for {{duration}}'
                 ],
                 'channels' => ['push'],
-                'sort_order' => 8,
+                'sort_order' => 13,
             ],
             [
                 'name' => 'boost_expired',
@@ -137,7 +151,7 @@ class NotificationTypeSeeder extends Seeder
                     'body' => 'The boost for {{car_name}} has expired'
                 ],
                 'channels' => ['push'],
-                'sort_order' => 9,
+                'sort_order' => 13,
             ],
             [
                 'name' => 'subscription_expiring',
@@ -151,7 +165,7 @@ class NotificationTypeSeeder extends Seeder
                     'body' => 'Your {{plan_name}} subscription expires in {{days}} days'
                 ],
                 'channels' => ['push', 'email'],
-                'sort_order' => 10,
+                'sort_order' => 13,
             ],
             [
                 'name' => 'payment_successful',
@@ -165,7 +179,7 @@ class NotificationTypeSeeder extends Seeder
                     'body' => 'Your payment of {{amount}} was processed successfully'
                 ],
                 'channels' => ['push', 'email'],
-                'sort_order' => 11,
+                'sort_order' => 13,
             ],
             [
                 'name' => 'payment_failed',
@@ -179,7 +193,77 @@ class NotificationTypeSeeder extends Seeder
                     'body' => 'Your payment of {{amount}} could not be processed'
                 ],
                 'channels' => ['push', 'email'],
-                'sort_order' => 12,
+                'sort_order' => 13,
+            ],
+            [
+                'name' => 'dealer_approved',
+                'display_name' => 'Dealer Application Approved',
+                'description' => 'Your dealer application has been approved',
+                'icon' => 'check_circle',
+                'color' => '#10B981',
+                'is_active' => true,
+                'default_template' => [
+                    'title' => 'Dealer Application Approved!',
+                    'body' => 'Congratulations! Your dealer application for {{company_name}} has been approved. You can now access dealer features.'
+                ],
+                'channels' => ['push', 'email'],
+                'sort_order' => 14,
+            ],
+            [
+                'name' => 'dealer_rejected',
+                'display_name' => 'Dealer Application Rejected',
+                'description' => 'Your dealer application has been rejected',
+                'icon' => 'cancel',
+                'color' => '#EF4444',
+                'is_active' => true,
+                'default_template' => [
+                    'title' => 'Dealer Application Rejected',
+                    'body' => 'Your dealer application for {{company_name}} was not approved. Reason: {{reason}}'
+                ],
+                'channels' => ['push', 'email'],
+                'sort_order' => 15,
+            ],
+            [
+                'name' => 'search_saved',
+                'display_name' => 'Search Saved',
+                'description' => 'Your search has been saved successfully',
+                'icon' => 'bookmark',
+                'color' => '#3B82F6',
+                'is_active' => true,
+                'default_template' => [
+                    'title' => 'Search Saved Successfully!',
+                    'body' => 'Your search "{{search_title}}" has been saved. You can find it in your saved searches.'
+                ],
+                'channels' => ['push'],
+                'sort_order' => 16,
+            ],
+            [
+                'name' => 'watchlist_added',
+                'display_name' => 'Added to Watch List',
+                'description' => 'A car has been added to your watch list',
+                'icon' => 'favorite',
+                'color' => '#EC4899',
+                'is_active' => true,
+                'default_template' => [
+                    'title' => 'Added to Watch List!',
+                    'body' => '{{car_name}} has been added to your watch list.'
+                ],
+                'channels' => ['push'],
+                'sort_order' => 17,
+            ],
+            [
+                'name' => 'listing_updated',
+                'display_name' => 'Listing Updated',
+                'description' => 'Your car listing has been updated successfully',
+                'icon' => 'edit',
+                'color' => '#3B82F6',
+                'is_active' => true,
+                'default_template' => [
+                    'title' => 'Listing Updated Successfully!',
+                    'body' => 'Your {{car_name}} listing has been updated and is being reviewed again.'
+                ],
+                'channels' => ['push'],
+                'sort_order' => 18,
             ],
         ];
 

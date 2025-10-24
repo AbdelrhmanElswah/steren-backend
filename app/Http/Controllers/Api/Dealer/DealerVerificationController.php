@@ -9,6 +9,7 @@ use App\Http\Requests\Dealer\OdooDealerApprovalRequest;
 use App\Services\DealerVerificationService;
 use App\Models\DealerApplication;
 use App\Traits\ApiResponse;
+use App\Traits\NotificationTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,7 @@ use Exception;
 
 class DealerVerificationController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, NotificationTrait;
 
     protected DealerVerificationService $dealerVerificationService;
 
@@ -163,6 +164,12 @@ class DealerVerificationController extends Controller
                 $request->user()?->id
             );
 
+            // Get the application to send notification
+            $application = DealerApplication::find($applicationId);
+            if ($application) {
+                $this->sendDealerApplicationNotification($application, 'approved');
+            }
+
             return $this->successResponse($result, 'Dealer application approved successfully');
 
         } catch (Exception $e) {
@@ -186,6 +193,12 @@ class DealerVerificationController extends Controller
                 $validated['reason'] ?? 'No reason provided',
                 $request->user()?->id
             );
+
+            // Get the application to send notification
+            $application = DealerApplication::find($applicationId);
+            if ($application) {
+                $this->sendDealerApplicationNotification($application, 'rejected', $validated['reason'] ?? 'No reason provided');
+            }
 
             return $this->successResponse($result, 'Dealer application rejected successfully');
 
@@ -246,6 +259,9 @@ class DealerVerificationController extends Controller
 
             // Call Odoo mark-paid API after successful approval
             $this->callOdooMarkPaid($odooId);
+
+            // Send notification to user about approval
+            $this->sendDealerApplicationNotification($application, 'approved');
 
             return $this->successResponse($result, 'Dealer application approved successfully');
 
@@ -324,6 +340,9 @@ class DealerVerificationController extends Controller
             // Call Odoo mark-paid API after successful rejection
             $this->callOdooMarkPaid($odooId);
 
+            // Send notification to user about rejection
+            $this->sendDealerApplicationNotification($application, 'rejected', 'Rejected via Odoo integration');
+
             return $this->successResponse($result, 'Dealer application rejected successfully');
 
         } catch (Exception $e) {
@@ -364,6 +383,87 @@ class DealerVerificationController extends Controller
                 "Failed to {$validated['action']} dealer application: " . $e->getMessage(),
                 500
             );
+        }
+    }
+
+    /**
+     * Send notification to user about dealer application status
+     */
+    private function sendDealerApplicationNotification(DealerApplication $application, string $status, string $reason = null)
+    {
+        try {
+            $user = $application->user;
+            if (!$user) {
+                Log::warning('No user found for dealer application notification', [
+                    'application_id' => $application->id
+                ]);
+                return;
+            }
+
+            // Get or create notification type based on status
+            $notificationTypeName = $status === 'approved' ? 'dealer_approved' : 'dealer_rejected';
+            $notificationType = \App\Models\NotificationType::firstOrCreate(
+                ['name' => $notificationTypeName],
+                [
+                    'name' => $notificationTypeName,
+                    'display_name' => $status === 'approved' ? 'Dealer Application Approved' : 'Dealer Application Rejected',
+                    'description' => $status === 'approved' 
+                        ? 'Your dealer application has been approved' 
+                        : 'Your dealer application has been rejected',
+                    'icon' => $status === 'approved' ? 'check_circle' : 'cancel',
+                    'color' => $status === 'approved' ? '#10B981' : '#EF4444',
+                    'is_active' => true,
+                    'default_template' => [
+                        'title' => $status === 'approved' 
+                            ? 'Dealer Application Approved!' 
+                            : 'Dealer Application Rejected',
+                        'body' => $status === 'approved'
+                            ? 'Congratulations! Your dealer application has been approved. You can now access dealer features.'
+                            : 'Your dealer application was not approved. Reason: {{reason}}'
+                    ],
+                    'channels' => ['push', 'email'],
+                    'sort_order' => $status === 'approved' ? 14 : 15
+                ]
+            );
+
+            // Prepare notification data
+            $title = $status === 'approved' 
+                ? 'Dealer Application Approved!' 
+                : 'Dealer Application Rejected';
+            
+            $body = $status === 'approved'
+                ? "Congratulations! Your dealer application for {$application->dealership_company_name} has been approved. You can now access dealer features and create premium listings."
+                : "Your dealer application for {$application->dealership_company_name} was not approved. Reason: " . ($reason ?? 'No reason provided');
+
+            // Send notification to user
+            $this->sendNotificationToUser(
+                $user->id,
+                $title,
+                $body,
+                $notificationType->id,
+                [
+                    'dealer_application_id' => $application->id,
+                    'company_name' => $application->dealership_company_name,
+                    'status' => $status,
+                    'reason' => $reason,
+                    'approved_at' => $status === 'approved' ? now()->toISOString() : null,
+                    'rejected_at' => $status === 'rejected' ? now()->toISOString() : null,
+                ]
+            );
+
+            Log::info('Dealer application notification sent', [
+                'user_id' => $user->id,
+                'application_id' => $application->id,
+                'status' => $status,
+                'company_name' => $application->dealership_company_name
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send dealer application notification', [
+                'application_id' => $application->id,
+                'status' => $status,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }

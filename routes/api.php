@@ -508,4 +508,13 @@ Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(functi
             Route::post('/schedule', [App\Http\Controllers\Api\NotificationController::class, 'schedule']);
         });
     });
+
+    // Test notification routes (for testing purposes)
+    Route::prefix('test-notifications')->middleware('auth:sanctum')->group(function () {
+        Route::post('/send', [App\Http\Controllers\Api\TestNotificationController::class, 'testNotification']);
+        Route::post('/register-fcm', [App\Http\Controllers\Api\TestNotificationController::class, 'testFcmTokenRegistration']);
+        Route::post('/push', [App\Http\Controllers\Api\TestNotificationController::class, 'testPushNotification']);
+        Route::get('/types', [App\Http\Controllers\Api\TestNotificationController::class, 'getNotificationTypes']);
+        Route::post('/template', [App\Http\Controllers\Api\TestNotificationController::class, 'testTemplateNotification']);
+    });
 });

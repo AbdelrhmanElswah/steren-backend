@@ -16,6 +16,7 @@ use App\Services\SubscriptionService;
 use App\Traits\ApiResponse;
 use App\Traits\HandlesFileUpload;
 use App\Traits\DocumentTrait;
+use App\Traits\NotificationTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +25,7 @@ use Illuminate\Support\Str;
 
 class CarListingApiController extends Controller
 {
-    use ApiResponse, HandlesFileUpload, DocumentTrait;
+    use ApiResponse, HandlesFileUpload, DocumentTrait, NotificationTrait;
 
     public function __construct(
         private CarListingService $carListingService,
@@ -132,6 +133,9 @@ class CarListingApiController extends Controller
             }
 
             DB::commit();
+
+            // Send notification to user about successful listing creation
+            $this->sendListingCreatedNotification($carListing, $request->user());
 
             // Get subscription info for response
             $subscriptionInfo = $this->subscriptionService->canCreateListing($request->user());
@@ -894,6 +898,9 @@ class CarListingApiController extends Controller
 
             DB::commit();
 
+            // Send notification to user about successful listing creation
+            $this->sendListingCreatedNotification($carListing, $request->user());
+
             // Get subscription info for response
             $subscriptionInfo = $this->subscriptionService->canCreateListing($request->user());
 
@@ -1281,5 +1288,66 @@ class CarListingApiController extends Controller
         
         $cylinder = \App\Models\CylinderOption::find($cylinderId);
         return $cylinder ? (string) $cylinder->id : '';
+    }
+
+    /**
+     * Send notification to user about successful listing creation
+     */
+    private function sendListingCreatedNotification(CarListing $carListing, $user)
+    {
+        try {
+            // Get or create listing created notification type
+            $notificationType = \App\Models\NotificationType::firstOrCreate(
+                ['name' => 'listing_created'],
+                [
+                    'name' => 'listing_created',
+                    'display_name' => 'Listing Created',
+                    'description' => 'Your car listing has been created successfully',
+                    'icon' => 'add_circle',
+                    'color' => '#10B981',
+                    'is_active' => true,
+                    'default_template' => [
+                        'title' => 'Listing Created Successfully!',
+                        'body' => 'Your {{car_name}} listing has been created and is pending approval.'
+                    ],
+                    'channels' => ['push'],
+                    'sort_order' => 1
+                ]
+            );
+
+            // Get car name for notification
+            $carName = $carListing->title;
+            if ($carListing->brand && $carListing->carModel) {
+                $carName = $carListing->brand->name . ' ' . $carListing->carModel->name . ' ' . $carListing->year;
+            }
+
+            // Send notification to user
+            $this->sendNotificationToUser(
+                $user->id,
+                'Listing Created Successfully!',
+                "Your {$carName} listing has been created and is pending approval from our team.",
+                $notificationType->id,
+                [
+                    'car_listing_id' => $carListing->id,
+                    'car_name' => $carName,
+                    'price' => $carListing->price,
+                    'currency' => $carListing->price_currency,
+                    'status' => 'pending'
+                ]
+            );
+
+            Log::info('Listing created notification sent', [
+                'user_id' => $user->id,
+                'car_listing_id' => $carListing->id,
+                'car_name' => $carName
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send listing created notification', [
+                'user_id' => $user->id,
+                'car_listing_id' => $carListing->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

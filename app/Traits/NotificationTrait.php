@@ -50,7 +50,7 @@ trait NotificationTrait
                 throw new Exception("Failed to get Firebase access token.");
             }
 
-            $projectId = env('FIREBASE_PROJECT_ID', 'planchecker-c7a2b');
+            $projectId = env('FIREBASE_PROJECT_ID', 'steren-3d035');
             $successCount = 0;
             $failedTokens = [];
 
