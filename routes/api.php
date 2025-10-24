@@ -509,6 +509,8 @@ Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(functi
         });
     });
 
+});
+
     // Test notification routes (for testing purposes)
     Route::prefix('test-notifications')->middleware('auth:sanctum')->group(function () {
         Route::post('/send', [App\Http\Controllers\Api\TestNotificationController::class, 'testNotification']);
@@ -517,4 +519,3 @@ Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(functi
         Route::get('/types', [App\Http\Controllers\Api\TestNotificationController::class, 'getNotificationTypes']);
         Route::post('/template', [App\Http\Controllers\Api\TestNotificationController::class, 'testTemplateNotification']);
     });
-});
