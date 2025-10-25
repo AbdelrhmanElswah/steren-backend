@@ -17,7 +17,6 @@ class UpdateCarModelRequest extends FormRequest
         return [
             'odoo_id' => [
                 'sometimes',
-                'string',
                 'max:255',
                 Rule::unique('car_models', 'odoo_id')->ignore($this->route('id') ?? $this->route('odooId'))
             ],
@@ -50,19 +49,22 @@ class UpdateCarModelRequest extends FormRequest
             if ($this->has('car_brand_id')) {
                 $carBrandId = $this->car_brand_id;
                 
-                // Check if it's a numeric ID (Laravel ID)
+                // First, try to find by Odoo ID (primary use case)
+                $brand = \App\Models\CarBrand::where('odoo_id', $carBrandId)->first();
+                if ($brand) {
+                    return; // Found by Odoo ID, validation passes
+                }
+                
+                // If not found by Odoo ID and it's numeric, try as Laravel ID
                 if (is_numeric($carBrandId)) {
-                    $exists = \App\Models\CarBrand::where('id', $carBrandId)->exists();
-                    if (!$exists) {
-                        $validator->errors()->add('car_brand_id', 'The selected car brand does not exist.');
-                    }
-                } else {
-                    // Check if it's an Odoo ID
-                    $exists = \App\Models\CarBrand::where('odoo_id', $carBrandId)->exists();
-                    if (!$exists) {
-                        $validator->errors()->add('car_brand_id', 'The selected car brand with Odoo ID does not exist.');
+                    $brand = \App\Models\CarBrand::where('id', $carBrandId)->first();
+                    if ($brand) {
+                        return; // Found by Laravel ID, validation passes
                     }
                 }
+                
+                // If we get here, the car brand doesn't exist
+                $validator->errors()->add('car_brand_id', 'The selected car brand does not exist.');
             }
         });
     }
