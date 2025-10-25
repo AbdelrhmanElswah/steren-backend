@@ -78,7 +78,7 @@ class CarListingCreateFormRequest extends FormRequest
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
             
-            // Images - File uploads
+            // Images - File uploads (can be single file or array)
             'images' => 'nullable|array|max:10',
             'images.*' => 'file|image|mimes:jpeg,jpg,png,webp|max:5120', // 5MB max per image
             
@@ -124,6 +124,16 @@ class CarListingCreateFormRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        // Handle images field - ensure it's always an array
+        if ($this->hasFile('images')) {
+            $images = $this->file('images');
+            // If it's a single file, wrap it in an array
+            if (!is_array($images)) {
+                $images = [$images];
+            }
+            $this->merge(['images' => $images]);
+        }
+
         // Convert string boolean values to actual booleans
         $this->merge([
             'has_warranty' => filter_var($this->has_warranty, FILTER_VALIDATE_BOOLEAN),
@@ -138,5 +148,35 @@ class CarListingCreateFormRequest extends FormRequest
             'inspection_front' => filter_var($this->inspection_front, FILTER_VALIDATE_BOOLEAN),
             'inspection_back' => filter_var($this->inspection_back, FILTER_VALIDATE_BOOLEAN),
         ]);
+    }
+
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            // Custom validation for images field
+            if ($this->hasFile('images')) {
+                $images = $this->file('images');
+                
+                // If it's not an array, make it an array
+                if (!is_array($images)) {
+                    $images = [$images];
+                }
+                
+                // Check if we have more than 10 images
+                if (count($images) > 10) {
+                    $validator->errors()->add('images', 'You can upload a maximum of 10 images.');
+                }
+                
+                // Check each image
+                foreach ($images as $index => $image) {
+                    if ($image && $image->getSize() > 5120 * 1024) { // 5MB in bytes
+                        $validator->errors()->add("images.{$index}", 'Each image must not be larger than 5MB.');
+                    }
+                }
+            }
+        });
     }
 }

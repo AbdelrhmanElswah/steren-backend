@@ -821,7 +821,13 @@ class CarListingApiController extends Controller
 
             // Validate photo count if images are provided
             if ($request->hasFile('images')) {
-                $photoCount = count($request->file('images'));
+                $images = $request->file('images');
+                // Ensure images is always an array
+                if (!is_array($images)) {
+                    $images = [$images];
+                }
+                
+                $photoCount = count($images);
                 $canUpload = $this->subscriptionService->canUploadPhotos($request->user(), $photoCount);
                 
                 if (!$canUpload['can_upload']) {
@@ -1008,8 +1014,13 @@ class CarListingApiController extends Controller
     /**
      * Handle image uploads from form data to AWS S3 using HandlesFileUpload trait
      */
-    private function handleImageUploads(CarListing $carListing, array $images): void
+    private function handleImageUploads(CarListing $carListing, $images): void
     {
+        // Ensure images is always an array
+        if (!is_array($images)) {
+            $images = [$images];
+        }
+        
         foreach ($images as $index => $image) {
             try {
                 // Use HandlesFileUpload trait for S3 upload
