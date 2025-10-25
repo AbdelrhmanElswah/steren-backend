@@ -126,6 +126,12 @@ class CarListingCreateFormRequest extends FormRequest
     {
         // Convert string boolean values to actual booleans
         $this->merge([
+            'has_warranty' => filter_var($this->has_warranty, FILTER_VALIDATE_BOOLEAN),
+            'is_inspected' => filter_var($this->is_inspected, FILTER_VALIDATE_BOOLEAN),
+            'is_verified' => filter_var($this->is_verified, FILTER_VALIDATE_BOOLEAN),
+            'has_insurance' => filter_var($this->has_insurance, FILTER_VALIDATE_BOOLEAN),
+            'is_featured' => filter_var($this->is_featured, FILTER_VALIDATE_BOOLEAN),
+            'is_new_arrival' => filter_var($this->is_new_arrival, FILTER_VALIDATE_BOOLEAN),
             'inspection_right_side' => filter_var($this->inspection_right_side, FILTER_VALIDATE_BOOLEAN),
             'inspection_left_side' => filter_var($this->inspection_left_side, FILTER_VALIDATE_BOOLEAN),
             'inspection_roof' => filter_var($this->inspection_roof, FILTER_VALIDATE_BOOLEAN),
