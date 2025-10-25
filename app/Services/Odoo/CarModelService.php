@@ -15,12 +15,20 @@ class CarModelService extends OdooCrudService
 
     public function create(array $data): CarModel
     {
+        if (isset($data['car_brand_id'])) {
+            $data['car_brand_id'] = $this->convertBrandOdooIdToLaravelId($data['car_brand_id']);
+        }
+        
         $model = parent::create($data);
         return $model;
     }
 
     public function updateByOdooId(string $odooId, array $data): CarModel
     {
+        if (isset($data['car_brand_id'])) {
+            $data['car_brand_id'] = $this->convertBrandOdooIdToLaravelId($data['car_brand_id']);
+        }
+        
         $model = parent::updateByOdooId($odooId, $data);
         return $model;
     }
@@ -50,5 +58,23 @@ class CarModelService extends OdooCrudService
         ->orderBy('name')
         ->limit(50)
         ->get();
+    }
+
+
+    private function convertBrandOdooIdToLaravelId($brandId): int
+    {
+        $brand = CarBrand::where('odoo_id', $brandId)->first();
+        if ($brand) {
+            return $brand->id;
+        }
+        
+        if (is_numeric($brandId)) {
+            $brand = CarBrand::where('id', $brandId)->first();
+            if ($brand) {
+                return (int) $brandId;
+            }
+        }
+        
+        throw new \Exception("Car brand with ID/Odoo ID '{$brandId}' not found");
     }
 }

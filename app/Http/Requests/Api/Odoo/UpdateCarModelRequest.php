@@ -22,7 +22,7 @@ class UpdateCarModelRequest extends FormRequest
                 Rule::unique('car_models', 'odoo_id')->ignore($this->route('id') ?? $this->route('odooId'))
             ],
             'name' => 'sometimes|string|max:255',
-            'car_brand_id' => 'sometimes|exists:car_brands,id',
+            'car_brand_id' => 'sometimes',
         ];
     }
 
@@ -42,5 +42,28 @@ class UpdateCarModelRequest extends FormRequest
             'name' => 'name',
             'car_brand_id' => 'car brand id',
         ];
+    }
+
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            if ($this->has('car_brand_id')) {
+                $carBrandId = $this->car_brand_id;
+                
+                // Check if it's a numeric ID (Laravel ID)
+                if (is_numeric($carBrandId)) {
+                    $exists = \App\Models\CarBrand::where('id', $carBrandId)->exists();
+                    if (!$exists) {
+                        $validator->errors()->add('car_brand_id', 'The selected car brand does not exist.');
+                    }
+                } else {
+                    // Check if it's an Odoo ID
+                    $exists = \App\Models\CarBrand::where('odoo_id', $carBrandId)->exists();
+                    if (!$exists) {
+                        $validator->errors()->add('car_brand_id', 'The selected car brand with Odoo ID does not exist.');
+                    }
+                }
+            }
+        });
     }
 }
