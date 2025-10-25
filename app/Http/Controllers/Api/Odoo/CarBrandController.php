@@ -24,13 +24,23 @@ class CarBrandController extends Controller
     public function store(StoreCarBrandRequest $request): JsonResponse
     {
         try {
-            $carBrand = $this->carBrandService->create($request->validated());
+            $validatedData = $request->validated();
+            
+            if (empty($validatedData['odoo_id'])) {
+                $validatedData['odoo_id'] = 'temp_' . uniqid();
+            }
+            
+            $carBrand = $this->carBrandService->create($validatedData);
             $carBrand->load('media');
 
-            return $this->createdResponse(
-                new CarBrandResource($carBrand),
-                'Car brand created successfully'
-            );
+            return $this->createdResponse([
+                'id' => $carBrand->id,
+                'odoo_id' => $carBrand->odoo_id,
+                'name' => $carBrand->name,
+                'logo' => $carBrand->logo,
+                'created_at' => $carBrand->created_at,
+                'updated_at' => $carBrand->updated_at,
+            ], 'Car brand created successfully');
         } catch (\Exception $e) {
             Log::error('CarBrandController: Error creating car brand', [
                 'message' => $e->getMessage(),
@@ -45,13 +55,30 @@ class CarBrandController extends Controller
     public function updateByOdooId(UpdateCarBrandRequest $request, string $odooId): JsonResponse
     {
         try {
-            $carBrand = $this->carBrandService->updateByOdooId($odooId, $request->validated());
+            $validatedData = $request->validated();
+            
+            if (isset($validatedData['odoo_id']) && $validatedData['odoo_id'] !== $odooId) {
+                $carBrand = \App\Models\CarBrand::where('odoo_id', $odooId)->firstOrFail();
+                $carBrand->update(['odoo_id' => $validatedData['odoo_id']]);
+                
+                unset($validatedData['odoo_id']);
+                
+                if (!empty($validatedData)) {
+                    $carBrand->update($validatedData);
+                }
+            } else {
+                $carBrand = $this->carBrandService->updateByOdooId($odooId, $validatedData);
+            }
+            
             $carBrand->load('media');
 
-            return $this->successResponse(
-                new CarBrandResource($carBrand),
-                'Car brand updated successfully'
-            );
+            return $this->successResponse([
+                'id' => $carBrand->id,
+                'odoo_id' => $carBrand->odoo_id,
+                'name' => $carBrand->name,
+                'logo' => $carBrand->logo,
+                'updated_at' => $carBrand->updated_at,
+            ], 'Car brand updated successfully');
         } catch (\Exception $e) {
             Log::error('CarBrandController: Error updating car brand', [
                 'message' => $e->getMessage(),
@@ -100,6 +127,7 @@ class CarBrandController extends Controller
             return $this->errorResponse('Failed to restore car brand: ' . $e->getMessage(), 500);
         }
     }
+
 
     /**
      * Fetch brands from regular database for user end
