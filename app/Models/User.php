@@ -436,10 +436,16 @@ class User extends Authenticatable
 
     /**
      * Check if user is a dealer with comprehensive validation
-     * User is dealer if they have an approved, active, and non-expired dealer application
+     * User is dealer if they have is_dealer = 1 OR have an approved, active, and non-expired dealer application
      */
     public function isDealer()
     {
+        // Check the is_dealer field first (for manual dealer assignments)
+        if ($this->is_dealer) {
+            return true;
+        }
+        
+        // Also check for approved dealer application
         return $this->hasActiveDealerApplication();
     }
 
