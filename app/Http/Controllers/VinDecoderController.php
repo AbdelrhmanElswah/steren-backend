@@ -39,7 +39,7 @@ class VinDecoderController extends Controller
 
             if ($saveToDatabase) {
                 $result = $this->vehicleDatabasesService->decodeAndSaveVin($vin, true);
-                
+
                 return $this->successResponse(
                     new VinDecoderResource($result),
                     'VIN decoded and saved successfully'
@@ -47,7 +47,7 @@ class VinDecoderController extends Controller
             }
 
             $result = $this->vehicleDatabasesService->decodeVin($vin, $cache);
-            
+
             return $this->successResponse($result['data'], 'VIN decoded successfully');
 
         } catch (VehicleDatabasesException $e) {
@@ -84,14 +84,14 @@ class VinDecoderController extends Controller
     public function getVinInfo(Request $request): JsonResponse
     {
         $vin = $request->input('vin');
-        
+
         if (!$vin) {
             return $this->errorResponse('VIN is required', 400);
         }
 
         try {
             $vinDecoder = \App\Models\VinDecoder::byVin($vin)->first();
-            
+
             if (!$vinDecoder) {
                 return $this->errorResponse('VIN not found in database', 404);
             }
@@ -123,7 +123,7 @@ class VinDecoderController extends Controller
     {
         try {
             $status = $this->vehicleDatabasesService->getStatus();
-            
+
             return $this->successResponse($status, 'Service status retrieved successfully');
         } catch (\Exception $e) {
             Log::error('Error getting service status', [
@@ -151,16 +151,16 @@ class VinDecoderController extends Controller
 
             // Get the full VIN decode data
             $result = $this->vehicleDatabasesService->decodeVin($vin, $cache);
-            
+
             if (!$result || !isset($result['data'])) {
                 return $this->errorResponse('Failed to decode VIN', 400);
             }
 
             $vinData = $result['data'];
-            
+
             // Filter and map the data for car listing creation
             $filteredData = $this->filterVinDataForListing($vinData);
-            
+
             // Check if the brand exists in our system
             if (!$this->validateBrandExists($filteredData)) {
                 return response()->json([
@@ -169,7 +169,7 @@ class VinDecoderController extends Controller
                     "data" => null
                 ], 422);
             }
-            
+
             return $this->successResponse($filteredData, 'VIN decoded and filtered for listing creation');
 
         } catch (VehicleDatabasesException $e) {
@@ -212,7 +212,7 @@ class VinDecoderController extends Controller
             ]);
 
             $file = $request->file('file');
-            
+
             // Step 1: Extract VIN from image using OCR
             $vinResult = $this->extractVinFromImage($file);
 
@@ -224,19 +224,19 @@ class VinDecoderController extends Controller
             }
 
             $vin = $vinResult['data']['vin'];
-            
+
             // Step 2: Decode the extracted VIN
             $result = $this->vehicleDatabasesService->decodeVin($vin, true);
-            
+
             if (!$result || !isset($result['data'])) {
                 return $this->errorResponse('Failed to decode VIN', 400);
             }
 
             $vinData = $result['data'];
-            
+
             // Step 3: Filter and map the data for car listing creation
             $filteredData = $this->filterVinDataForListing($vinData);
-            
+
             // Step 4: Check if the brand exists in our system
             if (!$this->validateBrandExists($filteredData)) {
                 return response()->json([
@@ -245,7 +245,7 @@ class VinDecoderController extends Controller
                     "data" => null
                 ], 422);
             }
-            
+
             return $this->successResponse($filteredData, 'VIN extracted from image and decoded successfully');
 
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -298,7 +298,7 @@ class VinDecoderController extends Controller
 
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 if ($data['status'] === 'success' && isset($data['data']['vin'])) {
                     return [
                         'success' => true,
@@ -338,10 +338,10 @@ class VinDecoderController extends Controller
         if (empty($filteredData['brandId'])) {
             return false;
         }
-        
+
         // Verify the brand exists in our database
         $brand = \App\Models\CarBrand::find($filteredData['brandId']);
-        
+
         return $brand !== null;
     }
 
@@ -355,25 +355,25 @@ class VinDecoderController extends Controller
     {
         $additionalData = $vinData['additional_data']['data'] ?? [];
         $basicData = $vinData['data'] ?? [];
-        
+
         // Extract basic vehicle information from either structure
         $make = $additionalData['make'] ?? $basicData['make'] ?? '';
         $model = $additionalData['model'] ?? $basicData['model'] ?? '';
         $year = $additionalData['year'] ?? $basicData['year'] ?? $vinData['year'] ?? null;
         $style = $additionalData['style'] ?? $basicData['style'] ?? '';
-        
+
         // Parse style to extract trim and other details
         $trim = $this->extractTrimFromStyle($style);
         $bodyType = $this->extractBodyTypeFromStyle($style);
         $transmission = $this->extractTransmissionFromStyle($style);
         $driveType = $this->extractDriveTypeFromStyle($style);
-        
+
         // Extract additional specifications from the nested data
         $specifications = $additionalData['specifications'] ?? [];
         $dimensions = $additionalData['dimensions'] ?? [];
         $vehicle = $additionalData['vehicle'] ?? $basicData['vehicle'] ?? [];
         $standardFeatures = $basicData['standard_features'] ?? [];
-        
+
         // Extract other information from either structure
         $fuelType = $basicData['fuel_type'] ?? 'Gasoline'; // Default to Gasoline for non-Tesla
         $exteriorColor = $basicData['exterior_color'] ?? $vinData['exterior_color'] ?? '';
@@ -381,61 +381,61 @@ class VinDecoderController extends Controller
         $doors = $basicData['doors'] ?? $vinData['doors'] ?? null;
         $engineSize = $basicData['engine_size'] ?? $vinData['engine_size'] ?? null;
         $seatingCapacity = $basicData['seating_capacity'] ?? $vinData['seating_capacity'] ?? null;
-        
+
         // Extract available colors from both additional data and basic data
         $availableColors = $this->extractAvailableColors($additionalData);
         if (empty($availableColors)) {
             $availableColors = $this->extractAvailableColors($basicData);
         }
-        
+
         // Set primary exterior color to the first available color (usually the standard/default color)
         if (!empty($availableColors)) {
             $exteriorColor = $availableColors[0]['name'];
         }
-        
+
         // Extract performance data
         $horsepower = $this->extractHorsepowerFromDimensions($dimensions);
         $torque = $this->extractTorqueFromDimensions($dimensions);
         $acceleration = $this->extractAcceleration($specifications);
         $topSpeed = $this->extractTopSpeed($specifications);
         $mileageEfficiency = $this->extractMileageEfficiency($specifications);
-        
+
         // Extract engine size (for electric vehicles, this might be battery capacity)
         $engineSize = $this->extractEngineSize($specifications, $dimensions);
-        
+
         // Extract additional data from standard features
         $extractedEngineSize = $this->extractEngineSizeFromFeatures($standardFeatures);
         $extractedHorsepower = $this->extractHorsepowerFromFeatures($standardFeatures);
         $extractedTorque = $this->extractTorqueFromFeatures($standardFeatures);
         $extractedCylinders = $this->extractCylindersFromFeatures($standardFeatures);
-        
+
         // Extract standard options for additional data
         $standardOptions = $basicData['standard_options'] ?? [];
         $extractedSeatingCapacity = $this->extractSeatingCapacityFromFeatures($standardFeatures, $standardOptions);
-        
+
         // Use extracted data if available
         $engineSize = $extractedEngineSize ?? $engineSize;
         $horsepower = $extractedHorsepower ?? $horsepower;
         $torque = $extractedTorque ?? $torque;
         $cylinders = $extractedCylinders ?? $cylinders;
         $seatingCapacity = $extractedSeatingCapacity ?? $seatingCapacity;
-        
+
         // Extract dimensions
         $length = $this->extractDimension($dimensions, 'overall_length');
         $width = $this->extractDimension($dimensions, 'overall_width');
         $height = $this->extractDimension($dimensions, 'overall_height');
-        
+
         // Extract seating capacity from specifications
         $seatingCapacity = $this->extractSeatingCapacity($specifications) ?? $seatingCapacity;
-        
+
         // Fallback: For sedans, default to 5 passengers if not found
         if ($seatingCapacity === null && $bodyType && strtolower($bodyType) === 'sedan') {
             $seatingCapacity = 5;
         }
-        
+
         // Extract doors from vehicle data or basic data
         $doors = $vehicle['doors'] ?? $basicData['doors'] ?? $doors;
-        
+
         // Extract body type from vehicle data (more reliable than style parsing)
         $bodyType = $vehicle['body_type'] ?? $bodyType;
 
@@ -447,10 +447,10 @@ class VinDecoderController extends Controller
 
         // Map fuel type to match your system
         $mappedFuelType = $this->mapFuelType($fuelType);
-        
+
         // Map transmission to match your system
         $mappedTransmission = $this->mapTransmission($transmission);
-        
+
         // Map drive type to match your system
         $mappedDriveType = $this->mapDriveType($driveType);
 
@@ -471,7 +471,7 @@ class VinDecoderController extends Controller
             'seatingCapacity' => $seatingCapacity,
             'brandId' => $brandId ? (string)$brandId : null,
             'modelId' => $modelId ? (string)$modelId : null,
-            
+
             // Additional useful fields
             'bodyTypeName' => $bodyTypeName,
             'availableColors' => $availableColors,
@@ -553,10 +553,10 @@ class VinDecoderController extends Controller
         if (empty($brandName)) {
             return null;
         }
-        
+
         // Try exact match first
         $brand = \App\Models\CarBrand::whereRaw('LOWER(name) = ?', [strtolower($brandName)])->first();
-        
+
         if (!$brand) {
             // Try partial matches for common variations
             $variations = $this->getBrandVariations($brandName);
@@ -567,7 +567,7 @@ class VinDecoderController extends Controller
                 }
             }
         }
-        
+
         return $brand ? $brand->id : null;
     }
 
@@ -579,26 +579,54 @@ class VinDecoderController extends Controller
         if (!$brandId || empty($modelName)) {
             return null;
         }
-        
+
         // Try exact match first
         $model = \App\Models\CarModel::whereRaw('LOWER(name) = ?', [strtolower($modelName)])
             ->where('car_brand_id', $brandId)
             ->first();
-        
-        if (!$model) {
-            // Try variations for common model name patterns
-            $variations = $this->getModelVariations($modelName);
-            foreach ($variations as $variation) {
-                $model = \App\Models\CarModel::whereRaw('LOWER(name) = ?', [strtolower($variation)])
-                    ->where('car_brand_id', $brandId)
-                    ->first();
-                if ($model) {
-                    break;
-                }
+
+        if ($model) {
+            return $model->id;
+        }
+
+        // Try variations for common model name patterns
+        $variations = $this->getModelVariations($modelName);
+        foreach ($variations as $variation) {
+            $model = \App\Models\CarModel::whereRaw('LOWER(name) = ?', [strtolower($variation)])
+                ->where('car_brand_id', $brandId)
+                ->first();
+            if ($model) {
+                return $model->id;
             }
         }
-        
-        return $model ? $model->id : null;
+
+        // Normalize and try strict normalized equality against all brand models
+        $normalizedTarget = $this->normalizeModelName($modelName);
+        $brandModels = \App\Models\CarModel::where('car_brand_id', $brandId)->get(['id', 'name']);
+        foreach ($brandModels as $brandModel) {
+            if ($this->normalizeModelName($brandModel->name) === $normalizedTarget) {
+                return $brandModel->id;
+            }
+        }
+
+        // Fallback: fuzzy match by similarity to find closest model for this brand
+        $bestMatchId = null;
+        $bestScore = 0;
+        foreach ($brandModels as $brandModel) {
+            $normalizedCandidate = $this->normalizeModelName($brandModel->name);
+            similar_text($normalizedTarget, $normalizedCandidate, $percent);
+            if ($percent > $bestScore) {
+                $bestScore = $percent;
+                $bestMatchId = $brandModel->id;
+            }
+        }
+
+        // Accept the best fuzzy match only if similarity is reasonably high
+        if ($bestMatchId !== null && $bestScore >= 70) {
+            return $bestMatchId;
+        }
+
+        return null;
     }
 
     /**
@@ -609,9 +637,9 @@ class VinDecoderController extends Controller
         if (empty($bodyTypeName)) {
             return null;
         }
-        
+
         $bodyType = \App\Models\BodyType::whereRaw('LOWER(name) = ?', [strtolower($bodyTypeName)])->first();
-        
+
         return $bodyType ? $bodyType->id : null;
     }
 
@@ -623,9 +651,9 @@ class VinDecoderController extends Controller
         if (!$bodyTypeId) {
             return null;
         }
-        
+
         $bodyType = \App\Models\BodyType::find($bodyTypeId);
-        
+
         return $bodyType ? $bodyType->name : null;
     }
 
@@ -637,7 +665,7 @@ class VinDecoderController extends Controller
         if (!$brandId) {
             return null;
         }
-        
+
         $brand = \App\Models\CarBrand::with('media')->find($brandId);
         return $brand && $brand->media ? $brand->media->url : null;
     }
@@ -656,7 +684,7 @@ class VinDecoderController extends Controller
             'Battery Electric' => 'Electric',
             'Plug-in Hybrid' => 'Hybrid',
         ];
-        
+
         return $mapping[$fuelType] ?? $fuelType;
     }
 
@@ -672,7 +700,7 @@ class VinDecoderController extends Controller
             'CVT' => 'CVT',
             'Semi-Automatic' => 'Semi-Automatic',
         ];
-        
+
         return $mapping[$transmission] ?? $transmission;
     }
 
@@ -691,7 +719,7 @@ class VinDecoderController extends Controller
             'AWD' => 'AWD',
             '4WD' => '4WD',
         ];
-        
+
         return $mapping[$driveType] ?? $driveType;
     }
 
@@ -846,7 +874,7 @@ class VinDecoderController extends Controller
     {
         $colors = $additionalData['exterior_colors'] ?? [];
         $availableColors = [];
-        
+
         foreach ($colors as $color) {
             $availableColors[] = [
                 'name' => $color['generic_name'] ?? '',
@@ -858,7 +886,7 @@ class VinDecoderController extends Controller
                 'price' => $color['color_price'] ?? '',
             ];
         }
-        
+
         return $availableColors;
     }
 
@@ -876,7 +904,7 @@ class VinDecoderController extends Controller
                 }
             }
         }
-        
+
         // Check dimensions for traditional engine size
         foreach ($dimensions as $dimension) {
             if (isset($dimension['engine'])) {
@@ -894,7 +922,7 @@ class VinDecoderController extends Controller
                 }
             }
         }
-        
+
         return null;
     }
 
@@ -905,7 +933,7 @@ class VinDecoderController extends Controller
     {
         $variations = [];
         $lowerName = strtolower($brandName);
-        
+
         // Common brand name variations
         $brandMappings = [
             'mercedes-benz' => ['mercedes', 'benz'],
@@ -913,13 +941,13 @@ class VinDecoderController extends Controller
             'land rover' => ['landrover'],
             'mini' => ['mini cooper'],
         ];
-        
+
         foreach ($brandMappings as $key => $values) {
             if (strpos($lowerName, $key) !== false) {
                 $variations = array_merge($variations, $values);
             }
         }
-        
+
         return $variations;
     }
 
@@ -930,7 +958,7 @@ class VinDecoderController extends Controller
     {
         $variations = [];
         $lowerName = strtolower($modelName);
-        
+
         // Common model name variations
         $modelMappings = [
             'c-class' => ['class c'],
@@ -942,15 +970,30 @@ class VinDecoderController extends Controller
             'cls-class' => ['class cls'],
             'cl-class' => ['class cl'],
             'glk-class' => ['class glk'],
+            '3 series' => ['3er', 'series 3'],
+            '5 series' => ['5er', 'series 5'],
+            '7 series' => ['7er', 'series 7'],
+            'qashqai' => ['qashqai+2'],
         ];
-        
+
         foreach ($modelMappings as $key => $values) {
             if (strpos($lowerName, $key) !== false) {
                 $variations = array_merge($variations, $values);
             }
         }
-        
+
         return $variations;
+    }
+
+    /**
+     * Normalize model names for resilient matching
+     */
+    private function normalizeModelName(string $name): string
+    {
+        $name = strtolower($name);
+        $name = preg_replace('/\b(class|series|sedan|coupe|hatchback|convertible|suv|van|truck|sportback|fastback)\b/', '', $name);
+        $name = preg_replace('/[^a-z0-9]+/', '', $name);
+        return $name ?? '';
     }
 
     /**
@@ -1019,7 +1062,7 @@ class VinDecoderController extends Controller
                 return (int) $matches[1];
             }
         }
-        
+
         // Look for seating capacity in standard options
         foreach ($standardOptions as $option) {
             if (preg_match('/(\d+)\s*passenger/i', $option['description'] ?? '', $matches)) {
@@ -1029,7 +1072,7 @@ class VinDecoderController extends Controller
                 return (int) $matches[1];
             }
         }
-        
+
         return null;
     }
 }
