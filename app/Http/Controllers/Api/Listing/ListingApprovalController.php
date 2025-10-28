@@ -130,7 +130,7 @@ class ListingApprovalController extends Controller
             );
 
             // Send notification to user about listing rejection
-            $this->sendListingStatusNotification($odooId, 'rejected', $reason);
+            // $this->sendListingStatusNotification($odooId, 'rejected', $reason);
 
             return $this->successResponse($result, 'Listing rejected successfully');
 
