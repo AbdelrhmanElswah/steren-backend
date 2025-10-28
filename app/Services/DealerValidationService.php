@@ -9,18 +9,28 @@ use Illuminate\Support\Facades\Log;
 class DealerValidationService
 {
     /**
-     * Check if user is a basic dealer (approved application)
+     * Check if user is a basic dealer (approved application or is_dealer = 1)
      */
     public function isBasicDealer(User $user): bool
     {
+        // Check the is_dealer field first (for manual dealer assignments)
+        if ($user->is_dealer) {
+            return true;
+        }
+        
         return $user->hasApprovedDealerApplication();
     }
 
     /**
-     * Check if user is an active dealer (approved, not expired, payment completed)
+     * Check if user is an active dealer (approved, not expired, or is_dealer = 1)
      */
     public function isActiveDealer(User $user): bool
     {
+        // Check the is_dealer field first (for manual dealer assignments)
+        if ($user->is_dealer) {
+            return true;
+        }
+        
         return $user->hasActiveDealerApplication();
     }
 
@@ -37,6 +47,28 @@ class DealerValidationService
      */
     public function getDealerValidationStatus(User $user): array
     {
+        // Check if user has is_dealer = 1 (manual dealer assignment)
+        if ($user->is_dealer) {
+            return [
+                'is_dealer' => true,
+                'is_active_dealer' => true,
+                'is_verified_dealer' => false,
+                'status' => 'manual_dealer',
+                'message' => 'User is manually assigned as dealer',
+                'requirements' => [
+                    'approved_application' => false,
+                    'documents_verified' => false,
+                    'business_info_complete' => false,
+                    'not_expired' => true,
+                ],
+                'missing_requirements' => [
+                    'Dealer application must be approved for full verification',
+                    'All required documents must be verified for full verification',
+                    'Business information must be complete for full verification'
+                ]
+            ];
+        }
+        
         $application = $user->activeDealerApplication;
         
         if (!$application) {

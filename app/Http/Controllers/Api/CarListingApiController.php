@@ -20,6 +20,7 @@ use App\Traits\NotificationTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -312,17 +313,22 @@ class CarListingApiController extends Controller
                 // Get the full S3 URL
                 $url = Storage::disk('s3')->url($path);
 
-                // Create media record
-                Media::create([
+                // Create media record with proper structure
+                $mediaData = [
                     'modelable_type' => CarListing::class,
                     'modelable_id' => $carListing->id,
-                    'file_path' => $path,
-                    'url' => $url,
+                    'media' => $filename,
+                    'path_file_name' => $path,
                     'file_type' => 'image',
-                    'file_size' => strlen($imageData),
-                    'mime_type' => 'image/jpeg',
-                    'is_primary' => $index === 0, // First image is primary
-                ]);
+                    'info' => $index === 0 ? 'primary' : 'secondary',
+                ];
+                
+                // Only add order if the column exists
+                if (Schema::hasColumn('media', 'order')) {
+                    $mediaData['order'] = $index;
+                }
+                
+                Media::create($mediaData);
 
             } catch (\Exception $e) {
                 Log::warning('Failed to process image ' . ($index + 1) . ' for car listing ' . $carListing->id . ': ' . $e->getMessage());
@@ -815,7 +821,13 @@ class CarListingApiController extends Controller
 
             // Validate photo count if images are provided
             if ($request->hasFile('images')) {
-                $photoCount = count($request->file('images'));
+                $images = $request->file('images');
+                // Ensure images is always an array
+                if (!is_array($images)) {
+                    $images = [$images];
+                }
+                
+                $photoCount = count($images);
                 $canUpload = $this->subscriptionService->canUploadPhotos($request->user(), $photoCount);
                 
                 if (!$canUpload['can_upload']) {
@@ -1002,25 +1014,42 @@ class CarListingApiController extends Controller
     /**
      * Handle image uploads from form data to AWS S3 using HandlesFileUpload trait
      */
-    private function handleImageUploads(CarListing $carListing, array $images): void
+    private function handleImageUploads(CarListing $carListing, $images): void
     {
+        // Ensure images is always an array
+        if (!is_array($images)) {
+            $images = [$images];
+        }
+        
         foreach ($images as $index => $image) {
             try {
                 // Use HandlesFileUpload trait for S3 upload
                 $uploadResult = $this->uploadFileToS3($image, $carListing, 'car-listings');
                 
+                Log::info('S3 upload result', [
+                    'car_listing_id' => $carListing->id,
+                    'upload_result' => $uploadResult
+                ]);
+                
                 // Create media record with proper structure
-                Media::create([
+                $mediaData = [
                     'modelable_type' => CarListing::class,
                     'modelable_id' => $carListing->id,
                     'media' => $uploadResult['file_name'],
                     'path_file_name' => $uploadResult['path'],
                     'file_type' => $uploadResult['file_type'],
-                    'order' => $index,
                     'info' => $index === 0 ? 'primary' : 'secondary',
-                ]);
+                ];
                 
-                Log::info('Image uploaded successfully for car listing', [
+                // Only add order if the column exists
+                if (Schema::hasColumn('media', 'order')) {
+                    $mediaData['order'] = $index;
+                }
+                
+                $media = Media::create($mediaData);
+                
+                Log::info('Media record created successfully', [
+                    'media_id' => $media->id,
                     'car_listing_id' => $carListing->id,
                     'file_name' => $uploadResult['file_name'],
                     'url' => $uploadResult['url']
@@ -1029,7 +1058,9 @@ class CarListingApiController extends Controller
             } catch (\Exception $e) {
                 Log::error('Failed to upload image for car listing', [
                     'car_listing_id' => $carListing->id,
-                    'error' => $e->getMessage()
+                    'index' => $index,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
                 ]);
                 // Continue with other images even if one fails
             }

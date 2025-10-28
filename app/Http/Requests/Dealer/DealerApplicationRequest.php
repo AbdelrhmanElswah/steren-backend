@@ -59,7 +59,7 @@ class DealerApplicationRequest extends FormRequest
             ],
             
             // Subscription Plan Selection
-            'subscription_plan_id' => 'required|exists:subscription_plans,id',
+            'subscription_plan_id' => 'nullable|exists:subscription_plans,id',
             
             // Terms and Conditions
             'terms_accepted' => 'required|boolean|accepted',
@@ -87,7 +87,6 @@ class DealerApplicationRequest extends FormRequest
             'authorization_letter.mimes' => 'Authorization letter must be a PDF or image file.',
             'authorization_letter.max' => 'Authorization letter file size cannot exceed 10MB.',
             'business_license_number.required' => 'Business license number is required for authorized sellers.',
-            'subscription_plan_id.required' => 'Please select a subscription plan.',
             'subscription_plan_id.exists' => 'Selected subscription plan is invalid.',
             'terms_accepted.required' => 'You must accept the terms and conditions.',
             'terms_accepted.accepted' => 'You must accept the terms and conditions.',

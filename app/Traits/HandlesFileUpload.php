@@ -78,6 +78,13 @@ trait HandlesFileUpload
             'application/vnd.ms-excel' => 'excel',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'excel',
             'text/plain' => 'text',
+            // Image types
+            'image/jpeg' => 'image',
+            'image/jpg' => 'image',
+            'image/png' => 'image',
+            'image/gif' => 'image',
+            'image/webp' => 'image',
+            'image/svg+xml' => 'image',
         ];
 
         return $map[$mimeType] ?? 'other';

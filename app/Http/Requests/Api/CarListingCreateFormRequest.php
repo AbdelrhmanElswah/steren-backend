@@ -66,22 +66,22 @@ class CarListingCreateFormRequest extends FormRequest
             'is_new_arrival' => 'nullable|boolean',
             'features' => 'nullable|string',
             'specifications' => 'nullable|string',
-
+            
             // Pricing
             'price_currency' => 'required|string|size:3',
             'price' => 'required|numeric|min:0',
-
+            
             // Seller Info (optional for Flutter compatibility)
             'seller_type' => 'nullable|string|in:verified_seller,private_seller,dealer',
-
+            
             // Listing Details
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
-
-            // Images - File uploads
+            
+            // Images - File uploads (can be single file or array)
             'images' => 'nullable|array|max:10',
             'images.*' => 'file|image|mimes:jpeg,jpg,png,webp|max:5120', // 5MB max per image
-
+            
             // Inspection Data
             'inspection_right_side' => 'nullable|boolean',
             'inspection_left_side' => 'nullable|boolean',
@@ -124,13 +124,59 @@ class CarListingCreateFormRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        // Handle images field - ensure it's always an array
+        if ($this->hasFile('images')) {
+            $images = $this->file('images');
+            // If it's a single file, wrap it in an array
+            if (!is_array($images)) {
+                $images = [$images];
+            }
+            $this->merge(['images' => $images]);
+        }
+
         // Convert string boolean values to actual booleans
         $this->merge([
+            'has_warranty' => filter_var($this->has_warranty, FILTER_VALIDATE_BOOLEAN),
+            'is_inspected' => filter_var($this->is_inspected, FILTER_VALIDATE_BOOLEAN),
+            'is_verified' => filter_var($this->is_verified, FILTER_VALIDATE_BOOLEAN),
+            'has_insurance' => filter_var($this->has_insurance, FILTER_VALIDATE_BOOLEAN),
+            'is_featured' => filter_var($this->is_featured, FILTER_VALIDATE_BOOLEAN),
+            'is_new_arrival' => filter_var($this->is_new_arrival, FILTER_VALIDATE_BOOLEAN),
             'inspection_right_side' => filter_var($this->inspection_right_side, FILTER_VALIDATE_BOOLEAN),
             'inspection_left_side' => filter_var($this->inspection_left_side, FILTER_VALIDATE_BOOLEAN),
             'inspection_roof' => filter_var($this->inspection_roof, FILTER_VALIDATE_BOOLEAN),
             'inspection_front' => filter_var($this->inspection_front, FILTER_VALIDATE_BOOLEAN),
             'inspection_back' => filter_var($this->inspection_back, FILTER_VALIDATE_BOOLEAN),
         ]);
+    }
+
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            // Custom validation for images field
+            if ($this->hasFile('images')) {
+                $images = $this->file('images');
+                
+                // If it's not an array, make it an array
+                if (!is_array($images)) {
+                    $images = [$images];
+                }
+                
+                // Check if we have more than 10 images
+                if (count($images) > 10) {
+                    $validator->errors()->add('images', 'You can upload a maximum of 10 images.');
+                }
+                
+                // Check each image
+                foreach ($images as $index => $image) {
+                    if ($image && $image->getSize() > 5120 * 1024) { // 5MB in bytes
+                        $validator->errors()->add("images.{$index}", 'Each image must not be larger than 5MB.');
+                    }
+                }
+            }
+        });
     }
 }

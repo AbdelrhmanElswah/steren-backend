@@ -156,6 +156,16 @@ class DealerApplicationController extends Controller
                 $data['dealership_company_name'] = $data['dealership_name'];
             }
             
+            // Set default subscription plan ID if not provided
+            if (!isset($data['subscription_plan_id']) || empty($data['subscription_plan_id'])) {
+                // Try to find subscription plan with ID 10, otherwise use the first active plan
+                $defaultPlan = \App\Models\SubscriptionPlan::where('id', 10)->active()->first();
+                if (!$defaultPlan) {
+                    $defaultPlan = \App\Models\SubscriptionPlan::active()->first();
+                }
+                $data['subscription_plan_id'] = $defaultPlan ? $defaultPlan->id : 10;
+            }
+            
             // Handle file upload for authorization letter
             if ($request->hasFile('authorization_letter')) {
                 $file = $request->file('authorization_letter');
@@ -271,6 +281,16 @@ class DealerApplicationController extends Controller
             DB::beginTransaction();
 
             $data = $request->all();
+            
+            // Set default subscription plan ID if not provided
+            if (!isset($data['subscription_plan_id']) || empty($data['subscription_plan_id'])) {
+                // Try to find subscription plan with ID 10, otherwise use the first active plan
+                $defaultPlan = \App\Models\SubscriptionPlan::where('id', 10)->active()->first();
+                if (!$defaultPlan) {
+                    $defaultPlan = \App\Models\SubscriptionPlan::active()->first();
+                }
+                $data['subscription_plan_id'] = $defaultPlan ? $defaultPlan->id : 10;
+            }
             
             // Handle file upload for authorization letter
             if ($request->hasFile('authorization_letter')) {
