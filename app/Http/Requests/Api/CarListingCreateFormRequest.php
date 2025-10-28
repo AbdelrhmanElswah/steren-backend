@@ -66,22 +66,22 @@ class CarListingCreateFormRequest extends FormRequest
             'is_new_arrival' => 'nullable|boolean',
             'features' => 'nullable|string',
             'specifications' => 'nullable|string',
-            
+
             // Pricing
             'price_currency' => 'required|string|size:3',
             'price' => 'required|numeric|min:0',
-            
+
             // Seller Info (optional for Flutter compatibility)
             'seller_type' => 'nullable|string|in:verified_seller,private_seller,dealer',
-            
+
             // Listing Details
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:2000',
-            
+
             // Images - File uploads
             'images' => 'nullable|array|max:10',
             'images.*' => 'file|image|mimes:jpeg,jpg,png,webp|max:5120', // 5MB max per image
-            
+
             // Inspection Data
             'inspection_right_side' => 'nullable|boolean',
             'inspection_left_side' => 'nullable|boolean',
