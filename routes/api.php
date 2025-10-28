@@ -26,67 +26,67 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('car-listings/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarListingController::class, 'updateByOdooId']);
     Route::post('car-listings/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarListingController::class, 'deleteByOdooId']);
     Route::post('car-listings/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarListingController::class, 'restoreByOdooId']);
-    
+
     Route::post('car-submissions', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'store']);
     Route::post('car-submissions/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'updateByOdooId']);
     Route::post('car-submissions/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'deleteByOdooId']);
     Route::post('car-submissions/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'restoreByOdooId']);
-    
+
     Route::post('car-inspections', [App\Http\Controllers\Api\Odoo\CarInspectionController::class, 'store']);
     Route::post('car-inspections/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarInspectionController::class, 'updateByOdooId']);
     Route::post('car-inspections/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarInspectionController::class, 'deleteByOdooId']);
     Route::post('car-inspections/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarInspectionController::class, 'restoreByOdooId']);
-    
+
     Route::post('carfax-reports', [App\Http\Controllers\Api\Odoo\CarfaxReportController::class, 'store']);
     Route::post('carfax-reports/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarfaxReportController::class, 'updateByOdooId']);
     Route::post('carfax-reports/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarfaxReportController::class, 'deleteByOdooId']);
     Route::post('carfax-reports/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarfaxReportController::class, 'restoreByOdooId']);
-    
+
     Route::post('cities', [App\Http\Controllers\Api\Odoo\CityController::class, 'store']);
     Route::post('cities/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CityController::class, 'updateByOdooId']);
     Route::post('cities/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CityController::class, 'deleteByOdooId']);
     Route::post('cities/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CityController::class, 'restoreByOdooId']);
-    
+
     Route::post('car-brands', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'store']);
     Route::post('car-brands/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'updateByOdooId']);
     Route::post('car-brands/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'deleteByOdooId']);
     Route::post('car-brands/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarBrandController::class, 'restoreByOdooId']);
-    
+
     Route::post('carousels', [App\Http\Controllers\Api\Odoo\CarouselController::class, 'store']);
     Route::post('carousels/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarouselController::class, 'updateByOdooId']);
     Route::post('carousels/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarouselController::class, 'deleteByOdooId']);
     Route::post('carousels/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarouselController::class, 'restoreByOdooId']);
-    
+
     Route::post('car-models', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'store']);
     Route::post('car-models/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'updateByOdooId']);
     Route::post('car-models/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'deleteByOdooId']);
     Route::post('car-models/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'restoreByOdooId']);
-    
+
     Route::post('locations', [App\Http\Controllers\Api\Odoo\LocationController::class, 'store']);
     Route::post('locations/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\LocationController::class, 'updateByOdooId']);
     Route::post('locations/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\LocationController::class, 'deleteByOdooId']);
     Route::post('locations/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\LocationController::class, 'restoreByOdooId']);
-    
+
     Route::post('studios', [App\Http\Controllers\Api\Odoo\StudioController::class, 'store']);
     Route::post('studios/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\StudioController::class, 'updateByOdooId']);
     Route::post('studios/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\StudioController::class, 'deleteByOdooId']);
     Route::post('studios/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\StudioController::class, 'restoreByOdooId']);
-    
+
     Route::post('users', [App\Http\Controllers\Api\Odoo\UserController::class, 'store']);
     Route::post('users/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\UserController::class, 'updateByOdooId']);
     Route::post('users/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\UserController::class, 'deleteByOdooId']);
     Route::post('users/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\UserController::class, 'restoreByOdooId']);
-    
+
     Route::post('body-types', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'store']);
     Route::post('body-types/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'updateByOdooId']);
     Route::post('body-types/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'deleteByOdooId']);
     Route::post('body-types/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'restoreByOdooId']);
-    
+
     Route::post('subscription-plans', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'store']);
     Route::post('subscription-plans/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'updateByOdooId']);
     Route::post('subscription-plans/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'deleteByOdooId']);
     Route::post('subscription-plans/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'restoreByOdooId']);
-    
+
     Route::post('budgets', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'store']);
     Route::post('budgets/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'updateByOdooId']);
     Route::post('budgets/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'deleteByOdooId']);
@@ -150,11 +150,11 @@ Route::prefix('auth')->group(function () {
         Route::post('/logout', [App\Http\Controllers\Auth\AuthController::class, 'logout']);
         Route::post('/logout-all', [App\Http\Controllers\Auth\AuthController::class, 'logoutAll']);
         Route::post('/complete-pending-account', [App\Http\Controllers\Auth\AuthController::class, 'completePendingAccount']);
-        
+
         // Partner/Odoo integration routes
         Route::get('/partner/info', [App\Http\Controllers\Auth\AuthController::class, 'getPartnerInfo']);
         Route::put('/partner/update', [App\Http\Controllers\Auth\AuthController::class, 'updatePartnerInfo']);
-        
+
         // User Profile Management routes
         Route::get('/profile', [App\Http\Controllers\Auth\UserProfileController::class, 'getProfile']);
         Route::put('/profile', [App\Http\Controllers\Auth\UserProfileController::class, 'updateProfile']);
@@ -174,7 +174,7 @@ Route::prefix('car-damages')->group(function () {
 // Report Routes - GET only
 Route::prefix('reports')->group(function () {
     Route::get('/reasons', [App\Http\Controllers\Data\ReportController::class, 'getReportReasons']);
-    
+
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/user', [App\Http\Controllers\Data\ReportController::class, 'getUserReports']);
         Route::get('/{reportId}', [App\Http\Controllers\Data\ReportController::class, 'getReportDetails']);
@@ -204,13 +204,13 @@ Route::prefix('car-listings')->group(function () {
     Route::get('/{id}', [App\Http\Controllers\Data\CarListingController::class, 'getCarListingDetails']);
     Route::get('/trims/{modelId}', [App\Http\Controllers\Data\CarListingController::class, 'getCarTrims']);
     Route::get('/news', [App\Http\Controllers\Data\CarListingController::class, 'getNewsArticles']);
-    
+
     // Enhanced car listing details API
     Route::get('/{id}/complete', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getCarListingDetails']);
-    
+
     // Car listing with media API
     Route::get('/{id}/with-media', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getCarListingWithMedia']);
-    
+
     // Similar cars API
     Route::get('/similar/search', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getSimilarCars']);
 });
@@ -245,16 +245,16 @@ Route::prefix('options')->group(function () {
     Route::get('/exterior-colors', [App\Http\Controllers\Data\ExteriorColorOptionsController::class, 'getExteriorColorOptions']);
     Route::get('/car-conditions', [App\Http\Controllers\Data\CarConditionOptionsController::class, 'getCarConditionOptions']);
     Route::get('/condition-types', [App\Http\Controllers\Data\ConditionTypeOptionsController::class, 'getConditionTypeOptions']);
-    
+
     // Location options
     Route::get('/cities', [App\Http\Controllers\Data\CityOptionsController::class, 'getCityOptions']);
-    
+
     // Status options
     Route::get('/statuses', [App\Http\Controllers\Data\StatusOptionsController::class, 'getStatusOptions']);
-    
+
     // Promotion options
     Route::get('/promotion-types', [App\Http\Controllers\Data\PromotionTypeOptionsController::class, 'getPromotionTypeOptions']);
-    
+
     // Report options
     Route::get('/report-reasons', [App\Http\Controllers\Data\ReportReasonOptionsController::class, 'getReportReasonOptions']);
 });
@@ -265,12 +265,12 @@ Route::prefix('watch-list')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [App\Http\Controllers\Data\WatchListController::class, 'getWatchList']);
     Route::get('/search-history', [App\Http\Controllers\Data\WatchListController::class, 'getSearchHistory']);
     Route::get('/sort-options', [App\Http\Controllers\Data\WatchListController::class, 'getSortOptions']);
-    
+
     // POST routes for managing favorites
     Route::post('/favorites', [App\Http\Controllers\Data\WatchListController::class, 'addToWatchList']);
     Route::delete('/favorites/{favoriteId}', [App\Http\Controllers\Data\WatchListController::class, 'removeFromWatchList']);
     Route::put('/favorites/{favoriteId}/notifications', [App\Http\Controllers\Data\WatchListController::class, 'toggleFavoriteNotifications']);
-    
+
     // POST routes for managing search history
     Route::post('/search-history', [App\Http\Controllers\Data\WatchListController::class, 'saveSearch']);
     Route::delete('/search-history/{searchId}', [App\Http\Controllers\Data\WatchListController::class, 'deleteSearch']);
@@ -289,7 +289,7 @@ Route::prefix('account')->middleware('auth:sanctum')->group(function () {
     Route::get('/language-options', [App\Http\Controllers\Data\AccountController::class, 'getLanguageOptions']);
     Route::get('/theme-options', [App\Http\Controllers\Data\AccountController::class, 'getThemeOptions']);
     Route::get('/social-auth-options', [App\Http\Controllers\Data\AccountController::class, 'getSocialAuthOptions']);
-    
+
     // Device Permissions Routes
     Route::get('/device-permissions', [App\Http\Controllers\Api\DevicePermissionsController::class, 'index']);
     Route::put('/device-permissions', [App\Http\Controllers\Api\DevicePermissionsController::class, 'updateMultiple']);
@@ -345,7 +345,7 @@ Route::prefix('dealer')->middleware(['auth:sanctum', 'phone.verified'])->group(f
     Route::get('/application/{id}', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'show']);
     Route::put('/application/{id}', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'update']);
     Route::delete('/application/{id}', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'destroy']);
-    
+
     // Subscription Management
     Route::get('/subscription/current', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'current']);
     Route::get('/subscription/plans', [App\Http\Controllers\Api\Dealer\DealerSubscriptionController::class, 'plans']);
@@ -362,7 +362,7 @@ Route::prefix('dealer-management')->middleware('auth:sanctum')->group(function (
     Route::post('/make-dealer', [App\Http\Controllers\Api\DealerManagementController::class, 'makeDealer']);
     Route::delete('/remove-dealer', [App\Http\Controllers\Api\DealerManagementController::class, 'removeDealerStatus']);
     Route::get('/statistics', [App\Http\Controllers\Api\DealerManagementController::class, 'getDealerStatistics']);
-    
+
     // Admin routes for managing other users
     Route::get('/all-dealers', [App\Http\Controllers\Api\DealerManagementController::class, 'getAllDealers']);
     Route::post('/make-user-dealer', [App\Http\Controllers\Api\DealerManagementController::class, 'makeUserDealer']);
@@ -375,13 +375,13 @@ Route::prefix('dealer-management')->middleware('auth:sanctum')->group(function (
 Route::prefix('verification')->group(function () {
     // Public route for Odoo webhook
     Route::post('/update-status', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'updateStatus']);
-    
+
     // Protected routes for authenticated users
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/submit', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'submit']);
         Route::get('/status', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'status']);
     });
-    
+
     Route::get('/subscription-plans', [App\Http\Controllers\Data\AccountController::class, 'getSubscriptionPlans']);
 });
 
@@ -391,7 +391,7 @@ Route::prefix('dealer-applications')->middleware('auth:sanctum')->group(function
     Route::post('/{applicationId}/approve', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'approve']);
     Route::post('/{applicationId}/reject', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'reject']);
     Route::post('/{applicationId}/process', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'processApplication']);
-    
+
 });
 Route::prefix('dealer-applications')->group(function () {
 
@@ -420,13 +420,13 @@ Route::prefix('search')->group(function () {
     Route::get('/sponsored-listings', [SearchController::class, 'getSponsoredListings']);
     Route::get('/brands', [SearchController::class, 'getAllBrands']);
     Route::get('/filter-options', [SearchController::class, 'getFilterOptions']);
-    
+
     // Authenticated search routes
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/recent-searches', [SearchController::class, 'getRecentSearches']);
         Route::post('/save-search', [SearchController::class, 'saveSearchHistory']);
     });
-    
+
     // Admin routes
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/clear-cache', [SearchController::class, 'clearSearchCache']);
@@ -443,7 +443,7 @@ Route::prefix('similar-cars')->group(function () {
     Route::get('/body-type/{bodyTypeId}', [SimilarCarsController::class, 'getSimilarCarsByBodyType']);
     Route::get('/advanced', [SimilarCarsController::class, 'getSimilarCarsAdvanced']);
     Route::get('/recommendations', [SimilarCarsController::class, 'getSimilarCarsRecommendations']);
-    
+
     // Admin routes
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/clear-cache', [SimilarCarsController::class, 'clearSimilarCarsCache']);
@@ -459,7 +459,7 @@ Route::prefix('vin')->group(function () {
     Route::post('/ocr-and-decode', [App\Http\Controllers\VinDecoderController::class, 'ocrAndDecodeForListing']);
     Route::get('/info', [App\Http\Controllers\VinDecoderController::class, 'getVinInfo']);
     Route::get('/status', [App\Http\Controllers\VinDecoderController::class, 'status']);
-    
+
     // VIN OCR and Auction Routes
     Route::post('/ocr-and-auction', [App\Http\Controllers\VinOcrAuctionController::class, 'ocrAndAuction']);
     Route::post('/ocr', [App\Http\Controllers\VinOcrAuctionController::class, 'ocrOnly']);
@@ -472,14 +472,14 @@ Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(functi
     Route::get('/top-picks', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getTopPicks']);
     Route::get('/you-may-also-like/{listingId}', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getYouMayAlsoLike']);
     Route::get('/plan-features', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getPlanFeatures']);
-    
+
     // Dealer-specific routes (basic dealer validation only)
     Route::prefix('dealer')->group(function () {
         Route::get('/studios', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getDealerStudios']);
         Route::post('/studios', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'createStudio']);
         Route::get('/studios/{studioId}/listings', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getStudioListings']);
         Route::post('/listings/{listingId}/associate-studio', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'associateListingWithStudio']);
-        
+
         // Auto-studio routes (basic dealer validation only)
         Route::get('/auto-studio/status', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getAutoStudioStatus']);
         Route::post('/auto-studio/process', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'processAutoStudio']);
@@ -497,7 +497,7 @@ Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(functi
         Route::post('/template', [App\Http\Controllers\Api\TestNotificationController::class, 'testTemplateNotification']);
     });
 
-    
+
     // Notification Routes
     Route::prefix('notifications')->middleware('auth:sanctum')->group(function () {
         // User notification management
@@ -507,11 +507,11 @@ Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(functi
         Route::put('/{notificationId}/read', [App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
         Route::put('/mark-all-read', [App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
         Route::delete('/{notificationId}', [App\Http\Controllers\Api\NotificationController::class, 'delete']);
-        
+
         // FCM token management
         Route::post('/fcm/register', [App\Http\Controllers\Api\NotificationController::class, 'registerToken']);
         Route::post('/fcm/deactivate', [App\Http\Controllers\Api\NotificationController::class, 'deactivateToken']);
-        
+
         // Admin notification sending (requires admin role)
         Route::middleware('admin')->group(function () {
             Route::post('/send/user', [App\Http\Controllers\Api\NotificationController::class, 'sendToUser']);
