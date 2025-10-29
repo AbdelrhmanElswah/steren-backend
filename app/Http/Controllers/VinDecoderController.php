@@ -371,13 +371,8 @@ class VinDecoderController extends Controller
         $year = $additionalData['year'] ?? $basicData['year'] ?? $vinData['year'] ?? null;
         $style = $additionalData['style'] ?? $basicData['style'] ?? '';
 
-        // Extract trim directly from additional_data first (more accurate)
+        // Extract trim directly from additional_data only (no default values)
         $trim = $additionalData['trim'] ?? $basicData['trim'] ?? null;
-        
-        // If trim not found, parse from style string
-        if (empty($trim)) {
-            $trim = $this->extractTrimFromStyle($style);
-        }
         
         $bodyType = $this->extractBodyTypeFromStyle($style);
         $transmission = $this->extractTransmissionFromStyle($style);
