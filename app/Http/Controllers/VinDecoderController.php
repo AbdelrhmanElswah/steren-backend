@@ -163,9 +163,18 @@ class VinDecoderController extends Controller
 
             // Check if the brand exists in our system
             if (!$this->validateBrandExists($filteredData)) {
+                // Add debugging information
+                $extractedBrand = $filteredData['general']['make'] ?? 'Unknown';
+                $brandId = $filteredData['brand_id'] ?? 'Not found';
+                
                 return response()->json([
                     "success" => false,
                     "message" => "This vehicle brand is not supported in our system",
+                    "debug" => [
+                        "extracted_brand" => $extractedBrand,
+                        "brand_id" => $brandId,
+                        "available_brands" => \App\Models\CarBrand::pluck('name', 'id')->toArray()
+                    ],
                     "data" => null
                 ], 422);
             }
@@ -334,13 +343,13 @@ class VinDecoderController extends Controller
      */
     private function validateBrandExists(array $filteredData): bool
     {
-        // Check if brandId exists and is not null
-        if (empty($filteredData['brandId'])) {
+        // Check if brandId exists and is not null (now at root level)
+        if (empty($filteredData['brand_id'])) {
             return false;
         }
 
         // Verify the brand exists in our database
-        $brand = \App\Models\CarBrand::find($filteredData['brandId']);
+        $brand = \App\Models\CarBrand::find($filteredData['brand_id']);
 
         return $brand !== null;
     }
