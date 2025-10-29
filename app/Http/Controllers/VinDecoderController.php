@@ -215,12 +215,35 @@ class VinDecoderController extends Controller
     public function ocrAndDecodeForListing(Request $request): JsonResponse
     {
         try {
-            // Validate file upload
-            $request->validate([
-                'file' => 'required|file|mimes:png,jpg,jpeg|max:10240'
-            ]);
+            // Get file from any of the possible field names
+            $file = $request->file('file') 
+                ?? $request->file('image') 
+                ?? $request->file('upload');
 
-            $file = $request->file('file');
+            if (!$file) {
+                return $this->errorResponse(
+                    'File is required. Please upload an image file (PNG, JPG, JPEG) using the "file", "image", or "upload" field in multipart/form-data format.',
+                    400
+                );
+            }
+
+            // Validate file type and size
+            $mimeTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+            $maxSize = 10240; // 10MB in KB
+            
+            if (!in_array($file->getMimeType(), $mimeTypes)) {
+                return $this->errorResponse(
+                    'Invalid file type. Please upload a PNG, JPG, or JPEG image.',
+                    400
+                );
+            }
+            
+            if ($file->getSize() > ($maxSize * 1024)) {
+                return $this->errorResponse(
+                    'File size exceeds maximum limit of 10MB.',
+                    400
+                );
+            }
 
             // Step 1: Extract VIN from image using OCR
             $vinResult = $this->extractVinFromImage($file);
@@ -258,10 +281,17 @@ class VinDecoderController extends Controller
             return $this->successResponse($filteredData, 'VIN extracted from image and decoded successfully');
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return $this->errorResponse(
-                'Invalid file: ' . implode(', ', $e->errors()['file']),
-                400
-            );
+            // Collect all validation errors
+            $errors = [];
+            foreach ($e->errors() as $field => $fieldErrors) {
+                $errors = array_merge($errors, $fieldErrors);
+            }
+            
+            $errorMessage = !empty($errors) 
+                ? 'Invalid file: ' . implode(', ', $errors)
+                : 'File validation failed. Please ensure you upload a valid image file (PNG, JPG, JPEG) with a maximum size of 10MB.';
+            
+            return $this->errorResponse($errorMessage, 400);
         } catch (VehicleDatabasesException $e) {
             Log::error('VIN OCR and decode failed', [
                 'error' => $e->getMessage(),
