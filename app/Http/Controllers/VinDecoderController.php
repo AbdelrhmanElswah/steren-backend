@@ -243,21 +243,23 @@ class VinDecoderController extends Controller
 
             // Validate the request - require at least one file field
             if (!$fileField) {
-                $debugInfo = [
-                    'message' => 'No file detected in request',
+                $contentType = $request->header('Content-Type', 'not set');
+                $isJson = str_contains($contentType, 'application/json');
+                
+                $errorMessage = $isJson 
+                    ? 'Invalid request format. The request was sent as JSON but files must be uploaded using multipart/form-data. In Postman: 1) Select Body tab, 2) Choose "form-data" (not raw/JSON), 3) Add key "file" with type "File", 4) Select your image file.'
+                    : 'File is required. Please upload an image file (PNG, JPG, JPEG) using the "file", "image", or "upload" field in multipart/form-data format.';
+                
+                Log::warning('OCR file upload failed', [
                     'hasFile_file' => $request->hasFile('file'),
                     'hasFile_image' => $request->hasFile('image'),
                     'hasFile_upload' => $request->hasFile('upload'),
                     'allFiles' => array_keys($request->allFiles()),
-                    'content_type' => $request->header('Content-Type'),
-                ];
+                    'content_type' => $contentType,
+                    'is_json' => $isJson,
+                ]);
                 
-                Log::warning('OCR file upload failed', $debugInfo);
-                
-                return $this->errorResponse(
-                    'File is required. Please upload an image file (PNG, JPG, JPEG) using the "file", "image", or "upload" field in multipart/form-data format. Debug: ' . json_encode($debugInfo),
-                    400
-                );
+                return $this->errorResponse($errorMessage, 400);
             }
 
             // Validate the specific file field that contains the upload
