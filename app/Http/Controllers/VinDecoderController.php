@@ -1322,28 +1322,83 @@ class VinDecoderController extends Controller
         $brandName = $manufacturer ?? $make;
         
         if ($brandName) {
+            // Expanded brand to country mappings
+            // Note: For combined names like "Chevrolet / GMC", check each part
             $countryMappings = [
+                // Japanese brands
                 'Toyota' => 'Japan',
                 'Honda' => 'Japan',
                 'Nissan' => 'Japan',
+                'Mazda' => 'Japan',
+                'Subaru' => 'Japan',
+                'Mitsubishi' => 'Japan',
+                'Suzuki' => 'Japan',
+                'Lexus' => 'Japan',
+                'Acura' => 'Japan',
+                'Infiniti' => 'Japan',
+                // Korean brands
                 'Hyundai' => 'South Korea',
                 'Kia' => 'South Korea',
+                'Genesis' => 'South Korea',
+                // European brands
                 'BMW' => 'Germany',
                 'Mercedes-Benz' => 'Germany',
+                'Mercedes' => 'Germany',
                 'Audi' => 'Germany',
                 'Volkswagen' => 'Germany',
-                'Ford' => 'USA',
-                'Chevrolet' => 'USA',
-                'Cadillac' => 'USA',
-                'Tesla' => 'USA',
+                'Porsche' => 'Germany',
                 'Ferrari' => 'Italy',
                 'Lamborghini' => 'Italy',
                 'Maserati' => 'Italy',
+                'Fiat' => 'Italy',
+                'Alfa Romeo' => 'Italy',
                 'Volvo' => 'Sweden',
                 'Saab' => 'Sweden',
+                'Renault' => 'France',
+                'Peugeot' => 'France',
+                'Citroën' => 'France',
+                'Citroen' => 'France',
+                'Jaguar' => 'UK',
+                'Land Rover' => 'UK',
+                'Mini' => 'UK',
+                'Bentley' => 'UK',
+                'Rolls-Royce' => 'UK',
+                // American brands
+                'Ford' => 'USA',
+                'Chevrolet' => 'USA',
+                'GMC' => 'USA',
+                'Cadillac' => 'USA',
+                'Buick' => 'USA',
+                'Chrysler' => 'USA',
+                'Dodge' => 'USA',
+                'Jeep' => 'USA',
+                'Ram' => 'USA',
+                'Tesla' => 'USA',
+                'Lincoln' => 'USA',
+                // Canadian brands (if any in your system)
+                // Chinese brands
+                'BYD' => 'China',
+                'Chery' => 'China',
+                'Geely' => 'China',
+                'Foton' => 'China',
+                'Great Wall' => 'China',
+                'MG' => 'China',
             ];
 
+            // Try exact match first
             $country = $countryMappings[$brandName] ?? null;
+            
+            // If not found, try partial match (for combined names like "Chevrolet / GMC")
+            if (!$country) {
+                foreach ($countryMappings as $mappedBrand => $mappedCountry) {
+                    // Check if the brand name contains the mapped brand (case-insensitive)
+                    if (stripos($brandName, $mappedBrand) !== false) {
+                        $country = $mappedCountry;
+                        break;
+                    }
+                }
+            }
+            
             if ($country) {
                 return $this->mapCountryToGccImport($country);
             }
@@ -1370,6 +1425,7 @@ class VinDecoderController extends Controller
 
     /**
      * Map country to GCC/Import format
+     * Returns: GCC, American, Canadian, European, Japanese, Korean, Chinese, or Others
      */
     private function mapCountryToGccImport(?string $country): ?string
     {
@@ -1377,27 +1433,104 @@ class VinDecoderController extends Controller
             return null;
         }
 
+        $countryLower = strtolower($country);
+
         // GCC countries
         $gccCountries = [
-            'United Arab Emirates',
-            'UAE',
-            'Saudi Arabia',
-            'Kuwait',
-            'Qatar',
-            'Bahrain',
-            'Oman',
-            'GCC',
+            'united arab emirates',
+            'uae',
+            'saudi arabia',
+            'kuwait',
+            'qatar',
+            'bahrain',
+            'oman',
+            'gcc',
         ];
-
-        $countryLower = strtolower($country);
         foreach ($gccCountries as $gccCountry) {
-            if (strpos($countryLower, strtolower($gccCountry)) !== false) {
+            if (strpos($countryLower, $gccCountry) !== false) {
                 return 'GCC';
             }
         }
 
-        // Everything else is Import
-        return 'Import';
+        // American countries (USA)
+        $americanCountries = [
+            'usa',
+            'united states',
+            'united states of america',
+            'us',
+        ];
+        foreach ($americanCountries as $americanCountry) {
+            if (strpos($countryLower, $americanCountry) !== false) {
+                return 'American';
+            }
+        }
+
+        // Canadian
+        if (strpos($countryLower, 'canada') !== false || strpos($countryLower, 'canadian') !== false) {
+            return 'Canadian';
+        }
+
+        // Japanese
+        if (strpos($countryLower, 'japan') !== false || strpos($countryLower, 'japanese') !== false) {
+            return 'Japanese';
+        }
+
+        // Korean
+        if (strpos($countryLower, 'korea') !== false || strpos($countryLower, 'korean') !== false || strpos($countryLower, 'south korea') !== false) {
+            return 'Korean';
+        }
+
+        // Chinese
+        if (strpos($countryLower, 'china') !== false || strpos($countryLower, 'chinese') !== false || strpos($countryLower, 'prc') !== false) {
+            return 'Chinese';
+        }
+
+        // European countries
+        $europeanCountries = [
+            'germany',
+            'german',
+            'france',
+            'french',
+            'italy',
+            'italian',
+            'uk',
+            'united kingdom',
+            'britain',
+            'british',
+            'england',
+            'sweden',
+            'swedish',
+            'spain',
+            'spanish',
+            'netherlands',
+            'dutch',
+            'belgium',
+            'belgian',
+            'austria',
+            'austrian',
+            'switzerland',
+            'swiss',
+            'poland',
+            'polish',
+            'portugal',
+            'portuguese',
+            'greece',
+            'greek',
+            'czech',
+            'romania',
+            'hungary',
+            'denmark',
+            'norway',
+            'finland',
+        ];
+        foreach ($europeanCountries as $europeanCountry) {
+            if (strpos($countryLower, $europeanCountry) !== false) {
+                return 'European';
+            }
+        }
+
+        // Everything else
+        return 'Others';
     }
 
     /**
