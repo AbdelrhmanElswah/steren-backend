@@ -1291,10 +1291,14 @@ class VinDecoderController extends Controller
             return $this->mapCountryToGccImport($country);
         }
 
-        // Try to determine from manufacturer
+        // Try to determine from manufacturer or make (API provides 'make' not 'manufacturer')
         $manufacturer = $additionalData['manufacturer'] ?? $basicData['manufacturer'] ?? $vinData['manufacturer'] ?? null;
+        $make = $additionalData['make'] ?? $basicData['make'] ?? $vinData['make'] ?? null;
         
-        if ($manufacturer) {
+        // Use make if manufacturer is not available
+        $brandName = $manufacturer ?? $make;
+        
+        if ($brandName) {
             $countryMappings = [
                 'Toyota' => 'Japan',
                 'Honda' => 'Japan',
@@ -1316,7 +1320,7 @@ class VinDecoderController extends Controller
                 'Saab' => 'Sweden',
             ];
 
-            $country = $countryMappings[$manufacturer] ?? null;
+            $country = $countryMappings[$brandName] ?? null;
             if ($country) {
                 return $this->mapCountryToGccImport($country);
             }
