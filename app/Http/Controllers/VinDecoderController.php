@@ -353,9 +353,32 @@ class VinDecoderController extends Controller
             $tempPath = $file->store('temp', 'local');
             $fullPath = Storage::disk('local')->path($tempPath);
 
-            $response = Http::timeout(30)
-                ->attach('file', fopen($fullPath, 'r'), $file->getClientOriginalName())
-                ->post(config('services.vin_ocr.base_url') . '/vin-ocr');
+            // Use vehicledatabases OCR endpoint (matches VinOcrAuctionController approach)
+            $baseUrl = 'https://api.vehicledatabases.com';
+            $ocrEndpoint = config('services.vehicledatabases.ocr_endpoint');
+            
+            // If ocr_endpoint is configured, use it; otherwise construct from baseUrl
+            $endpoint = $ocrEndpoint ?: ($baseUrl . '/vin-ocr');
+            $apiKey = config('services.vehicledatabases.api_key');
+            $timeout = config('services.vehicledatabases.timeout', 30);
+            
+            Log::info('Calling OCR service', [
+                'endpoint' => $endpoint,
+                'has_api_key' => !empty($apiKey),
+                'timeout' => $timeout,
+            ]);
+            
+            // Build HTTP request with timeout
+            $http = Http::timeout($timeout);
+            
+            // Add API key header if available
+            if ($apiKey) {
+                $http = $http->withHeaders(['X-API-Key' => $apiKey]);
+            }
+            
+            // Make the request with file attachment
+            $response = $http->attach('file', fopen($fullPath, 'r'), $file->getClientOriginalName())
+                ->post($endpoint);
 
             // Clean up temp file
             Storage::disk('local')->delete($tempPath);
@@ -363,7 +386,7 @@ class VinDecoderController extends Controller
             if ($response->successful()) {
                 $data = $response->json();
 
-                if ($data['status'] === 'success' && isset($data['data']['vin'])) {
+                if (isset($data['status']) && $data['status'] === 'success' && isset($data['data']['vin'])) {
                     return [
                         'success' => true,
                         'data' => [
@@ -371,21 +394,42 @@ class VinDecoderController extends Controller
                         ]
                     ];
                 }
+                
+                Log::warning('OCR service returned unexpected response', [
+                    'status_code' => $response->status(),
+                    'response' => $response->json(),
+                ]);
+            } else {
+                Log::warning('OCR service request failed', [
+                    'status_code' => $response->status(),
+                    'response_body' => $response->body(),
+                ]);
             }
 
             return [
                 'success' => false,
-                'message' => 'Failed to extract VIN from image'
+                'message' => 'Failed to extract VIN from image. Status: ' . $response->status()
             ];
 
-        } catch (\Exception $e) {
-            Log::error('VIN OCR extraction failed', [
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('VIN OCR extraction failed - connection error', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return [
                 'success' => false,
-                'message' => 'OCR service unavailable'
+                'message' => 'OCR service unavailable: Cannot connect to OCR service. Please check your network connection and API endpoint configuration.'
+            ];
+        } catch (\Exception $e) {
+            Log::error('VIN OCR extraction failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'OCR service unavailable: ' . $e->getMessage()
             ];
         }
     }
