@@ -371,8 +371,14 @@ class VinDecoderController extends Controller
         $year = $additionalData['year'] ?? $basicData['year'] ?? $vinData['year'] ?? null;
         $style = $additionalData['style'] ?? $basicData['style'] ?? '';
 
-        // Parse style to extract trim and other details
-        $trim = $this->extractTrimFromStyle($style);
+        // Extract trim directly from additional_data first (more accurate)
+        $trim = $additionalData['trim'] ?? $basicData['trim'] ?? null;
+        
+        // If trim not found, parse from style string
+        if (empty($trim)) {
+            $trim = $this->extractTrimFromStyle($style);
+        }
+        
         $bodyType = $this->extractBodyTypeFromStyle($style);
         $transmission = $this->extractTransmissionFromStyle($style);
         $driveType = $this->extractDriveTypeFromStyle($style);
@@ -383,10 +389,19 @@ class VinDecoderController extends Controller
         $vehicle = $additionalData['vehicle'] ?? $basicData['vehicle'] ?? [];
         $standardFeatures = $basicData['standard_features'] ?? [];
 
-        // Extract other information from either structure
-        $fuelType = $basicData['fuel_type'] ?? null;
+        // Extract fuel type from specifications (more accurate source)
+        $fuelType = $this->extractFuelTypeFromSpecifications($specifications);
+        if (!$fuelType) {
+            $fuelType = $basicData['fuel_type'] ?? null;
+        }
+        
+        // Extract cylinders from specifications (more accurate source)
+        $cylinders = $this->extractCylindersFromSpecifications($specifications);
+        if (!$cylinders) {
+            $cylinders = $basicData['cylinders'] ?? $vinData['cylinders'] ?? null;
+        }
+        
         $exteriorColor = $basicData['exterior_color'] ?? $vinData['exterior_color'] ?? null;
-        $cylinders = $basicData['cylinders'] ?? $vinData['cylinders'] ?? null;
         $doors = $basicData['doors'] ?? $vinData['doors'] ?? null;
         $engineSize = $basicData['engine_size'] ?? $vinData['engine_size'] ?? null;
         $seatingCapacity = $basicData['seating_capacity'] ?? $vinData['seating_capacity'] ?? null;
@@ -489,8 +504,8 @@ class VinDecoderController extends Controller
             $response['general']['model_year'] = (string)$year;
         }
         
-        if (!empty($trim)) {
-            $response['general']['trim'] = $trim;
+        if ($trim !== null && $trim !== '') {
+            $response['general']['trim'] = (string)$trim;
         }
         
         if (!empty($gccImport)) {
@@ -754,7 +769,7 @@ class VinDecoderController extends Controller
     }
 
     /**
-     * Get brand logo URL
+     * Get brand logo URL from media
      */
     private function getBrandLogoUrl(?int $brandId): ?string
     {
@@ -763,7 +778,30 @@ class VinDecoderController extends Controller
         }
 
         $brand = \App\Models\CarBrand::with('media')->find($brandId);
-        return $brand && $brand->media ? $brand->media->url : null;
+        
+        if (!$brand || !$brand->media) {
+            return null;
+        }
+
+        $media = $brand->media;
+        
+        // Use the media's temporary URL accessor (expires in 60 minutes)
+        // This uses the getMediaTemporaryUrlAttribute from the Media model
+        if (isset($media->media_temporary_url) && $media->media_temporary_url) {
+            return $media->media_temporary_url;
+        }
+        
+        // Fallback: generate temporary URL directly if accessor doesn't work
+        if ($media->path_file_name) {
+            return $media->getS3TemporaryUrl($media->path_file_name, 60);
+        }
+        
+        // Last resort: try public URL
+        if ($media->path_file_name) {
+            return $media->getS3PublicUrl($media->path_file_name);
+        }
+        
+        return null;
     }
 
     /**
@@ -1213,6 +1251,41 @@ class VinDecoderController extends Controller
     }
 
     /**
+     * Extract fuel type from specifications
+     */
+    private function extractFuelTypeFromSpecifications(array $specifications): ?string
+    {
+        foreach ($specifications as $spec) {
+            if (isset($spec['fuel']['type'])) {
+                $fuelType = $spec['fuel']['type'];
+                if (!empty($fuelType)) {
+                    return $fuelType;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extract cylinders from specifications
+     */
+    private function extractCylindersFromSpecifications(array $specifications): ?int
+    {
+        foreach ($specifications as $spec) {
+            if (isset($spec['engine']['cylinders_configuration'])) {
+                $cylinderConfig = $spec['engine']['cylinders_configuration'];
+                if (!empty($cylinderConfig)) {
+                    // Extract number from configurations like "I4", "V6", "V8", "I6", etc.
+                    if (preg_match('/(\d+)/', $cylinderConfig, $matches)) {
+                        return (int) $matches[1];
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Extract GCC/Import information
      */
     private function extractGccImport(array $vinData, array $additionalData, array $basicData): ?string
@@ -1226,7 +1299,8 @@ class VinDecoderController extends Controller
                   $vinData['manufacturer_country'] ?? null;
 
         if ($country) {
-            return $country;
+            // Map to GCC/Import format
+            return $this->mapCountryToGccImport($country);
         }
 
         // Try to determine from manufacturer
@@ -1254,10 +1328,54 @@ class VinDecoderController extends Controller
                 'Saab' => 'Sweden',
             ];
 
-            return $countryMappings[$manufacturer] ?? $manufacturer;
+            $country = $countryMappings[$manufacturer] ?? null;
+            if ($country) {
+                return $this->mapCountryToGccImport($country);
+            }
+        }
+
+        // Try to extract from VIN pattern or plant code
+        $vin = $basicData['vin'] ?? $vinData['vin'] ?? '';
+        $plant = $additionalData['plant'] ?? $basicData['plant'] ?? null;
+        
+        if ($plant) {
+            // Plant codes might indicate GCC spec if from GCC region
+            // This would need additional logic based on your requirements
         }
 
         return null;
+    }
+
+    /**
+     * Map country to GCC/Import format
+     */
+    private function mapCountryToGccImport(?string $country): ?string
+    {
+        if (!$country) {
+            return null;
+        }
+
+        // GCC countries
+        $gccCountries = [
+            'United Arab Emirates',
+            'UAE',
+            'Saudi Arabia',
+            'Kuwait',
+            'Qatar',
+            'Bahrain',
+            'Oman',
+            'GCC',
+        ];
+
+        $countryLower = strtolower($country);
+        foreach ($gccCountries as $gccCountry) {
+            if (strpos($countryLower, strtolower($gccCountry)) !== false) {
+                return 'GCC';
+            }
+        }
+
+        // Everything else is Import
+        return 'Import';
     }
 
     /**
