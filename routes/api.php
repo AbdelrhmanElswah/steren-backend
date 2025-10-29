@@ -251,6 +251,8 @@ Route::prefix('options')->group(function () {
     
     // Status options
     Route::get('/statuses', [App\Http\Controllers\Data\StatusOptionsController::class, 'getStatusOptions']);
+    Route::get('/statuses/dealer-application', [App\Http\Controllers\Data\StatusOptionsController::class, 'getDealerApplicationStatusOptions']);
+    Route::get('/statuses/all-types', [App\Http\Controllers\Data\StatusOptionsController::class, 'getAllStatusTypes']);
     
     // Promotion options
     Route::get('/promotion-types', [App\Http\Controllers\Data\PromotionTypeOptionsController::class, 'getPromotionTypeOptions']);

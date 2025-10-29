@@ -375,8 +375,8 @@ class VinDecoderController extends Controller
         $standardFeatures = $basicData['standard_features'] ?? [];
         
         // Extract other information from either structure
-        $fuelType = $basicData['fuel_type'] ?? 'Gasoline'; // Default to Gasoline for non-Tesla
-        $exteriorColor = $basicData['exterior_color'] ?? $vinData['exterior_color'] ?? '';
+        $fuelType = $basicData['fuel_type'] ?? null;
+        $exteriorColor = $basicData['exterior_color'] ?? $vinData['exterior_color'] ?? null;
         $cylinders = $basicData['cylinders'] ?? $vinData['cylinders'] ?? null;
         $doors = $basicData['doors'] ?? $vinData['doors'] ?? null;
         $engineSize = $basicData['engine_size'] ?? $vinData['engine_size'] ?? null;
@@ -428,11 +428,6 @@ class VinDecoderController extends Controller
         // Extract seating capacity from specifications
         $seatingCapacity = $this->extractSeatingCapacity($specifications) ?? $seatingCapacity;
         
-        // Fallback: For sedans, default to 5 passengers if not found
-        if ($seatingCapacity === null && $bodyType && strtolower($bodyType) === 'sedan') {
-            $seatingCapacity = 5;
-        }
-        
         // Extract doors from vehicle data or basic data
         $doors = $vehicle['doors'] ?? $basicData['doors'] ?? $doors;
         
@@ -454,49 +449,113 @@ class VinDecoderController extends Controller
         // Map drive type to match your system
         $mappedDriveType = $this->mapDriveType($driveType);
 
-        return [
-            // Frontend required fields (matching CarSummaryPage)
-            'vinNumber' => $basicData['vin'] ?? $vinData['vin'] ?? '',
-            'selectedCar' => trim($make . ' ' . $model . ' ' . $trim),
-            'brandLogoUrl' => $this->getBrandLogoUrl($brandId),
-            'year' => $year ? (string)$year : '',
-            'selectedBodyType' => $bodyTypeName,
-            'gccImport' => 'UAE', // Default value, can be modified
-            'fuelType' => $mappedFuelType,
-            'cylinders' => $cylinders ? (string)$cylinders : '',
-            'transmission' => $mappedTransmission,
-            'exteriorColor' => $exteriorColor,
-            'driveType' => $mappedDriveType,
-            'engineSize' => $engineSize ? (float)$engineSize : null,
-            'seatingCapacity' => $seatingCapacity,
-            'brandId' => $brandId ? (string)$brandId : null,
-            'modelId' => $modelId ? (string)$modelId : null,
-            
-            // Additional useful fields
-            'bodyTypeName' => $bodyTypeName,
-            'availableColors' => $availableColors,
-            'doors' => $doors,
-            'trim' => $trim,
-            'condition' => 'used', // Default to used, can be modified
-            'mileage' => 0, // Default value, needs to be entered manually
-            'mileageType' => 'KM', // Default to KM
-            'plateStatus' => 'available', // Default value
-            'warranty' => 'no', // Default value
-            'hasWarranty' => false,
-            'isInspected' => false,
-            'isVerified' => false,
-            'hasInsurance' => false,
-            'originCountry' => 'UAE', // Default value
-            'engineType' => $vinData['engine_type'] ?? 'Gasoline',
-            'horsepower' => $horsepower,
-            'torque' => $torque,
-            'acceleration_0_100' => $acceleration,
-            'topSpeed' => $topSpeed,
-            'mileageEfficiency' => $mileageEfficiency,
-            'length' => $length,
-            'width' => $width,
-            'height' => $height,
-        ];
+        // Build response with only actual API values (no defaults)
+        $response = [];
+        
+        // Only include fields that have actual values from the API
+        if (!empty($basicData['vin'] ?? $vinData['vin'])) {
+            $response['vinNumber'] = $basicData['vin'] ?? $vinData['vin'];
+        }
+        
+        if (!empty($make) && !empty($model)) {
+            $response['selectedCar'] = trim($make . ' ' . $model . ' ' . $trim);
+        }
+        
+        if ($brandId) {
+            $response['brandLogoUrl'] = $this->getBrandLogoUrl($brandId);
+            $response['brandId'] = (string)$brandId;
+        }
+        
+        if ($year) {
+            $response['year'] = (string)$year;
+        }
+        
+        if (!empty($bodyTypeName)) {
+            $response['selectedBodyType'] = $bodyTypeName;
+            $response['bodyTypeName'] = $bodyTypeName;
+        }
+        
+        if (!empty($mappedFuelType)) {
+            $response['fuelType'] = $mappedFuelType;
+        }
+        
+        if ($cylinders) {
+            $response['cylinders'] = (string)$cylinders;
+        }
+        
+        if (!empty($mappedTransmission)) {
+            $response['transmission'] = $mappedTransmission;
+        }
+        
+        if (!empty($exteriorColor)) {
+            $response['exteriorColor'] = $exteriorColor;
+        }
+        
+        if (!empty($mappedDriveType)) {
+            $response['driveType'] = $mappedDriveType;
+        }
+        
+        if ($engineSize) {
+            $response['engineSize'] = (float)$engineSize;
+        }
+        
+        if ($seatingCapacity) {
+            $response['seatingCapacity'] = $seatingCapacity;
+        }
+        
+        if ($modelId) {
+            $response['modelId'] = (string)$modelId;
+        }
+        
+        if (!empty($availableColors)) {
+            $response['availableColors'] = $availableColors;
+        }
+        
+        if ($doors) {
+            $response['doors'] = $doors;
+        }
+        
+        if (!empty($trim)) {
+            $response['trim'] = $trim;
+        }
+        
+        if (!empty($vinData['engine_type'])) {
+            $response['engineType'] = $vinData['engine_type'];
+        }
+        
+        if ($horsepower) {
+            $response['horsepower'] = $horsepower;
+        }
+        
+        if ($torque) {
+            $response['torque'] = $torque;
+        }
+        
+        if ($acceleration) {
+            $response['acceleration_0_100'] = $acceleration;
+        }
+        
+        if ($topSpeed) {
+            $response['topSpeed'] = $topSpeed;
+        }
+        
+        if ($mileageEfficiency) {
+            $response['mileageEfficiency'] = $mileageEfficiency;
+        }
+        
+        if ($length) {
+            $response['length'] = $length;
+        }
+        
+        if ($width) {
+            $response['width'] = $width;
+        }
+        
+        if ($height) {
+            $response['height'] = $height;
+        }
+        
+        return $response;
     }
 
     /**
@@ -515,34 +574,34 @@ class VinDecoderController extends Controller
     /**
      * Extract body type from style string
      */
-    private function extractBodyTypeFromStyle(string $style): string
+    private function extractBodyTypeFromStyle(string $style): ?string
     {
         if (preg_match('/(Sedan|SUV|Hatchback|Coupe|Convertible|Truck|Van)/i', $style, $matches)) {
             return $matches[1];
         }
-        return 'Sedan'; // Default
+        return null;
     }
 
     /**
      * Extract transmission from style string
      */
-    private function extractTransmissionFromStyle(string $style): string
+    private function extractTransmissionFromStyle(string $style): ?string
     {
         if (preg_match('/(Automatic|Manual|CVT)/i', $style, $matches)) {
             return $matches[1];
         }
-        return 'Automatic'; // Default
+        return null;
     }
 
     /**
      * Extract drive type from style string
      */
-    private function extractDriveTypeFromStyle(string $style): string
+    private function extractDriveTypeFromStyle(string $style): ?string
     {
         if (preg_match('/(Rear-Wheel Drive|Front-Wheel Drive|All-Wheel Drive|Four-Wheel Drive)/i', $style, $matches)) {
             return $matches[1];
         }
-        return 'Rear-Wheel Drive'; // Default
+        return null;
     }
 
     /**
