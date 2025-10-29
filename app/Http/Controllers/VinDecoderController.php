@@ -215,35 +215,58 @@ class VinDecoderController extends Controller
     public function ocrAndDecodeForListing(Request $request): JsonResponse
     {
         try {
-            // Get file from any of the possible field names
-            $file = $request->file('file') 
-                ?? $request->file('image') 
-                ?? $request->file('upload');
+            // Debug logging
+            Log::info('OCR Request', [
+                'hasFile_file' => $request->hasFile('file'),
+                'hasFile_image' => $request->hasFile('image'),
+                'hasFile_upload' => $request->hasFile('upload'),
+                'allFiles' => array_keys($request->allFiles()),
+                'content_type' => $request->header('Content-Type'),
+                'all_input_keys' => array_keys($request->all()),
+            ]);
 
-            if (!$file) {
+            // Determine which field has the file
+            $fileField = null;
+            if ($request->hasFile('file')) {
+                $fileField = 'file';
+            } elseif ($request->hasFile('image')) {
+                $fileField = 'image';
+            } elseif ($request->hasFile('upload')) {
+                $fileField = 'upload';
+            }
+
+            // Also check allFiles() as a fallback in case hasFile() isn't working
+            $allFiles = $request->allFiles();
+            if (!$fileField && !empty($allFiles)) {
+                $fileField = array_key_first($allFiles);
+            }
+
+            // Validate the request - require at least one file field
+            if (!$fileField) {
+                $debugInfo = [
+                    'message' => 'No file detected in request',
+                    'hasFile_file' => $request->hasFile('file'),
+                    'hasFile_image' => $request->hasFile('image'),
+                    'hasFile_upload' => $request->hasFile('upload'),
+                    'allFiles' => array_keys($request->allFiles()),
+                    'content_type' => $request->header('Content-Type'),
+                ];
+                
+                Log::warning('OCR file upload failed', $debugInfo);
+                
                 return $this->errorResponse(
-                    'File is required. Please upload an image file (PNG, JPG, JPEG) using the "file", "image", or "upload" field in multipart/form-data format.',
+                    'File is required. Please upload an image file (PNG, JPG, JPEG) using the "file", "image", or "upload" field in multipart/form-data format. Debug: ' . json_encode($debugInfo),
                     400
                 );
             }
 
-            // Validate file type and size
-            $mimeTypes = ['image/png', 'image/jpeg', 'image/jpg'];
-            $maxSize = 10240; // 10MB in KB
-            
-            if (!in_array($file->getMimeType(), $mimeTypes)) {
-                return $this->errorResponse(
-                    'Invalid file type. Please upload a PNG, JPG, or JPEG image.',
-                    400
-                );
-            }
-            
-            if ($file->getSize() > ($maxSize * 1024)) {
-                return $this->errorResponse(
-                    'File size exceeds maximum limit of 10MB.',
-                    400
-                );
-            }
+            // Validate the specific file field that contains the upload
+            $request->validate([
+                $fileField => 'required|file|mimes:png,jpg,jpeg|max:10240'
+            ]);
+
+            // Get the validated file
+            $file = $request->file($fileField);
 
             // Step 1: Extract VIN from image using OCR
             $vinResult = $this->extractVinFromImage($file);
