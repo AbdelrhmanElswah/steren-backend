@@ -53,27 +53,27 @@ class CarListingCreateRequest extends FormRequest
                     if ($this->user()) {
                         $user = $this->user();
                         $maxPhotos = 5; // Default for non-dealers
-                        
+
                         // Basic dealers get limited photos
                         if ($user->isDealer()) {
                             $maxPhotos = 10; // Basic dealers get 10 photos
                         }
-                        
+
                         // Verified dealers get more photos
                         if ($user->isVerifiedDealer()) {
                             $maxPhotos = 20; // Verified dealers get 20 photos
                         }
-                        
+
                         if (count($value) > $maxPhotos) {
-                            $fail("You can upload a maximum of {$maxPhotos} photos per listing. " . 
-                                  ($user->isDealer() && !$user->isVerifiedDealer() ? 
+                            $fail("You can upload a maximum of {$maxPhotos} photos per listing. " .
+                                  ($user->isDealer() && !$user->isVerifiedDealer() ?
                                    "Complete your dealer verification to upload more photos." : ""));
                         }
                     }
                 }
             ],
             'images.*' => 'string', // base64 encoded images
-            
+
             // Inspection data
             'inspection' => 'nullable|array',
             'inspection.right_side' => 'nullable|boolean',
@@ -81,7 +81,7 @@ class CarListingCreateRequest extends FormRequest
             'inspection.roof' => 'nullable|boolean',
             'inspection.front' => 'nullable|boolean',
             'inspection.back' => 'nullable|boolean',
-            
+
             // Inspection file
             'inspection_file' => 'nullable|string', // base64 encoded PDF data
             'inspection_file_name' => 'nullable|string|max:255',

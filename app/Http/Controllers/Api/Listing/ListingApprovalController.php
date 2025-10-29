@@ -50,7 +50,7 @@ class ListingApprovalController extends Controller
     {
         try {
             $validated = $request->validated();
-            
+
             $result = $this->listingApprovalService->rejectListing(
                 $listingId,
                 $validated['reason'] ?? 'No reason provided',
@@ -96,13 +96,17 @@ class ListingApprovalController extends Controller
     public function approveByOdooId(Request $request, string $odooId)
     {
         try {
-            $result = $this->listingApprovalService->approveListingByOdooId(
-                $odooId,
-                $request->user()?->id
-            );
+            $listing = CarListing::where('odoo_id', $odooId)->firstOrFail();
 
-            // Send notification to user about listing approval
-            $this->sendListingStatusNotification($odooId, 'approved');
+            $result = $listing->update([
+                'operator_decision' => 'approved',
+                'status' => 'active',
+                'approved_by' => $request->user()?->id,
+                'approved_at' => now(),
+                'rejection_reason' => null,
+                'rejected_by' => null,
+                'rejected_at' => null
+            ]);
 
             return $this->successResponse($result, 'Listing approved successfully');
 
@@ -118,7 +122,7 @@ class ListingApprovalController extends Controller
     {
         try {
             $reason = $request->input('reason') ?? $request->input('rejection_reason') ?? 'No reason provided';
-            
+
             $result = $this->listingApprovalService->rejectListingByOdooId(
                 $odooId,
                 $reason,
@@ -126,7 +130,7 @@ class ListingApprovalController extends Controller
             );
 
             // Send notification to user about listing rejection
-            $this->sendListingStatusNotification($odooId, 'rejected', $reason);
+            // $this->sendListingStatusNotification($odooId, 'rejected', $reason);
 
             return $this->successResponse($result, 'Listing rejected successfully');
 
@@ -192,15 +196,15 @@ class ListingApprovalController extends Controller
                 [
                     'name' => $notificationTypeName,
                     'display_name' => $status === 'approved' ? 'Listing Approved' : 'Listing Rejected',
-                    'description' => $status === 'approved' 
-                        ? 'Your car listing has been approved and is now live' 
+                    'description' => $status === 'approved'
+                        ? 'Your car listing has been approved and is now live'
                         : 'Your car listing has been rejected',
                     'icon' => $status === 'approved' ? 'check_circle' : 'cancel',
                     'color' => $status === 'approved' ? '#10B981' : '#EF4444',
                     'is_active' => true,
                     'default_template' => [
-                        'title' => $status === 'approved' 
-                            ? 'Listing Approved!' 
+                        'title' => $status === 'approved'
+                            ? 'Listing Approved!'
                             : 'Listing Rejected',
                         'body' => $status === 'approved'
                             ? 'Your {{car_name}} listing is now live and visible to buyers.'
@@ -218,10 +222,10 @@ class ListingApprovalController extends Controller
             }
 
             // Prepare notification data
-            $title = $status === 'approved' 
-                ? 'Listing Approved!' 
+            $title = $status === 'approved'
+                ? 'Listing Approved!'
                 : 'Listing Rejected';
-            
+
             $body = $status === 'approved'
                 ? "Great news! Your {$carName} listing has been approved and is now live. Buyers can now see and contact you about this vehicle."
                 : "Your {$carName} listing was not approved. Reason: " . ($reason ?? 'No reason provided') . ". Please review the requirements and submit a new listing.";
