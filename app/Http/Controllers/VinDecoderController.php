@@ -448,78 +448,107 @@ class VinDecoderController extends Controller
         // Map drive type to match your system
         $mappedDriveType = $this->mapDriveType($driveType);
 
-        // Build response with only actual API values (no defaults)
-        $response = [];
+        // Extract transmission gears from specifications or features
+        $transmissionGears = $this->extractTransmissionGears($specifications, $standardFeatures);
         
-        // Only include fields that have actual values from the API
+        // Extract GCC/Import information
+        $gccImport = $this->extractGccImport($vinData, $additionalData, $basicData);
+        
+        // Extract damaged parts information
+        $damagedParts = $this->extractDamagedParts($vinData, $additionalData, $basicData);
+        
+        // Build response structured to match UI design
+        $response = [
+            'general' => [],
+            'engine' => []
+        ];
+        
+        // General Section
         if (!empty($basicData['vin'] ?? $vinData['vin'])) {
-            $response['vinNumber'] = $basicData['vin'] ?? $vinData['vin'];
+            $response['general']['vin'] = $basicData['vin'] ?? $vinData['vin'];
         }
         
-        if (!empty($make) && !empty($model)) {
-            $response['selectedCar'] = trim($make . ' ' . $model . ' ' . $trim);
+        if (!empty($make)) {
+            $response['general']['make'] = $make;
         }
         
-        if ($brandId) {
-            $response['brandLogoUrl'] = $this->getBrandLogoUrl($brandId);
-            $response['brandId'] = (string)$brandId;
+        if (!empty($model)) {
+            $response['general']['model'] = $model;
         }
         
         if ($year) {
-            $response['year'] = (string)$year;
+            $response['general']['model_year'] = (string)$year;
+        }
+        
+        if (!empty($trim)) {
+            $response['general']['trim'] = $trim;
+        }
+        
+        if (!empty($gccImport)) {
+            $response['general']['gcc_import'] = $gccImport;
         }
         
         if (!empty($bodyTypeName)) {
-            $response['selectedBodyType'] = $bodyTypeName;
-            $response['bodyTypeName'] = $bodyTypeName;
-        }
-        
-        if (!empty($mappedFuelType)) {
-            $response['fuelType'] = $mappedFuelType;
-        }
-        
-        if ($cylinders) {
-            $response['cylinders'] = (string)$cylinders;
-        }
-        
-        if (!empty($mappedTransmission)) {
-            $response['transmission'] = $mappedTransmission;
-        }
-        
-        if (!empty($exteriorColor)) {
-            $response['exteriorColor'] = $exteriorColor;
-        }
-        
-        if (!empty($mappedDriveType)) {
-            $response['driveType'] = $mappedDriveType;
-        }
-        
-        if ($engineSize) {
-            $response['engineSize'] = (float)$engineSize;
+            $response['general']['body_type'] = $bodyTypeName;
         }
         
         if ($seatingCapacity) {
-            $response['seatingCapacity'] = $seatingCapacity;
+            $response['general']['seating_capacity'] = $seatingCapacity;
+        }
+        
+        if ($damagedParts !== null) {
+            $response['general']['damaged_parts'] = $damagedParts;
+        }
+        
+        // Engine Section
+        if (!empty($mappedFuelType)) {
+            $response['engine']['engine_type'] = $mappedFuelType;
+        }
+        
+        if ($engineSize) {
+            $response['engine']['engine_size'] = $engineSize;
+        }
+        
+        if ($cylinders) {
+            $response['engine']['engine_cylinders'] = $cylinders;
+        }
+        
+        if (!empty($mappedTransmission)) {
+            $response['engine']['transmission'] = $mappedTransmission;
+        }
+        
+        if ($transmissionGears) {
+            $response['engine']['transmission_gears'] = $transmissionGears;
+        }
+        
+        if (!empty($mappedDriveType)) {
+            $response['engine']['drive_type'] = $mappedDriveType;
+        }
+        
+        if (!empty($mappedFuelType)) {
+            $response['engine']['fuel_type'] = $mappedFuelType;
+        }
+        
+        // Additional fields for backward compatibility and extended data
+        if ($brandId) {
+            $response['brand_id'] = (string)$brandId;
+            $response['brand_logo_url'] = $this->getBrandLogoUrl($brandId);
         }
         
         if ($modelId) {
-            $response['modelId'] = (string)$modelId;
+            $response['model_id'] = (string)$modelId;
+        }
+        
+        if (!empty($exteriorColor)) {
+            $response['exterior_color'] = $exteriorColor;
         }
         
         if (!empty($availableColors)) {
-            $response['availableColors'] = $availableColors;
+            $response['available_colors'] = $availableColors;
         }
         
         if ($doors) {
             $response['doors'] = $doors;
-        }
-        
-        if (!empty($trim)) {
-            $response['trim'] = $trim;
-        }
-        
-        if (!empty($vinData['engine_type'])) {
-            $response['engineType'] = $vinData['engine_type'];
         }
         
         if ($horsepower) {
@@ -535,11 +564,11 @@ class VinDecoderController extends Controller
         }
         
         if ($topSpeed) {
-            $response['topSpeed'] = $topSpeed;
+            $response['top_speed'] = $topSpeed;
         }
         
         if ($mileageEfficiency) {
-            $response['mileageEfficiency'] = $mileageEfficiency;
+            $response['mileage_efficiency'] = $mileageEfficiency;
         }
         
         if ($length) {
@@ -1141,6 +1170,123 @@ class VinDecoderController extends Controller
             if (preg_match('/(\d+)\s*seat/i', $option['description'] ?? '', $matches)) {
                 return (int) $matches[1];
             }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract transmission gears from specifications and features
+     */
+    private function extractTransmissionGears(array $specifications, array $standardFeatures): ?int
+    {
+        // Look for transmission gears in specifications
+        foreach ($specifications as $spec) {
+            if (isset($spec['transmission']['number_of_speeds'])) {
+                $gears = $spec['transmission']['number_of_speeds'];
+                if (!empty($gears)) {
+                    return (int) $gears;
+                }
+            }
+        }
+
+        // Look for transmission gears in standard features
+        foreach ($standardFeatures as $feature) {
+            if (preg_match('/(\d+)\s*speed\s*(automatic|manual|cvt)/i', $feature, $matches)) {
+                return (int) $matches[1];
+            }
+            if (preg_match('/(\d+)\s*gear/i', $feature, $matches)) {
+                return (int) $matches[1];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract GCC/Import information
+     */
+    private function extractGccImport(array $vinData, array $additionalData, array $basicData): ?string
+    {
+        // Try to get country of origin from various sources
+        $country = $additionalData['country_of_origin'] ?? 
+                  $basicData['country_of_origin'] ?? 
+                  $vinData['country_of_origin'] ?? 
+                  $additionalData['manufacturer_country'] ?? 
+                  $basicData['manufacturer_country'] ?? 
+                  $vinData['manufacturer_country'] ?? null;
+
+        if ($country) {
+            return $country;
+        }
+
+        // Try to determine from manufacturer
+        $manufacturer = $additionalData['manufacturer'] ?? $basicData['manufacturer'] ?? $vinData['manufacturer'] ?? null;
+        
+        if ($manufacturer) {
+            $countryMappings = [
+                'Toyota' => 'Japan',
+                'Honda' => 'Japan',
+                'Nissan' => 'Japan',
+                'Hyundai' => 'South Korea',
+                'Kia' => 'South Korea',
+                'BMW' => 'Germany',
+                'Mercedes-Benz' => 'Germany',
+                'Audi' => 'Germany',
+                'Volkswagen' => 'Germany',
+                'Ford' => 'USA',
+                'Chevrolet' => 'USA',
+                'Cadillac' => 'USA',
+                'Tesla' => 'USA',
+                'Ferrari' => 'Italy',
+                'Lamborghini' => 'Italy',
+                'Maserati' => 'Italy',
+                'Volvo' => 'Sweden',
+                'Saab' => 'Sweden',
+            ];
+
+            return $countryMappings[$manufacturer] ?? $manufacturer;
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract damaged parts information
+     */
+    private function extractDamagedParts(array $vinData, array $additionalData, array $basicData): ?int
+    {
+        // Look for damage information in various sources
+        $damageInfo = $additionalData['damage'] ?? 
+                     $basicData['damage'] ?? 
+                     $vinData['damage'] ?? 
+                     $additionalData['accident_history'] ?? 
+                     $basicData['accident_history'] ?? 
+                     $vinData['accident_history'] ?? null;
+
+        if ($damageInfo) {
+            if (is_array($damageInfo)) {
+                // Count damaged parts if it's an array
+                return count($damageInfo);
+            } elseif (is_string($damageInfo)) {
+                // Try to extract number from damage description
+                if (preg_match('/(\d+)\s*(damaged|parts?|areas?)/i', $damageInfo, $matches)) {
+                    return (int) $matches[1];
+                }
+                // If there's any damage mentioned, assume at least 1 part
+                return 1;
+            } elseif (is_numeric($damageInfo)) {
+                return (int) $damageInfo;
+            }
+        }
+
+        // Check for accident history
+        $accidentHistory = $additionalData['accident_count'] ?? 
+                          $basicData['accident_count'] ?? 
+                          $vinData['accident_count'] ?? null;
+
+        if ($accidentHistory && is_numeric($accidentHistory)) {
+            return (int) $accidentHistory;
         }
 
         return null;
