@@ -368,16 +368,20 @@ class VinDecoderController extends Controller
                 'timeout' => $timeout,
             ]);
             
-            // Build HTTP request with timeout
-            $http = Http::timeout($timeout);
+            // Build HTTP request with timeout and authentication (matches VehicleDatabasesService)
+            $headers = [
+                'Accept' => 'application/json',
+            ];
             
-            // Add API key header if available
+            // Add API key header if available (using x-AuthKey like VehicleDatabasesService)
             if ($apiKey) {
-                $http = $http->withHeaders(['X-API-Key' => $apiKey]);
+                $headers['x-AuthKey'] = $apiKey;
             }
             
-            // Make the request with file attachment
-            $response = $http->attach('file', fopen($fullPath, 'r'), $file->getClientOriginalName())
+            // Make the request with file attachment and headers
+            $response = Http::timeout($timeout)
+                ->withHeaders($headers)
+                ->attach('file', fopen($fullPath, 'r'), $file->getClientOriginalName())
                 ->post($endpoint);
 
             // Clean up temp file
