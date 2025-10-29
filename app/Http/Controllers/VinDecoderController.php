@@ -552,12 +552,7 @@ class VinDecoderController extends Controller
         
         // Additional fields for backward compatibility and extended data
         if ($brandId) {
-            $response['brand_id'] = (string)$brandId;
             $response['brand_logo_url'] = $this->getBrandLogoUrl($brandId);
-        }
-        
-        if ($modelId) {
-            $response['model_id'] = (string)$modelId;
         }
         
         if (!empty($exteriorColor)) {
