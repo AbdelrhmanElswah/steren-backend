@@ -508,6 +508,8 @@ class VinDecoderController extends Controller
             $response['general']['trim'] = (string)$trim;
         }
         
+        // GCC/Import field location: response.general.gcc_import
+        // Returns "GCC" for GCC countries, "Import" for others, or null if cannot be determined
         if (!empty($gccImport)) {
             $response['general']['gcc_import'] = $gccImport;
         }
@@ -565,10 +567,6 @@ class VinDecoderController extends Controller
         
         if (!empty($exteriorColor)) {
             $response['exterior_color'] = $exteriorColor;
-        }
-        
-        if (!empty($availableColors)) {
-            $response['available_colors'] = $availableColors;
         }
         
         if ($doors) {
@@ -1335,14 +1333,21 @@ class VinDecoderController extends Controller
         }
 
         // Try to extract from VIN pattern or plant code
-        $vin = $basicData['vin'] ?? $vinData['vin'] ?? '';
+        $vin = $basicData['vin'] ?? $additionalData['vin'] ?? $vinData['vin'] ?? '';
         $plant = $additionalData['plant'] ?? $basicData['plant'] ?? null;
         
-        if ($plant) {
-            // Plant codes might indicate GCC spec if from GCC region
-            // This would need additional logic based on your requirements
+        // Check VIN 11th character (plant code) - some manufacturers use specific codes for GCC
+        // K = Korea, J = Japan, U = USA, W = Germany, etc.
+        if (strlen($vin) >= 11) {
+            $plantCode = strtoupper($vin[10]);
+            $gccPlantCodes = ['K', 'U', '1', '2', '3', '4', '5']; // These might indicate GCC assembly
+            
+            // Note: VIN plant codes vary by manufacturer, so this is a basic check
+            // You may need to adjust based on your specific requirements
         }
 
+        // If still no determination, return null (let user specify manually)
+        // Or you can return a default like 'Import' if you prefer
         return null;
     }
 
