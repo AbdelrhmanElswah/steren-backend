@@ -467,8 +467,8 @@ class VinDecoderController extends Controller
         // Map drive type to match your system
         $mappedDriveType = $this->mapDriveType($driveType);
 
-        // Extract transmission gears from specifications or features
-        $transmissionGears = $this->extractTransmissionGears($specifications, $standardFeatures);
+        // Extract transmission gears from data
+        $transmissionGears = $this->extractTransmissionGears($specifications, $standardFeatures, $additionalData, $basicData);
         
         // Extract GCC/Import information
         $gccImport = $this->extractGccImport($vinData, $additionalData, $basicData);
@@ -1234,11 +1234,20 @@ class VinDecoderController extends Controller
     }
 
     /**
-     * Extract transmission gears from specifications and features
+     * Extract transmission gears from data
      */
-    private function extractTransmissionGears(array $specifications, array $standardFeatures): ?int
+    private function extractTransmissionGears(array $specifications, array $standardFeatures, array $additionalData = [], array $basicData = []): ?int
     {
-        // Look for transmission gears in specifications
+        // First, check transmission object directly in additional_data.data.transmission
+        $transmission = $additionalData['transmission'] ?? $basicData['transmission'] ?? null;
+        if ($transmission && isset($transmission['number_of_speeds'])) {
+            $gears = $transmission['number_of_speeds'];
+            if (!empty($gears)) {
+                return (int) $gears;
+            }
+        }
+
+        // Look for transmission gears in specifications array
         foreach ($specifications as $spec) {
             if (isset($spec['transmission']['number_of_speeds'])) {
                 $gears = $spec['transmission']['number_of_speeds'];
@@ -1248,12 +1257,20 @@ class VinDecoderController extends Controller
             }
         }
 
-        // Look for transmission gears in standard features
+        // Look for transmission gears in standard features (pattern matching)
         foreach ($standardFeatures as $feature) {
             if (preg_match('/(\d+)\s*speed\s*(automatic|manual|cvt)/i', $feature, $matches)) {
                 return (int) $matches[1];
             }
             if (preg_match('/(\d+)\s*gear/i', $feature, $matches)) {
+                return (int) $matches[1];
+            }
+        }
+
+        // Try to extract from transmission description
+        if ($transmission && isset($transmission['description'])) {
+            $description = $transmission['description'];
+            if (preg_match('/(\d+)\s*speed/i', $description, $matches)) {
                 return (int) $matches[1];
             }
         }
