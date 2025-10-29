@@ -551,8 +551,14 @@ class VinDecoderController extends Controller
         }
         
         // Additional fields for backward compatibility and extended data
+        // Add brand_id and model_id for internal validation (not exposed in final response)
         if ($brandId) {
+            $response['brand_id'] = (string)$brandId;
             $response['brand_logo_url'] = $this->getBrandLogoUrl($brandId);
+        }
+        
+        if ($modelId) {
+            $response['model_id'] = (string)$modelId;
         }
         
         if (!empty($exteriorColor)) {
@@ -653,21 +659,38 @@ class VinDecoderController extends Controller
             return null;
         }
 
-        // Try exact match first
-        $brand = \App\Models\CarBrand::whereRaw('LOWER(name) = ?', [strtolower($brandName)])->first();
+        // Clean the brand name (trim whitespace)
+        $brandName = trim($brandName);
+        
+        if (empty($brandName)) {
+            return null;
+        }
 
-        if (!$brand) {
-            // Try partial matches for common variations
-            $variations = $this->getBrandVariations($brandName);
-            foreach ($variations as $variation) {
-                $brand = \App\Models\CarBrand::whereRaw('LOWER(name) = ?', [strtolower($variation)])->first();
-                if ($brand) {
-                    break;
+        $normalizedBrandName = strtolower($brandName);
+
+        // Get all brands and match in PHP (handles any whitespace issues)
+        $brands = \App\Models\CarBrand::get(['id', 'name']);
+        
+        foreach ($brands as $brand) {
+            $normalizedDbName = strtolower(trim($brand->name));
+            if ($normalizedDbName === $normalizedBrandName) {
+                return $brand->id;
+            }
+        }
+
+        // If not found, try variations
+        $variations = $this->getBrandVariations($brandName);
+        foreach ($variations as $variation) {
+            $variation = trim($variation);
+            foreach ($brands as $brand) {
+                $normalizedDbName = strtolower(trim($brand->name));
+                if ($normalizedDbName === strtolower($variation)) {
+                    return $brand->id;
                 }
             }
         }
 
-        return $brand ? $brand->id : null;
+        return null;
     }
 
     /**
