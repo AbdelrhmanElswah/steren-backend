@@ -731,8 +731,12 @@ class VinDecoderController extends Controller
     /**
      * Map fuel type to system format
      */
-    private function mapFuelType(string $fuelType): string
+    private function mapFuelType(?string $fuelType): ?string
     {
+        if ($fuelType === null) {
+            return null;
+        }
+
         $mapping = [
             'Electric' => 'Electric',
             'Gasoline' => 'Gasoline',
@@ -749,8 +753,12 @@ class VinDecoderController extends Controller
     /**
      * Map transmission to system format
      */
-    private function mapTransmission(string $transmission): string
+    private function mapTransmission(?string $transmission): ?string
     {
+        if ($transmission === null) {
+            return null;
+        }
+
         $mapping = [
             '1-Speed Automatic' => 'Automatic',
             'Automatic' => 'Automatic',
@@ -765,8 +773,12 @@ class VinDecoderController extends Controller
     /**
      * Map drive type to system format
      */
-    private function mapDriveType(string $driveType): string
+    private function mapDriveType(?string $driveType): ?string
     {
+        if ($driveType === null) {
+            return null;
+        }
+
         $mapping = [
             'Rear-Wheel Drive' => 'RWD',
             'Front-Wheel Drive' => 'FWD',
