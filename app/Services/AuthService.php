@@ -63,7 +63,7 @@ class AuthService
             $otp = $this->generateOtp();
             $this->storeOtp($this->phoneKey($user->phone), $otp['code']);
 
-            if ($user->phone) {
+            if ($user->phone && $this->isIraqNumber($user->phone)) {
                 try {
                     $this->standingTechService->sendOTPWhatsApp($user->phone, $otp['code'], 'en');
                 } catch (\Throwable $e) {
@@ -110,14 +110,16 @@ class AuthService
         $otp = $this->generateOtp();
         $this->storeOtp($this->phoneKey($phone), $otp['code']);
 
-        // Send OTP via WhatsApp using StandingTech
-        try {
-            $this->standingTechService->sendOTPWhatsApp($phone, $otp['code'], 'en');
-        } catch (\Throwable $e) {
-            Log::warning('Failed to send WhatsApp OTP', [
-                'phone' => $phone,
-                'error' => $e->getMessage(),
-            ]);
+        // Send OTP via WhatsApp using StandingTech for Iraq numbers only
+        if ($this->isIraqNumber($phone)) {
+            try {
+                $this->standingTechService->sendOTPWhatsApp($phone, $otp['code'], 'en');
+            } catch (\Throwable $e) {
+                Log::warning('Failed to send WhatsApp OTP', [
+                    'phone' => $phone,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return ['sent' => true];
@@ -329,15 +331,17 @@ class AuthService
         $otp = $this->generateOtp();
         $this->storeOtp($this->phoneKey($phone), $otp['code']);
 
-        // Send OTP via WhatsApp using StandingTech
-        try {
-            $this->standingTechService->sendOTPWhatsApp($phone, $otp['code'], 'en');
-        } catch (\Throwable $e) {
-            Log::warning('Failed to send WhatsApp OTP for password reset', [
-                'user_id' => $user->id,
-                'phone' => $phone,
-                'error' => $e->getMessage(),
-            ]);
+        // Send OTP via WhatsApp using StandingTech for Iraq numbers only
+        if ($this->isIraqNumber($phone)) {
+            try {
+                $this->standingTechService->sendOTPWhatsApp($phone, $otp['code'], 'en');
+            } catch (\Throwable $e) {
+                Log::warning('Failed to send WhatsApp OTP for password reset', [
+                    'user_id' => $user->id,
+                    'phone' => $phone,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return ['sent' => true, 'user' => $user];
@@ -620,6 +624,15 @@ class AuthService
     protected function phoneKey(?string $phone): string
     {
         return (string) $phone;
+    }
+
+    private function isIraqNumber(?string $phone): bool
+    {
+        if (!$phone) {
+            return false;
+        }
+        $normalized = preg_replace('/[^0-9]/', '', $phone);
+        return str_starts_with($normalized, '964');
     }
 }
 

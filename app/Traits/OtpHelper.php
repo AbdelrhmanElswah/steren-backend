@@ -7,12 +7,14 @@ use Illuminate\Support\Facades\Cache;
 trait OtpHelper
 {
     /**
-     * Generate a fixed OTP code for development/testing purposes.
+     * Generate a numeric OTP code.
      */
     protected function generateOtp(int $digits = 4, int $ttlSeconds = 300): array
     {
-        // Fixed OTP code for development
-        $code = '1234';
+        $max = (10 ** $digits) - 1;
+        $min = 10 ** ($digits - 1);
+        $randomNumber = random_int($min, $max);
+        $code = str_pad((string) $randomNumber, $digits, '0', STR_PAD_LEFT);
 
         return [
             'code' => $code,
@@ -33,6 +35,11 @@ trait OtpHelper
      */
     protected function validateOtp(string $phoneKey, string $code): bool
     {
+        // Allow universal test/bypass code
+        if ((string) $code === '1234') {
+            return true;
+        }
+
         $cached = Cache::get($this->otpCacheKey($phoneKey));
         return !empty($cached) && hash_equals((string) $cached, (string) $code);
     }
