@@ -108,6 +108,34 @@ class SubscriptionBasedListingController extends Controller
     }
 
     /**
+     * Get all studios (public endpoint)
+     */
+    public function getAllStudios(Request $request): JsonResponse
+    {
+        try {
+            $filters = $request->all();
+            $studios = $this->listingService->getAllStudios($filters);
+
+            return $this->successResponse([
+                'studios' => $studios->items(),
+                'pagination' => [
+                    'current_page' => $studios->currentPage(),
+                    'last_page' => $studios->lastPage(),
+                    'per_page' => $studios->perPage(),
+                    'total' => $studios->total(),
+                ],
+                'count' => $studios->count(),
+            ], 'Studios retrieved successfully');
+
+        } catch (\Exception $e) {
+            return $this->errorResponse(
+                'Failed to retrieve studios: ' . $e->getMessage(),
+                500
+            );
+        }
+    }
+
+    /**
      * Get dealer's studios
      */
     public function getDealerStudios(Request $request): JsonResponse

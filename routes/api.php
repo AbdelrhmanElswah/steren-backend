@@ -465,6 +465,11 @@ Route::prefix('vin')->group(function () {
     Route::get('/auction/{vin}', [App\Http\Controllers\VinOcrAuctionController::class, 'auctionOnly']);
 });
 
+// Public Studio Routes (no authentication required)
+Route::prefix('studios')->group(function () {
+    Route::get('/', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getAllStudios']);
+});
+
 // Subscription-Based Car Listing Routes
 Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getCarListings']);
