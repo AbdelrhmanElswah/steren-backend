@@ -108,23 +108,54 @@ class SubscriptionBasedListingController extends Controller
     }
 
     /**
-     * Get all studios (public endpoint)
+     * Get all studios (public endpoint) with their car listings
      */
     public function getAllStudios(Request $request): JsonResponse
     {
         try {
-            $filters = $request->all();
-            $studios = $this->listingService->getAllStudios($filters);
+            $studios = $this->listingService->getAllStudios();
+
+            // Format studios with their listings
+            $formattedStudios = $studios->map(function ($studio) {
+                return [
+                    'id' => $studio->id,
+                    'dealer_id' => $studio->dealer_id,
+                    'name' => $studio->name,
+                    'description' => $studio->description,
+                    'address' => $studio->address,
+                    'city_id' => $studio->city_id,
+                    'phone' => $studio->phone,
+                    'email' => $studio->email,
+                    'website' => $studio->website,
+                    'logo_url' => $studio->logo_url,
+                    'cover_image_url' => $studio->cover_image_url,
+                    'is_active' => $studio->is_active,
+                    'is_verified' => $studio->is_verified,
+                    'verification_status' => $studio->verification_status,
+                    'settings' => $studio->settings,
+                    'social_links' => $studio->social_links,
+                    'business_hours' => $studio->business_hours,
+                    'amenities' => $studio->amenities,
+                    'specialties' => $studio->specialties,
+                    'dealer' => $studio->dealer ? [
+                        'id' => $studio->dealer->id,
+                        'name' => $studio->dealer->name,
+                        'email' => $studio->dealer->email,
+                    ] : null,
+                    'city' => $studio->city ? [
+                        'id' => $studio->city->id,
+                        'name' => $studio->city->name,
+                    ] : null,
+                    'car_listings' => CarListingResource::collection($studio->carListings),
+                    'listings_count' => $studio->carListings->count(),
+                    'created_at' => $studio->created_at,
+                    'updated_at' => $studio->updated_at,
+                ];
+            });
 
             return $this->successResponse([
-                'studios' => $studios->items(),
-                'pagination' => [
-                    'current_page' => $studios->currentPage(),
-                    'last_page' => $studios->lastPage(),
-                    'per_page' => $studios->perPage(),
-                    'total' => $studios->total(),
-                ],
-                'count' => $studios->count(),
+                'studios' => $formattedStudios,
+                'count' => $formattedStudios->count(),
             ], 'Studios retrieved successfully');
 
         } catch (\Exception $e) {
