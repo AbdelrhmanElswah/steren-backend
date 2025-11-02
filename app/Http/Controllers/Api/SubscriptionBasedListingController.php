@@ -113,7 +113,8 @@ class SubscriptionBasedListingController extends Controller
     public function getAllStudios(Request $request): JsonResponse
     {
         try {
-            $studios = $this->listingService->getAllStudios();
+            $filters = $request->all();
+            $studios = $this->listingService->getAllStudios($filters);
 
             // Format studios with their listings
             $formattedStudios = $studios->map(function ($studio) {

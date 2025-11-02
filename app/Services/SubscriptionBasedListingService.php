@@ -185,13 +185,28 @@ class SubscriptionBasedListingService
     }
 
     /**
-     * Get all studios (public endpoint)
+     * Get all studios (public endpoint) with their car listings
      */
     public function getAllStudios(array $filters = [])
     {
         $query = DealerStudio::where('is_active', true)
             ->where('is_verified', true)
-            ->with(['dealer', 'city']);
+            ->with([
+                'dealer',
+                'city',
+                'carListings' => function ($query) {
+                    $query->where('status', 'active')
+                        ->with([
+                            'brand:id,name,odoo_id',
+                            'carModel:id,name,car_brand_id',
+                            'bodyType:id,name',
+                            'location:id,name',
+                            'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order'
+                        ])
+                        ->orderBy('is_featured', 'desc')
+                        ->orderBy('created_at', 'desc');
+                }
+            ]);
 
         // Filter by city if provided
         if (isset($filters['city_id'])) {
@@ -225,8 +240,7 @@ class SubscriptionBasedListingService
             $query->orderBy('created_at', 'desc');
         }
 
-        $perPage = $filters['per_page'] ?? 15;
-        return $query->paginate($perPage);
+        return $query->get();
     }
 
     /**

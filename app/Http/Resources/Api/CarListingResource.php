@@ -15,9 +15,13 @@ class CarListingResource extends JsonResource
     public function toArray(Request $request): array
     {
         // Pre-calculate expensive operations
-        $media = $this->whenLoaded('media');
-        $primaryImage = $media ? $media->where('info', 'primary')->first()?->path_file_name : null;
-        $images = $media ? $media->pluck('path_file_name')->toArray() : [];
+        $media = $this->relationLoaded('media') ? $this->media : null;
+        $primaryImage = $media && $media instanceof \Illuminate\Database\Eloquent\Collection 
+            ? $media->where('info', 'primary')->first()?->path_file_name 
+            : null;
+        $images = $media && $media instanceof \Illuminate\Database\Eloquent\Collection 
+            ? $media->pluck('path_file_name')->toArray() 
+            : [];
         
         return [
             'id' => $this->id,
