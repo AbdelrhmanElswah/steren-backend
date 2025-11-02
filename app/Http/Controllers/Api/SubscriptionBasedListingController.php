@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Api\CarListingResource;
 use App\Services\SubscriptionBasedListingService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -32,7 +33,7 @@ class SubscriptionBasedListingController extends Controller
             $listings = $this->listingService->getCarListingsForUser($user, $filters);
 
             return $this->successResponse([
-                'listings' => $listings->items(),
+                'listings' => CarListingResource::collection($listings->items()),
                 'pagination' => [
                     'current_page' => $listings->currentPage(),
                     'last_page' => $listings->lastPage(),
@@ -62,7 +63,7 @@ class SubscriptionBasedListingController extends Controller
             $topPicks = $this->listingService->getTopPicksForUser($user, $limit);
 
             return $this->successResponse([
-                'top_picks' => $topPicks,
+                'top_picks' => CarListingResource::collection($topPicks),
                 'count' => $topPicks->count(),
             ], 'Top picks retrieved successfully');
 
@@ -87,7 +88,7 @@ class SubscriptionBasedListingController extends Controller
             $recommendations = $this->listingService->getYouMayAlsoLikeForUser($user, $listing, $limit);
 
             return $this->successResponse([
-                'recommendations' => $recommendations,
+                'recommendations' => CarListingResource::collection($recommendations),
                 'count' => $recommendations->count(),
                 'original_listing' => [
                     'id' => $listing->id,
@@ -183,7 +184,7 @@ class SubscriptionBasedListingController extends Controller
             $listings = $this->listingService->getCarListingsForDealerStudio($user, $studioId, $filters);
 
             return $this->successResponse([
-                'listings' => $listings->items(),
+                'listings' => CarListingResource::collection($listings->items()),
                 'pagination' => [
                     'current_page' => $listings->currentPage(),
                     'last_page' => $listings->lastPage(),

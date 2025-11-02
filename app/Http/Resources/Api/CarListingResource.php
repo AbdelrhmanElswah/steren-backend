@@ -45,6 +45,20 @@ class CarListingResource extends JsonResource
                 'id' => $this->location?->id,
                 'name' => $this->location?->name,
             ]),
+            'brand' => $this->whenLoaded('brand', [
+                'id' => $this->brand?->id,
+                'name' => $this->brand?->name,
+                'odoo_id' => $this->brand?->odoo_id,
+            ]),
+            'carModel' => $this->whenLoaded('carModel', [
+                'id' => $this->carModel?->id,
+                'name' => $this->carModel?->name,
+                'car_brand_id' => $this->carModel?->car_brand_id,
+            ]),
+            'bodyType' => $this->whenLoaded('bodyType', [
+                'id' => $this->bodyType?->id,
+                'name' => $this->bodyType?->name,
+            ]),
             // Odoo integration data
             'odoo_id' => $this->odoo_id,
             'odoo_listing_id' => $this->odoo_listing_id,
