@@ -185,23 +185,48 @@ class SubscriptionBasedListingService
     }
 
     /**
-     * Get all studios (public endpoint) with their car listings
+     * Get all studios (public endpoint)
      */
-    public function getAllStudios()
+    public function getAllStudios(array $filters = [])
     {
-        return DealerStudio::where('is_active', true)
+        $query = DealerStudio::where('is_active', true)
             ->where('is_verified', true)
-            ->with([
-                'dealer',
-                'city',
-                'carListings' => function ($query) {
-                    $query->where('status', 'active')
-                        ->orderBy('is_featured', 'desc')
-                        ->orderBy('created_at', 'desc');
-                }
-            ])
-            ->orderBy('created_at', 'desc')
-            ->get();
+            ->with(['dealer', 'city']);
+
+        // Filter by city if provided
+        if (isset($filters['city_id'])) {
+            $query->where('city_id', $filters['city_id']);
+        }
+
+        // Filter by verified status (default: only verified)
+        if (isset($filters['verified_only'])) {
+            $query->where('is_verified', $filters['verified_only']);
+        }
+
+        // Sort options
+        if (isset($filters['sort_by'])) {
+            switch ($filters['sort_by']) {
+                case 'newest':
+                    $query->orderBy('created_at', 'desc');
+                    break;
+                case 'oldest':
+                    $query->orderBy('created_at', 'asc');
+                    break;
+                case 'name_asc':
+                    $query->orderBy('name', 'asc');
+                    break;
+                case 'name_desc':
+                    $query->orderBy('name', 'desc');
+                    break;
+                default:
+                    $query->orderBy('created_at', 'desc');
+            }
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $perPage = $filters['per_page'] ?? 15;
+        return $query->paginate($perPage);
     }
 
     /**
