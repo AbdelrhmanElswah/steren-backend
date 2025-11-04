@@ -266,7 +266,7 @@ class SearchService
         }
 
         // Price range filter
-        if (!empty($filters['price_min']) && !empty($filters['price_max'])) {
+        if (isset($filters['price_min']) && isset($filters['price_max'])) {
             $query->whereBetween('price', [$filters['price_min'], $filters['price_max']]);
         }
 
