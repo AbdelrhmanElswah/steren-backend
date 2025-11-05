@@ -158,15 +158,100 @@ class SearchService
     public function getFilterOptions(): array
     {
         return Cache::remember('search_filter_options', 3600, function () {
+            // Get unique conditions
+            $conditions = DB::table('car_conditions')
+                ->select(DB::raw('MIN(id) as id'), 'name', DB::raw('MIN(created_at) as created_at'), DB::raw('MIN(updated_at) as updated_at'))
+                ->groupBy('name')
+                ->orderBy('name')
+                ->get()
+                ->toArray();
+
+            // Get unique fuel types
+            $fuelTypes = DB::table('fuel_types')
+                ->select(DB::raw('MIN(id) as id'), 'name', DB::raw('MIN(created_at) as created_at'), DB::raw('MIN(updated_at) as updated_at'))
+                ->groupBy('name')
+                ->orderBy('name')
+                ->get()
+                ->toArray();
+
+            // Get unique transmissions
+            $transmissions = DB::table('transmissions')
+                ->select(DB::raw('MIN(id) as id'), 'name', DB::raw('MIN(created_at) as created_at'), DB::raw('MIN(updated_at) as updated_at'))
+                ->groupBy('name')
+                ->orderBy('name')
+                ->get()
+                ->toArray();
+
+            // Get unique exterior colors
+            $exteriorColors = DB::table('exterior_colors')
+                ->select(DB::raw('MIN(id) as id'), 'name', DB::raw('MIN(created_at) as created_at'), DB::raw('MIN(updated_at) as updated_at'))
+                ->groupBy('name')
+                ->orderBy('name')
+                ->get()
+                ->toArray();
+
+            // Get unique drive types
+            $driveTypes = DB::table('drive_types')
+                ->select(DB::raw('MIN(id) as id'), 'name', DB::raw('MIN(created_at) as created_at'), DB::raw('MIN(updated_at) as updated_at'))
+                ->groupBy('name')
+                ->orderBy('name')
+                ->get()
+                ->toArray();
+
+            // Get unique cylinders with special sorting (numeric first, then Electric, then Unknown)
+            $cylinders = DB::table('cylinder_options')
+                ->select(DB::raw('MIN(id) as id'), 'name', DB::raw('MIN(created_at) as created_at'), DB::raw('MIN(updated_at) as updated_at'))
+                ->groupBy('name')
+                ->get()
+                ->sortBy(function($item) {
+                    // Sort numerically first, then Electric, then Unknown
+                    if (is_numeric($item->name)) {
+                        return (int)$item->name;
+                    } elseif (strtolower($item->name) === 'electric') {
+                        return 999;
+                    } elseif (strtolower($item->name) === 'unknown') {
+                        return 1000;
+                    } else {
+                        return 998;
+                    }
+                })
+                ->values()
+                ->toArray();
+
+            // Body types with media - get unique IDs first, then load with relationships
+            $bodyTypeIds = DB::table('body_types')
+                ->select(DB::raw('MIN(id) as id'))
+                ->groupBy('name')
+                ->pluck('id')
+                ->toArray();
+            
+            $bodyTypes = BodyType::with(['media'])
+                ->whereIn('id', $bodyTypeIds)
+                ->orderBy('name')
+                ->get()
+                ->toArray();
+
+            // Cities - get unique IDs first, then load
+            $cityIds = DB::table('cities')
+                ->select(DB::raw('MIN(id) as id'))
+                ->groupBy('name')
+                ->pluck('id')
+                ->toArray();
+            
+            $cities = City::whereIn('id', $cityIds)
+                ->orderBy('name')
+                ->get()
+                ->toArray();
+
             return [
-                'conditions' => CarCondition::orderBy('name')->get()->toArray(),
-                'body_types' => BodyType::with(['media'])->orderBy('name')->get()->toArray(),
-                'fuel_types' => FuelType::orderBy('name')->get()->toArray(),
-                'transmissions' => Transmission::orderBy('name')->get()->toArray(),
-                'exterior_colors' => ExteriorColor::orderBy('name')->get()->toArray(),
-                'drive_types' => DriveType::orderBy('name')->get()->toArray(),
-                'cylinders' => CylinderOption::orderBy('name')->get()->toArray(),
-                'cities' => City::orderBy('name')->get()->toArray(),
+                'conditions' => $conditions,
+                'body_types' => $bodyTypes,
+                'fuel_types' => $fuelTypes,
+                'transmissions' => $transmissions,
+                'exterior_colors' => $exteriorColors,
+                'drive_types' => $driveTypes,
+                'cylinders' => $cylinders,
+                'cities' => $cities,
                 'year_range' => [
                     'min' => CarListing::min('year') ?? 1990,
                     'max' => CarListing::max('year') ?? date('Y')
