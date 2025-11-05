@@ -235,21 +235,24 @@ class SearchService
                 ->pluck('id')
                 ->toArray();
             
-            $bodyTypes = BodyType::with(['media'])
+            $bodyTypes = BodyType::with(['medias'])
                 ->whereIn('id', $bodyTypeIds)
                 ->orderBy('name')
                 ->get()
                 ->map(function($item) {
                     $media = null;
-                    if ($item->media) {
+                    // Get the first media (or the one with info='main' if exists)
+                    $mediaItem = $item->medias->firstWhere('info', 'main') ?? $item->medias->first();
+                    
+                    if ($mediaItem) {
                         $media = [
-                            'id' => $item->media->id,
-                            'path_file_name' => $item->media->path_file_name,
-                            'file_type' => $item->media->file_type,
-                            'info' => $item->media->info,
-                            'media_link' => $item->media->media_link ?? null,
-                            'media_temporary_url' => $item->media->media_temporary_url ?? null,
-                            'public_url' => $item->media->public_url ?? null,
+                            'id' => $mediaItem->id,
+                            'path_file_name' => $mediaItem->path_file_name,
+                            'file_type' => $mediaItem->file_type,
+                            'info' => $mediaItem->info,
+                            'media_link' => $mediaItem->media_link ?? null,
+                            'media_temporary_url' => $mediaItem->media_temporary_url ?? null,
+                            'public_url' => $mediaItem->public_url ?? null,
                         ];
                     }
                     
