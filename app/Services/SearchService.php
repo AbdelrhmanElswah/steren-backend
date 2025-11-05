@@ -13,6 +13,7 @@ use App\Models\DriveType;
 use App\Models\City;
 use App\Models\CylinderOption;
 use App\Models\CarCondition;
+use App\Models\ImportType;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 
@@ -158,7 +159,7 @@ class SearchService
     public function getFilterOptions(): array
     {
         // Use a versioned cache key to force refresh after code changes
-        return Cache::remember('search_filter_options_v4', 3600, function () {
+        return Cache::remember('search_filter_options_v5', 3600, function () {
             // Helper to get unique records by name using subquery
             $getUniqueByName = function($tableName) {
                 $ids = DB::table($tableName)
@@ -286,6 +287,21 @@ class SearchService
                 })
                 ->toArray();
 
+            // Get unique import types (GCC/IMPORT)
+            $importTypes = $getUniqueByName('import_types');
+
+            // Warranty options (Yes/No)
+            $warrantyOptions = [
+                ['value' => true, 'label' => 'Yes'],
+                ['value' => false, 'label' => 'No']
+            ];
+
+            // Mileage units (KM/Mile)
+            $mileageUnits = [
+                ['value' => 'km', 'label' => 'KM'],
+                ['value' => 'mile', 'label' => 'Mile']
+            ];
+
             // Calculate ranges from active, non-sold listings only
             $ranges = CarListing::where('status', 'active')
                 ->whereNull('sold_at')
@@ -301,6 +317,9 @@ class SearchService
                 'drive_types' => $driveTypes,
                 'cylinders' => $cylinders,
                 'cities' => $cities,
+                'import_types' => $importTypes,
+                'warranty_options' => $warrantyOptions,
+                'mileage_units' => $mileageUnits,
                 'year_range' => [
                     'min' => $ranges && $ranges->year_min ? (int)$ranges->year_min : null,
                     'max' => $ranges && $ranges->year_max ? (int)$ranges->year_max : null
@@ -465,6 +484,7 @@ class SearchService
             'search_filter_options_v2',
             'search_filter_options_v3',
             'search_filter_options_v4',
+            'search_filter_options_v5',
         ];
 
         foreach ($keys as $key) {
