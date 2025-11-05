@@ -414,19 +414,31 @@ class SearchService
             $query->where('condition_type', $filters['condition']);
         }
 
-        // Year range filter
-        if (!empty($filters['year_from']) && !empty($filters['year_to'])) {
+        // Year range filter - support both individual and range
+        if (isset($filters['year_from']) && isset($filters['year_to'])) {
             $query->whereBetween('year', [$filters['year_from'], $filters['year_to']]);
+        } elseif (isset($filters['year_from'])) {
+            $query->where('year', '>=', $filters['year_from']);
+        } elseif (isset($filters['year_to'])) {
+            $query->where('year', '<=', $filters['year_to']);
         }
 
-        // Price range filter
+        // Price range filter - support both individual and range
         if (isset($filters['price_min']) && isset($filters['price_max'])) {
             $query->whereBetween('price', [$filters['price_min'], $filters['price_max']]);
+        } elseif (isset($filters['price_min'])) {
+            $query->where('price', '>=', $filters['price_min']);
+        } elseif (isset($filters['price_max'])) {
+            $query->where('price', '<=', $filters['price_max']);
         }
 
-        // Mileage range filter
-        if (!empty($filters['mileage_min']) && !empty($filters['mileage_max'])) {
+        // Mileage range filter - support both individual and range
+        if (isset($filters['mileage_min']) && isset($filters['mileage_max'])) {
             $query->whereBetween('mileage', [$filters['mileage_min'], $filters['mileage_max']]);
+        } elseif (isset($filters['mileage_min'])) {
+            $query->where('mileage', '>=', $filters['mileage_min']);
+        } elseif (isset($filters['mileage_max'])) {
+            $query->where('mileage', '<=', $filters['mileage_max']);
         }
 
         // Body type filter
@@ -466,9 +478,19 @@ class SearchService
             });
         }
 
+        // Import type filter (GCC/IMPORT)
+        if (!empty($filters['import_type_id'])) {
+            $query->where('import_type_id', $filters['import_type_id']);
+        }
+
         // Warranty filter
         if (isset($filters['has_warranty'])) {
-            $query->where('has_warranty', $filters['has_warranty']);
+            // Handle both boolean and string values
+            $warrantyValue = $filters['has_warranty'];
+            if (is_string($warrantyValue)) {
+                $warrantyValue = strtolower($warrantyValue) === 'true' || strtolower($warrantyValue) === '1' || strtolower($warrantyValue) === 'yes';
+            }
+            $query->where('has_warranty', $warrantyValue);
         }
 
         // Only active listings

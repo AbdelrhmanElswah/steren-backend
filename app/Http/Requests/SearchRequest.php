@@ -39,6 +39,7 @@ class SearchRequest extends FormRequest
             'drive_type_id' => 'nullable|integer|exists:drive_types,id',
             'cylinder_id' => 'nullable|integer|exists:cylinder_options,id',
             'city_id' => 'nullable|integer|exists:cities,id',
+            'import_type_id' => 'nullable|integer|exists:import_types,id',
             'has_warranty' => 'nullable|boolean',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:100',
