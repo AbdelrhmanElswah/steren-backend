@@ -158,7 +158,7 @@ class SearchService
     public function getFilterOptions(): array
     {
         // Use a versioned cache key to force refresh after code changes
-        return Cache::remember('search_filter_options_v3', 3600, function () {
+        return Cache::remember('search_filter_options_v4', 3600, function () {
             // Helper to get unique records by name using subquery
             $getUniqueByName = function($tableName) {
                 $ids = DB::table($tableName)
@@ -240,13 +240,26 @@ class SearchService
                 ->orderBy('name')
                 ->get()
                 ->map(function($item) {
+                    $media = null;
+                    if ($item->media) {
+                        $media = [
+                            'id' => $item->media->id,
+                            'path_file_name' => $item->media->path_file_name,
+                            'file_type' => $item->media->file_type,
+                            'info' => $item->media->info,
+                            'media_link' => $item->media->media_link ?? null,
+                            'media_temporary_url' => $item->media->media_temporary_url ?? null,
+                            'public_url' => $item->media->public_url ?? null,
+                        ];
+                    }
+                    
                     return [
                         'id' => $item->id,
                         'name' => $item->name,
                         'description' => $item->description,
                         'is_active' => $item->is_active,
                         'odoo_id' => $item->odoo_id,
-                        'media' => $item->media
+                        'media' => $media
                     ];
                 })
                 ->toArray();
@@ -448,6 +461,7 @@ class SearchService
             'search_filter_options',
             'search_filter_options_v2',
             'search_filter_options_v3',
+            'search_filter_options_v4',
         ];
 
         foreach ($keys as $key) {
