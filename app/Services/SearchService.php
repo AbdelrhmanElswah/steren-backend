@@ -200,10 +200,10 @@ class SearchService
                 ->whereIn('id', $cylinderIds)
                 ->get()
                 ->sortBy(function($item) {
-                    // Sort numerically first, then Electric, then Unknown
+                    // Sort numerically first, then Non-Electric, then Unknown
                     if (is_numeric($item->name)) {
                         return (int)$item->name;
-                    } elseif (strtolower($item->name) === 'electric') {
+                    } elseif (strtolower($item->name) === 'non-electric') {
                         return 999;
                     } elseif (strtolower($item->name) === 'unknown') {
                         return 1000;
