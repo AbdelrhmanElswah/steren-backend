@@ -386,101 +386,112 @@ class SearchService
     private function applySearchFilters($query, array $filters): void
     {
         // Text search
-        if (!empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhereHas('brand', function($q) use ($search) {
-                      $q->where('name', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('carModel', function($q) use ($search) {
-                      $q->where('name', 'like', "%{$search}%");
-                  });
-            });
+        if (isset($filters['search']) && $filters['search'] !== '' && $filters['search'] !== null) {
+            $search = trim($filters['search']);
+            if (!empty($search)) {
+                $query->where(function($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%")
+                      ->orWhereHas('brand', function($q) use ($search) {
+                          $q->where('name', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('carModel', function($q) use ($search) {
+                          $q->where('name', 'like', "%{$search}%");
+                      });
+                });
+            }
         }
 
         // Brand filter
-        if (!empty($filters['brand_id'])) {
-            $query->where('car_brand_id', $filters['brand_id']);
+        if (isset($filters['brand_id']) && $filters['brand_id'] !== '' && $filters['brand_id'] !== null) {
+            $query->where('car_brand_id', (int)$filters['brand_id']);
         }
 
         // Model filter
-        if (!empty($filters['model_id'])) {
-            $query->where('car_model_id', $filters['model_id']);
+        if (isset($filters['model_id']) && $filters['model_id'] !== '' && $filters['model_id'] !== null) {
+            $query->where('car_model_id', (int)$filters['model_id']);
         }
 
         // Condition filter
-        if (!empty($filters['condition'])) {
+        if (isset($filters['condition']) && $filters['condition'] !== '' && $filters['condition'] !== null) {
             $query->where('condition_type', $filters['condition']);
         }
 
         // Year range filter - support both individual and range
-        if (isset($filters['year_from']) && isset($filters['year_to'])) {
-            $query->whereBetween('year', [$filters['year_from'], $filters['year_to']]);
-        } elseif (isset($filters['year_from'])) {
-            $query->where('year', '>=', $filters['year_from']);
-        } elseif (isset($filters['year_to'])) {
-            $query->where('year', '<=', $filters['year_to']);
+        $yearFrom = isset($filters['year_from']) && $filters['year_from'] !== '' && $filters['year_from'] !== null ? (int)$filters['year_from'] : null;
+        $yearTo = isset($filters['year_to']) && $filters['year_to'] !== '' && $filters['year_to'] !== null ? (int)$filters['year_to'] : null;
+        
+        if ($yearFrom !== null && $yearTo !== null) {
+            $query->whereBetween('year', [$yearFrom, $yearTo]);
+        } elseif ($yearFrom !== null) {
+            $query->where('year', '>=', $yearFrom);
+        } elseif ($yearTo !== null) {
+            $query->where('year', '<=', $yearTo);
         }
 
         // Price range filter - support both individual and range
-        if (isset($filters['price_min']) && isset($filters['price_max'])) {
-            $query->whereBetween('price', [$filters['price_min'], $filters['price_max']]);
-        } elseif (isset($filters['price_min'])) {
-            $query->where('price', '>=', $filters['price_min']);
-        } elseif (isset($filters['price_max'])) {
-            $query->where('price', '<=', $filters['price_max']);
+        $priceMin = isset($filters['price_min']) && $filters['price_min'] !== '' && $filters['price_min'] !== null ? (float)$filters['price_min'] : null;
+        $priceMax = isset($filters['price_max']) && $filters['price_max'] !== '' && $filters['price_max'] !== null ? (float)$filters['price_max'] : null;
+        
+        if ($priceMin !== null && $priceMax !== null) {
+            $query->whereBetween('price', [$priceMin, $priceMax]);
+        } elseif ($priceMin !== null) {
+            $query->where('price', '>=', $priceMin);
+        } elseif ($priceMax !== null) {
+            $query->where('price', '<=', $priceMax);
         }
 
-        // Mileage range filter - support both individual and range
-        if (isset($filters['mileage_min']) && isset($filters['mileage_max'])) {
-            $query->whereBetween('mileage', [$filters['mileage_min'], $filters['mileage_max']]);
-        } elseif (isset($filters['mileage_min'])) {
-            $query->where('mileage', '>=', $filters['mileage_min']);
-        } elseif (isset($filters['mileage_max'])) {
-            $query->where('mileage', '<=', $filters['mileage_max']);
+        // Mileage range filter - support both individual and range (FIXED: properly handle 0 values)
+        $mileageMin = isset($filters['mileage_min']) && $filters['mileage_min'] !== '' && $filters['mileage_min'] !== null ? (int)$filters['mileage_min'] : null;
+        $mileageMax = isset($filters['mileage_max']) && $filters['mileage_max'] !== '' && $filters['mileage_max'] !== null ? (int)$filters['mileage_max'] : null;
+        
+        if ($mileageMin !== null && $mileageMax !== null) {
+            $query->whereBetween('mileage', [$mileageMin, $mileageMax]);
+        } elseif ($mileageMin !== null) {
+            $query->where('mileage', '>=', $mileageMin);
+        } elseif ($mileageMax !== null) {
+            $query->where('mileage', '<=', $mileageMax);
         }
 
         // Body type filter
-        if (!empty($filters['body_type_id'])) {
-            $query->where('car_body_type_id', $filters['body_type_id']);
+        if (isset($filters['body_type_id']) && $filters['body_type_id'] !== '' && $filters['body_type_id'] !== null) {
+            $query->where('car_body_type_id', (int)$filters['body_type_id']);
         }
 
         // Fuel type filter
-        if (!empty($filters['fuel_type_id'])) {
-            $query->where('fuel_type_id', $filters['fuel_type_id']);
+        if (isset($filters['fuel_type_id']) && $filters['fuel_type_id'] !== '' && $filters['fuel_type_id'] !== null) {
+            $query->where('fuel_type_id', (int)$filters['fuel_type_id']);
         }
 
         // Transmission filter
-        if (!empty($filters['transmission_id'])) {
-            $query->where('transmission_id', $filters['transmission_id']);
+        if (isset($filters['transmission_id']) && $filters['transmission_id'] !== '' && $filters['transmission_id'] !== null) {
+            $query->where('transmission_id', (int)$filters['transmission_id']);
         }
 
         // Exterior color filter
-        if (!empty($filters['exterior_color_id'])) {
-            $query->where('exterior_color_id', $filters['exterior_color_id']);
+        if (isset($filters['exterior_color_id']) && $filters['exterior_color_id'] !== '' && $filters['exterior_color_id'] !== null) {
+            $query->where('exterior_color_id', (int)$filters['exterior_color_id']);
         }
 
         // Drive type filter
-        if (!empty($filters['drive_type_id'])) {
-            $query->where('drive_type_id', $filters['drive_type_id']);
+        if (isset($filters['drive_type_id']) && $filters['drive_type_id'] !== '' && $filters['drive_type_id'] !== null) {
+            $query->where('drive_type_id', (int)$filters['drive_type_id']);
         }
 
         // Cylinder filter
-        if (!empty($filters['cylinder_id'])) {
-            $query->where('cylinder_id', $filters['cylinder_id']);
+        if (isset($filters['cylinder_id']) && $filters['cylinder_id'] !== '' && $filters['cylinder_id'] !== null) {
+            $query->where('cylinder_id', (int)$filters['cylinder_id']);
         }
 
         // City filter
-        if (!empty($filters['city_id'])) {
+        if (isset($filters['city_id']) && $filters['city_id'] !== '' && $filters['city_id'] !== null) {
             $query->whereHas('location', function($q) use ($filters) {
-                $q->where('city_id', $filters['city_id']);
+                $q->where('city_id', (int)$filters['city_id']);
             });
         }
 
         // Import type filter (GCC/IMPORT)
-        if (!empty($filters['import_type_id'])) {
-            $query->where('import_type_id', $filters['import_type_id']);
+        if (isset($filters['import_type_id']) && $filters['import_type_id'] !== '' && $filters['import_type_id'] !== null) {
+            $query->where('import_type_id', (int)$filters['import_type_id']);
         }
 
         // Warranty filter
