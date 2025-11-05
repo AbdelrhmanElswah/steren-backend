@@ -165,7 +165,7 @@ class SearchService
                 'transmissions' => Transmission::orderBy('name')->get()->toArray(),
                 'exterior_colors' => ExteriorColor::orderBy('name')->get()->toArray(),
                 'drive_types' => DriveType::orderBy('name')->get()->toArray(),
-                'cylinders' => CylinderOption::orderBy('value')->get()->toArray(),
+                'cylinders' => CylinderOption::orderBy('name')->get()->toArray(),
                 'cities' => City::orderBy('name')->get()->toArray(),
                 'year_range' => [
                     'min' => CarListing::min('year') ?? 1990,
