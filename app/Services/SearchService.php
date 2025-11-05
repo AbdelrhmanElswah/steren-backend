@@ -158,7 +158,7 @@ class SearchService
     public function getFilterOptions(): array
     {
         // Use a versioned cache key to force refresh after code changes
-        return Cache::remember('search_filter_options_v2', 3600, function () {
+        return Cache::remember('search_filter_options_v3', 3600, function () {
             // Helper to get unique records by name using subquery
             $getUniqueByName = function($tableName) {
                 $ids = DB::table($tableName)
@@ -168,9 +168,16 @@ class SearchService
                     ->toArray();
                 
                 return DB::table($tableName)
+                    ->select('id', 'name')
                     ->whereIn('id', $ids)
                     ->orderBy('name')
                     ->get()
+                    ->map(function($item) {
+                        return [
+                            'id' => $item->id,
+                            'name' => $item->name
+                        ];
+                    })
                     ->toArray();
             };
 
@@ -197,6 +204,7 @@ class SearchService
                 ->toArray();
             
             $cylinders = DB::table('cylinder_options')
+                ->select('id', 'name')
                 ->whereIn('id', $cylinderIds)
                 ->get()
                 ->sortBy(function($item) {
@@ -212,6 +220,12 @@ class SearchService
                     }
                 })
                 ->values()
+                ->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->name
+                    ];
+                })
                 ->toArray();
 
             // Body types with media - get unique IDs first, then load with relationships
@@ -225,6 +239,17 @@ class SearchService
                 ->whereIn('id', $bodyTypeIds)
                 ->orderBy('name')
                 ->get()
+                ->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'description' => $item->description,
+                        'is_active' => $item->is_active,
+                        'odoo_id' => $item->odoo_id,
+                        'deleted_at' => $item->deleted_at,
+                        'media' => $item->media
+                    ];
+                })
                 ->toArray();
 
             // Cities - get unique IDs first, then load
@@ -237,7 +262,21 @@ class SearchService
             $cities = City::whereIn('id', $cityIds)
                 ->orderBy('name')
                 ->get()
+                ->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'odoo_id' => $item->odoo_id,
+                        'name' => $item->name,
+                        'deleted_at' => $item->deleted_at
+                    ];
+                })
                 ->toArray();
+
+            // Calculate ranges from active, non-sold listings only
+            $ranges = CarListing::where('status', 'active')
+                ->whereNull('sold_at')
+                ->selectRaw('MIN(year) as year_min, MAX(year) as year_max, MIN(price) as price_min, MAX(price) as price_max, MIN(mileage) as mileage_min, MAX(mileage) as mileage_max')
+                ->first();
 
             return [
                 'conditions' => $conditions,
@@ -249,16 +288,16 @@ class SearchService
                 'cylinders' => $cylinders,
                 'cities' => $cities,
                 'year_range' => [
-                    'min' => CarListing::min('year') ?? 1990,
-                    'max' => CarListing::max('year') ?? date('Y')
+                    'min' => $ranges && $ranges->year_min ? (int)$ranges->year_min : null,
+                    'max' => $ranges && $ranges->year_max ? (int)$ranges->year_max : null
                 ],
                 'price_range' => [
-                    'min' => CarListing::min('price') ?? 0,
-                    'max' => CarListing::max('price') ?? 100000
+                    'min' => $ranges && $ranges->price_min ? (float)$ranges->price_min : null,
+                    'max' => $ranges && $ranges->price_max ? (float)$ranges->price_max : null
                 ],
                 'mileage_range' => [
-                    'min' => CarListing::min('mileage') ?? 0,
-                    'max' => CarListing::max('mileage') ?? 500000
+                    'min' => $ranges && $ranges->mileage_min ? (int)$ranges->mileage_min : null,
+                    'max' => $ranges && $ranges->mileage_max ? (int)$ranges->mileage_max : null
                 ]
             ];
         });
@@ -410,6 +449,7 @@ class SearchService
         $keys = [
             'search_filter_options',
             'search_filter_options_v2',
+            'search_filter_options_v3',
         ];
 
         foreach ($keys as $key) {
