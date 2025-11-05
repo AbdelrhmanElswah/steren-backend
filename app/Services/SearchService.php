@@ -246,7 +246,6 @@ class SearchService
                         'description' => $item->description,
                         'is_active' => $item->is_active,
                         'odoo_id' => $item->odoo_id,
-                        'deleted_at' => $item->deleted_at,
                         'media' => $item->media
                     ];
                 })
@@ -266,8 +265,7 @@ class SearchService
                     return [
                         'id' => $item->id,
                         'odoo_id' => $item->odoo_id,
-                        'name' => $item->name,
-                        'deleted_at' => $item->deleted_at
+                        'name' => $item->name
                     ];
                 })
                 ->toArray();
