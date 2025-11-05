@@ -159,7 +159,7 @@ class SearchService
     public function getFilterOptions(): array
     {
         // Use a versioned cache key to force refresh after code changes
-        return Cache::remember('search_filter_options_v5', 3600, function () {
+        return Cache::remember('search_filter_options_v6', 3600, function () {
             // Helper to get unique records by name using subquery
             $getUniqueByName = function($tableName) {
                 $ids = DB::table($tableName)
@@ -236,25 +236,42 @@ class SearchService
                 ->pluck('id')
                 ->toArray();
             
-            $bodyTypes = BodyType::with(['medias'])
+            $bodyTypes = BodyType::with(['medias', 'media'])
                 ->whereIn('id', $bodyTypeIds)
                 ->orderBy('name')
                 ->get()
                 ->map(function($item) {
                     $media = null;
-                    // Get the first media (or the one with info='main' if exists)
-                    $mediaItem = $item->medias->firstWhere('info', 'main') ?? $item->medias->first();
                     
-                    if ($mediaItem) {
+                    // First try the singular media relationship (with info='main' filter)
+                    if ($item->relationLoaded('media') && $item->media) {
+                        $mediaRelation = $item->media;
                         $media = [
-                            'id' => $mediaItem->id,
-                            'path_file_name' => $mediaItem->path_file_name,
-                            'file_type' => $mediaItem->file_type,
-                            'info' => $mediaItem->info,
-                            'media_link' => $mediaItem->media_link ?? null,
-                            'media_temporary_url' => $mediaItem->media_temporary_url ?? null,
-                            'public_url' => $mediaItem->public_url ?? null,
+                            'id' => $mediaRelation->id,
+                            'path_file_name' => $mediaRelation->path_file_name,
+                            'file_type' => $mediaRelation->file_type,
+                            'info' => $mediaRelation->info,
+                            'media_link' => $mediaRelation->media_link ?? null,
+                            'media_temporary_url' => $mediaRelation->media_temporary_url ?? null,
+                            'public_url' => $mediaRelation->public_url ?? null,
                         ];
+                    }
+                    // Fallback to medias collection if singular media is not available
+                    elseif ($item->relationLoaded('medias') && $item->medias && $item->medias->isNotEmpty()) {
+                        // Get the first media (or the one with info='main' if exists)
+                        $mediaItem = $item->medias->firstWhere('info', 'main') ?? $item->medias->first();
+                        
+                        if ($mediaItem) {
+                            $media = [
+                                'id' => $mediaItem->id,
+                                'path_file_name' => $mediaItem->path_file_name,
+                                'file_type' => $mediaItem->file_type,
+                                'info' => $mediaItem->info,
+                                'media_link' => $mediaItem->media_link ?? null,
+                                'media_temporary_url' => $mediaItem->media_temporary_url ?? null,
+                                'public_url' => $mediaItem->public_url ?? null,
+                            ];
+                        }
                     }
                     
                     return [
@@ -485,6 +502,7 @@ class SearchService
             'search_filter_options_v3',
             'search_filter_options_v4',
             'search_filter_options_v5',
+            'search_filter_options_v6',
         ];
 
         foreach ($keys as $key) {
