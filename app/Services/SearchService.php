@@ -157,51 +157,47 @@ class SearchService
      */
     public function getFilterOptions(): array
     {
-        return Cache::remember('search_filter_options', 3600, function () {
+        // Use a versioned cache key to force refresh after code changes
+        return Cache::remember('search_filter_options_v2', 3600, function () {
+            // Helper to get unique records by name using subquery
+            $getUniqueByName = function($tableName) {
+                $ids = DB::table($tableName)
+                    ->select(DB::raw('MIN(id) as id'))
+                    ->groupBy('name')
+                    ->pluck('id')
+                    ->toArray();
+                
+                return DB::table($tableName)
+                    ->whereIn('id', $ids)
+                    ->orderBy('name')
+                    ->get()
+                    ->toArray();
+            };
+
             // Get unique conditions
-            $conditions = DB::table('car_conditions')
-                ->select(DB::raw('MIN(id) as id'), 'name', DB::raw('MIN(created_at) as created_at'), DB::raw('MIN(updated_at) as updated_at'))
-                ->groupBy('name')
-                ->orderBy('name')
-                ->get()
-                ->toArray();
+            $conditions = $getUniqueByName('car_conditions');
 
             // Get unique fuel types
-            $fuelTypes = DB::table('fuel_types')
-                ->select(DB::raw('MIN(id) as id'), 'name', DB::raw('MIN(created_at) as created_at'), DB::raw('MIN(updated_at) as updated_at'))
-                ->groupBy('name')
-                ->orderBy('name')
-                ->get()
-                ->toArray();
+            $fuelTypes = $getUniqueByName('fuel_types');
 
             // Get unique transmissions
-            $transmissions = DB::table('transmissions')
-                ->select(DB::raw('MIN(id) as id'), 'name', DB::raw('MIN(created_at) as created_at'), DB::raw('MIN(updated_at) as updated_at'))
-                ->groupBy('name')
-                ->orderBy('name')
-                ->get()
-                ->toArray();
+            $transmissions = $getUniqueByName('transmissions');
 
             // Get unique exterior colors
-            $exteriorColors = DB::table('exterior_colors')
-                ->select(DB::raw('MIN(id) as id'), 'name', DB::raw('MIN(created_at) as created_at'), DB::raw('MIN(updated_at) as updated_at'))
-                ->groupBy('name')
-                ->orderBy('name')
-                ->get()
-                ->toArray();
+            $exteriorColors = $getUniqueByName('exterior_colors');
 
             // Get unique drive types
-            $driveTypes = DB::table('drive_types')
-                ->select(DB::raw('MIN(id) as id'), 'name', DB::raw('MIN(created_at) as created_at'), DB::raw('MIN(updated_at) as updated_at'))
-                ->groupBy('name')
-                ->orderBy('name')
-                ->get()
-                ->toArray();
+            $driveTypes = $getUniqueByName('drive_types');
 
-            // Get unique cylinders with special sorting (numeric first, then Electric, then Unknown)
-            $cylinders = DB::table('cylinder_options')
-                ->select(DB::raw('MIN(id) as id'), 'name', DB::raw('MIN(created_at) as created_at'), DB::raw('MIN(updated_at) as updated_at'))
+            // Get unique cylinders with special sorting
+            $cylinderIds = DB::table('cylinder_options')
+                ->select(DB::raw('MIN(id) as id'))
                 ->groupBy('name')
+                ->pluck('id')
+                ->toArray();
+            
+            $cylinders = DB::table('cylinder_options')
+                ->whereIn('id', $cylinderIds)
                 ->get()
                 ->sortBy(function($item) {
                     // Sort numerically first, then Electric, then Unknown
@@ -411,18 +407,17 @@ class SearchService
      */
     public function clearSearchCache(): void
     {
-        $patterns = [
-            'search_brands_models_*',
-            'brand_suggestions_*',
-            'recent_searches_*',
-            'sponsored_listings_*',
-            'all_brands_with_counts',
+        $keys = [
             'search_filter_options',
-            'search_listings_*'
+            'search_filter_options_v2',
         ];
 
-        foreach ($patterns as $pattern) {
-            Cache::flush();
+        foreach ($keys as $key) {
+            Cache::forget($key);
         }
+
+        // Note: Cache::flush() clears all cache, which may be too aggressive
+        // Individual cache keys are handled above, pattern-based clearing
+        // would require a cache driver that supports tag-based clearing
     }
 }
