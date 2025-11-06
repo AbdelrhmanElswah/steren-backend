@@ -484,9 +484,16 @@ class SearchService
 
         // City filter
         if (isset($filters['city_id']) && $filters['city_id'] !== '' && $filters['city_id'] !== null) {
-            $query->whereHas('location', function($q) use ($filters) {
-                $q->where('city_id', (int)$filters['city_id']);
-            });
+            $cityId = (int)$filters['city_id'];
+            $city = City::find($cityId);
+            
+            if ($city) {
+                // Filter by matching location name with city name
+                // Since locations are created with the same name as cities
+                $query->whereHas('location', function($q) use ($city) {
+                    $q->where('name', $city->name);
+                });
+            }
         }
 
         // Import type filter (GCC/IMPORT)
