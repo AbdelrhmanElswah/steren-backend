@@ -412,8 +412,8 @@ class SearchService
         }
 
         // Condition filter
-        if (isset($filters['condition']) && $filters['condition'] !== '' && $filters['condition'] !== null) {
-            $query->where('condition_type', $filters['condition']);
+        if (isset($filters['condition_id']) && $filters['condition_id'] !== '' && $filters['condition_id'] !== null) {
+            $query->where('car_condition_id', (int)$filters['condition_id']);
         }
 
         // Year range filter - support both individual and range
