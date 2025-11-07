@@ -413,7 +413,20 @@ class SearchService
 
         // Condition filter
         if (isset($filters['condition_id']) && $filters['condition_id'] !== '' && $filters['condition_id'] !== null) {
-            $query->where('car_condition_id', (int)$filters['condition_id']);
+            $conditionId = (int)$filters['condition_id'];
+            $condition = CarCondition::find($conditionId);
+
+            if ($condition) {
+                $conditionName = strtolower($condition->name);
+
+                $query->where(function($q) use ($conditionId, $conditionName) {
+                    $q->where('car_condition_id', $conditionId)
+                      ->orWhere(function($legacyQuery) use ($conditionName) {
+                          $legacyQuery->whereNull('car_condition_id')
+                                      ->whereRaw('LOWER(condition_type) = ?', [$conditionName]);
+                      });
+                });
+            }
         }
 
         // Year range filter - support both individual and range
