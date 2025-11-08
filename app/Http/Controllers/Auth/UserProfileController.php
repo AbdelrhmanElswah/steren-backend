@@ -125,10 +125,8 @@ class UserProfileController extends Controller
 
             DB::beginTransaction();
 
-            // Delete old profile picture if exists
-            if ($user->profile_picture) {
-                $this->deleteOldProfilePicture($user);
-            }
+            // Delete old profile picture/media if it exists
+            $this->deleteOldProfilePicture($user);
 
             // Upload new profile picture to S3
             $uploadResult = $this->uploadFileToS3($file, $user, 'profile-pictures');
@@ -144,12 +142,20 @@ class UserProfileController extends Controller
                 'order' => 0
             ]);
 
+            // Update user's profile_picture attribute with the public URL
+            $user->update([
+                'profile_picture' => $uploadResult['url'],
+            ]);
+
             DB::commit();
 
             Log::info('User profile picture updated successfully', [
                 'user_id' => $user->id,
                 'file_name' => $uploadResult['file_name']
             ]);
+
+            // Refresh user instance to include latest attributes
+            $user->refresh();
 
             return $this->successResponse([
                 'user' => new UserResource($user),
@@ -248,6 +254,9 @@ class UserProfileController extends Controller
                 ->where('modelable_type', get_class($user))
                 ->where('info', 'profile_picture')
                 ->delete();
+
+            // Reset stored profile picture reference
+            $user->forceFill(['profile_picture' => null])->save();
 
         } catch (\Exception $e) {
             Log::warning('Failed to delete old profile picture', [
