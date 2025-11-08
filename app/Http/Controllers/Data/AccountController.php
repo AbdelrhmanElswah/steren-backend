@@ -32,7 +32,7 @@ class AccountController extends Controller
                     'name' => $user->display_name,
                     'email' => $user->email,
                     'phone' => $user->formatted_phone,
-                    'profile_picture' => $user->profile_picture,
+                    'profile_picture' => $user->profilePictureMedia?->public_url,
                     'profile_picture_media' => $user->profilePictureMedia?->media,
                     'birthday' => $user->formatted_birthday,
                     'age' => $user->age,

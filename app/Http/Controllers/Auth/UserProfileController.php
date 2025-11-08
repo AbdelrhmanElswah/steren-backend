@@ -132,7 +132,7 @@ class UserProfileController extends Controller
             $uploadResult = $this->uploadFileToS3($file, $user, 'profile-pictures');
 
             // Create media record
-            Media::create([
+            $media = Media::create([
                 'media' => $uploadResult['file_name'],
                 'path_file_name' => $uploadResult['path'],
                 'file_type' => $uploadResult['file_type'],
@@ -140,11 +140,6 @@ class UserProfileController extends Controller
                 'modelable_type' => get_class($user),
                 'info' => 'profile_picture',
                 'order' => 0
-            ]);
-
-            // Update user's profile_picture attribute with the public URL
-            $user->update([
-                'profile_picture' => $uploadResult['url'],
             ]);
 
             DB::commit();
@@ -155,7 +150,7 @@ class UserProfileController extends Controller
             ]);
 
             return $this->successResponse([
-                'profile_picture' => $uploadResult['url'],
+                'profile_picture' => $media->public_url ?? $uploadResult['url'],
             ], 'Profile picture updated successfully');
 
         } catch (\Exception $e) {
@@ -250,9 +245,6 @@ class UserProfileController extends Controller
                 ->where('modelable_type', get_class($user))
                 ->where('info', 'profile_picture')
                 ->delete();
-
-            // Reset stored profile picture reference
-            $user->forceFill(['profile_picture' => null])->save();
 
         } catch (\Exception $e) {
             Log::warning('Failed to delete old profile picture', [
