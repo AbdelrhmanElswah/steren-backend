@@ -95,9 +95,36 @@ class SearchService
         return Cache::remember("recent_searches_{$userId}_{$limit}", 300, function () use ($userId, $limit) {
             return DB::table('search_histories')
                 ->where('user_id', $userId)
-                ->orderBy('created_at', 'desc')
+                ->orderByRaw('COALESCE(last_searched_at, updated_at, created_at) DESC')
                 ->limit($limit)
-                ->pluck('search_term')
+                ->get([
+                    'id',
+                    'title',
+                    'search_query',
+                    'filters',
+                    'sort_options',
+                    'is_saved',
+                    'notifications_enabled',
+                    'search_count',
+                    'last_searched_at',
+                    'created_at',
+                    'updated_at',
+                ])
+                ->map(function ($item) {
+                    return [
+                        'id' => (int) $item->id,
+                        'title' => $item->title,
+                        'search_query' => $item->search_query,
+                        'filters' => $item->filters ? json_decode($item->filters, true) : null,
+                        'sort_options' => $item->sort_options ? json_decode($item->sort_options, true) : null,
+                        'is_saved' => (bool) $item->is_saved,
+                        'notifications_enabled' => (bool) $item->notifications_enabled,
+                        'search_count' => (int) $item->search_count,
+                        'last_searched_at' => $item->last_searched_at,
+                        'created_at' => $item->created_at,
+                        'updated_at' => $item->updated_at,
+                    ];
+                })
                 ->toArray();
         });
     }
@@ -107,13 +134,45 @@ class SearchService
      */
     public function saveSearchTerm(int $userId, string $searchTerm): void
     {
-        DB::table('search_histories')->updateOrInsert(
-            ['user_id' => $userId, 'search_term' => $searchTerm],
-            ['created_at' => now(), 'updated_at' => now()]
-        );
+        $now = now();
 
-        // Clear cache for recent searches
-        Cache::forget("recent_searches_{$userId}_5");
+        DB::transaction(function () use ($userId, $searchTerm, $now) {
+            $existing = DB::table('search_histories')
+                ->where('user_id', $userId)
+                ->where('title', $searchTerm)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                DB::table('search_histories')
+                    ->where('id', $existing->id)
+                    ->update([
+                        'search_query' => $searchTerm,
+                        'search_count' => DB::raw('search_count + 1'),
+                        'last_searched_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+            } else {
+                DB::table('search_histories')->insert([
+                    'user_id' => $userId,
+                    'title' => $searchTerm,
+                    'search_query' => $searchTerm,
+                    'filters' => null,
+                    'sort_options' => null,
+                    'is_saved' => false,
+                    'notifications_enabled' => false,
+                    'search_count' => 1,
+                    'last_searched_at' => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        });
+
+        // Clear cached recent searches (limits 1-10 are allowed by validation)
+        for ($limit = 1; $limit <= 10; $limit++) {
+            Cache::forget("recent_searches_{$userId}_{$limit}");
+        }
     }
 
     /**
