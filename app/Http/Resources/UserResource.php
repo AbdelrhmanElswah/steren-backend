@@ -21,6 +21,7 @@ class UserResource extends JsonResource
             'phone_verified' => !is_null($this->phone_verified_at),
             'birthday' => $this->birthday?->format('Y-m-d'),
             'profile_picture' => $this->profile_picture,
+            'profile_picture_media' => $this->profilePictureMedia?->media,
             'language' => $this->language,
             'theme' => $this->theme,
             'is_verified' => (bool) $this->is_verified,
