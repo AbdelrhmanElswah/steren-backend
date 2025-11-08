@@ -154,12 +154,8 @@ class UserProfileController extends Controller
                 'file_name' => $uploadResult['file_name']
             ]);
 
-            // Refresh user instance to include latest attributes
-            $user->refresh();
-
             return $this->successResponse([
-                'user' => new UserResource($user),
-                'profile_picture_url' => $uploadResult['url']
+                'profile_picture' => $uploadResult['url'],
             ], 'Profile picture updated successfully');
 
         } catch (\Exception $e) {

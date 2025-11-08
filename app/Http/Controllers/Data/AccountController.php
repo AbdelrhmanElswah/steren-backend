@@ -33,6 +33,7 @@ class AccountController extends Controller
                     'email' => $user->email,
                     'phone' => $user->formatted_phone,
                     'profile_picture' => $user->profile_picture,
+                    'profile_picture_media' => $user->profilePictureMedia?->media,
                     'birthday' => $user->formatted_birthday,
                     'age' => $user->age,
                     'language' => $user->language,
