@@ -911,12 +911,15 @@ class VinDecoderController extends Controller
 
                 if (in_array($gccString, $validGccValues, true)) {
                     $response['general']['gcc_import'] = $gccString;
+                    $response['general']['gcc_import_country'] = (string) $gccRaw;
                 } elseif (str_contains($gccString, 'GCC')) {
                     $response['general']['gcc_import'] = 'GCC';
+                    $response['general']['gcc_import_country'] = (string) $gccRaw;
                 } else {
                     $mappedGcc = $this->mapCountryToGccImport($gccRaw);
                     if ($mappedGcc) {
                         $response['general']['gcc_import'] = $mappedGcc;
+                        $response['general']['gcc_import_country'] = (string) $gccRaw;
                     }
                 }
             }
@@ -934,6 +937,7 @@ class VinDecoderController extends Controller
                     $mappedFromManufacturer = $this->mapCountryToGccImport($manufacturerCountry);
                     if ($mappedFromManufacturer) {
                         $response['general']['gcc_import'] = $mappedFromManufacturer;
+                        $response['general']['gcc_import_country'] = (string) $manufacturerCountry;
                     }
                 }
             }
