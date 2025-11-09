@@ -95,8 +95,9 @@ class CarListingApiController extends Controller
             $this->subscriptionService->consumeSlot($request->user());
 
             // Handle images if provided
+            $uploadedImageUrls = [];
             if ($request->has('images') && is_array($request->images)) {
-                $this->handleImages($carListing, $request->images);
+                $uploadedImageUrls = $this->handleImages($carListing, $request->images);
             }
 
             // Handle inspection data and file if provided
@@ -105,7 +106,7 @@ class CarListingApiController extends Controller
             }
 
             // Prepare data for Odoo API
-            $odooData = $this->prepareOdooData($carListing, $validatedData);
+            $odooData = $this->prepareOdooData($carListing, $validatedData, $uploadedImageUrls);
 
             // Send to Odoo API
             $odooResponse = $this->sendToOdoo($odooData);
@@ -292,8 +293,10 @@ class CarListingApiController extends Controller
     /**
      * Handle image uploads from base64 data
      */
-    private function handleImages(CarListing $carListing, array $images)
+    private function handleImages(CarListing $carListing, array $images): array
     {
+        $uploadedUrls = [];
+
         foreach ($images as $index => $base64Image) {
             try {
                 $extension = 'jpg';
@@ -346,12 +349,15 @@ class CarListingApiController extends Controller
                     $mediaData['order'] = $index;
                 }
                 
-                Media::create($mediaData);
+                $media = Media::create($mediaData);
+                $uploadedUrls[] = $media->public_url ?? $url;
 
             } catch (\Exception $e) {
                 Log::warning('Failed to process image ' . ($index + 1) . ' for car listing ' . $carListing->id . ': ' . $e->getMessage());
             }
         }
+
+        return $uploadedUrls;
     }
 
     /**
@@ -450,7 +456,7 @@ class CarListingApiController extends Controller
     /**
      * Prepare data for Odoo API in the required format
      */
-    private function prepareOdooData(CarListing $carListing, array $validatedData)
+    private function prepareOdooData(CarListing $carListing, array $validatedData, array $imageUrls = [])
     {
         $carInfo = $validatedData['car_info'];
         $sellerInfo = $validatedData['seller_info'];
@@ -487,7 +493,7 @@ class CarListingApiController extends Controller
             ],
             'title' => $validatedData['title'],
             'description' => $validatedData['description'] ?? '',
-            'images' => $validatedData['images'] ?? [],
+            'images' => $imageUrls,
             'inspection' => $validatedData['inspection'] ?? null,
             'inspection_file' => $validatedData['inspection_file'] ?? null,
             'inspection_file_name' => $validatedData['inspection_file_name'] ?? null,
@@ -497,7 +503,7 @@ class CarListingApiController extends Controller
     /**
      * Prepare Odoo data from form data
      */
-    private function prepareOdooDataFromForm(CarListing $carListing, array $validatedData, $request)
+    private function prepareOdooDataFromForm(CarListing $carListing, array $validatedData, $request, array $imageUrls = [])
     {
         // Get partner_id from user
         $user = \App\Models\User::find($validatedData['user_id']);
@@ -647,7 +653,7 @@ class CarListingApiController extends Controller
             ],
             'title' => $validatedData['title'],
             'description' => $validatedData['description'] ?? '',
-            'images' => $validatedData['images'] ?? [],
+            'images' => $imageUrls,
         ];
     }
 
@@ -875,8 +881,9 @@ class CarListingApiController extends Controller
             $this->subscriptionService->consumeSlot($request->user());
 
             // Handle image uploads if provided
+            $uploadedImageUrls = [];
             if ($request->hasFile('images')) {
-                $this->handleImageUploads($carListing, $request->file('images'));
+                $uploadedImageUrls = $this->handleImageUploads($carListing, $request->file('images'));
             }
 
             // Handle inspection data and file if provided
@@ -885,7 +892,7 @@ class CarListingApiController extends Controller
             }
 
             // Prepare data for Odoo API
-            $odooData = $this->prepareOdooDataFromForm($carListing, $validatedData, $request);
+            $odooData = $this->prepareOdooDataFromForm($carListing, $validatedData, $request, $uploadedImageUrls);
 
             // Check if Odoo data preparation failed
             if (isset($odooData['error']) && $odooData['error']) {
@@ -1032,12 +1039,14 @@ class CarListingApiController extends Controller
     /**
      * Handle image uploads from form data to AWS S3 using HandlesFileUpload trait
      */
-    private function handleImageUploads(CarListing $carListing, $images): void
+    private function handleImageUploads(CarListing $carListing, $images): array
     {
         // Ensure images is always an array
         if (!is_array($images)) {
             $images = [$images];
         }
+
+        $uploadedUrls = [];
         
         foreach ($images as $index => $image) {
             try {
@@ -1065,6 +1074,7 @@ class CarListingApiController extends Controller
                 }
                 
                 $media = Media::create($mediaData);
+                $uploadedUrls[] = $media->public_url ?? $uploadResult['url'] ?? $media->path_file_name;
                 
                 Log::info('Media record created successfully', [
                     'media_id' => $media->id,
@@ -1083,6 +1093,8 @@ class CarListingApiController extends Controller
                 // Continue with other images even if one fails
             }
         }
+
+        return $uploadedUrls;
     }
 
     /**
