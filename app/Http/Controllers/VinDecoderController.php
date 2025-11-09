@@ -752,7 +752,7 @@ class VinDecoderController extends Controller
         $mappedDriveType = $this->mapDriveType($driveType);
 
         // Extract transmission gears from data
-        $transmissionGears = $this->extractTransmissionGears($specifications, $standardFeatures, $additionalData, $basicData);
+        $transmissionGears = $this->extractTransmissionGears($specifications, $additionalData, $basicData, $rawData);
         
         // Extract GCC/Import information
         $gccImport = $this->extractGccImport($vinData, $additionalData, $basicData);
@@ -1723,7 +1723,7 @@ class VinDecoderController extends Controller
     /**
      * Extract transmission gears from data
      */
-    private function extractTransmissionGears(array $specifications, array $standardFeatures, array $additionalData = [], array $basicData = []): ?int
+    private function extractTransmissionGears(array $specifications, array $additionalData = [], array $basicData = [], ?array $rawData = null): ?int
     {
         // First, check transmission object directly in additional_data.data.transmission
         $transmission = $additionalData['transmission'] ?? $basicData['transmission'] ?? null;
@@ -1744,21 +1744,17 @@ class VinDecoderController extends Controller
             }
         }
 
-        // Look for transmission gears in standard features (pattern matching)
-        foreach ($standardFeatures as $feature) {
-            if (preg_match('/(\d+)\s*speed\s*(automatic|manual|cvt)/i', $feature, $matches)) {
-                return (int) $matches[1];
-            }
-            if (preg_match('/(\d+)\s*gear/i', $feature, $matches)) {
-                return (int) $matches[1];
-            }
-        }
+        if ($rawData) {
+            $rawGears = $this->extractRawValue($rawData, [
+                ['transmission', 'number_of_speeds'],
+                ['vehicle', 'transmission', 'number_of_speeds'],
+                ['specification', 'transmission', 'number_of_speeds'],
+                ['specification', 'transmission', 'gears'],
+                ['drivetrain', 'number_of_gears'],
+            ], ['number_of_speeds', 'transmission_speeds', 'transmission_gears', 'gears']);
 
-        // Try to extract from transmission description
-        if ($transmission && isset($transmission['description'])) {
-            $description = $transmission['description'];
-            if (preg_match('/(\d+)\s*speed/i', $description, $matches)) {
-                return (int) $matches[1];
+            if ($rawGears !== null && $rawGears !== '') {
+                return (int) $rawGears;
             }
         }
 
