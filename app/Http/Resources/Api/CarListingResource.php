@@ -77,7 +77,7 @@ class CarListingResource extends JsonResource
                     return [
                         'id' => $media->id,
                         'file_path' => $media->path_file_name,
-                        'url' => $media->path_file_name, // Use path_file_name as URL for now
+                        'url' => $media->public_url ?? $media->path_file_name,
                         'file_type' => $media->file_type,
                         'is_primary' => $media->info === 'primary',
                         'order' => $media->order ?? 0,

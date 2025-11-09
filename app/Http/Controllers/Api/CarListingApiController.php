@@ -296,19 +296,37 @@ class CarListingApiController extends Controller
     {
         foreach ($images as $index => $base64Image) {
             try {
+                $extension = 'jpg';
+                $mimeType = 'image/jpeg';
+                $base64Payload = $base64Image;
+
+                if (preg_match('/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/', $base64Image, $matches)) {
+                    $mimeType = strtolower($matches[1]);
+                    $base64Payload = $matches[2];
+
+                    $extensionMap = [
+                        'image/jpeg' => 'jpg',
+                        'image/png' => 'png',
+                        'image/gif' => 'gif',
+                        'image/webp' => 'webp',
+                        'image/svg+xml' => 'svg',
+                    ];
+                    $extension = $extensionMap[$mimeType] ?? 'jpg';
+                }
+
                 // Decode base64 image
-                $imageData = base64_decode($base64Image);
+                $imageData = base64_decode($base64Payload);
                 
                 if ($imageData === false) {
                     continue; // Skip invalid base64 data
                 }
 
                 // Generate filename
-                $filename = 'car_listing_' . $carListing->id . '_' . ($index + 1) . '_' . time() . '.jpg';
+                $filename = 'car_listing_' . $carListing->id . '_' . ($index + 1) . '_' . time() . '.' . $extension;
                 $path = 'car_listings/' . $carListing->id . '/' . $filename;
 
                 // Store image to AWS S3
-                Storage::disk('s3')->put($path, $imageData);
+                Storage::disk('s3')->put($path, $imageData, 'public');
                 
                 // Get the full S3 URL
                 $url = Storage::disk('s3')->url($path);
@@ -319,7 +337,7 @@ class CarListingApiController extends Controller
                     'modelable_id' => $carListing->id,
                     'media' => $filename,
                     'path_file_name' => $path,
-                    'file_type' => 'image',
+                    'file_type' => $mimeType,
                     'info' => $index === 0 ? 'primary' : 'secondary',
                 ];
                 
