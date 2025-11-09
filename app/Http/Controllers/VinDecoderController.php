@@ -756,8 +756,6 @@ class VinDecoderController extends Controller
         
         // Extract GCC/Import information
         $gccImportData = $this->extractGccImport($vinData, $additionalData, $basicData);
-        $gccImportCategory = $gccImportData['category'] ?? null;
-        $gccImportCountry = $gccImportData['country'] ?? null;
         
         // Extract damaged parts information
         $damagedParts = $this->extractDamagedParts($vinData, $additionalData, $basicData);
@@ -791,10 +789,12 @@ class VinDecoderController extends Controller
         
         // GCC/Import field location: response.general.gcc_import
         // Returns "GCC" for GCC countries, "Import" for others, or null if cannot be determined
-        if (!empty($gccImportCountry)) {
-            $response['general']['gcc_import'] = $gccImportCountry;
-        } elseif (!empty($gccImportCategory)) {
-            $response['general']['gcc_import'] = $gccImportCategory;
+        if (!empty($gccImportData['category'])) {
+            $response['general']['gcc_import'] = $gccImportData['category'];
+        }
+
+        if (!empty($gccImportData['country'])) {
+            $response['general']['gcc_import_country'] = $gccImportData['country'];
         }
         
         if (!empty($bodyTypeName)) {
@@ -910,24 +910,20 @@ class VinDecoderController extends Controller
             ], ['regional_specification', 'market', 'market_region', 'market_name', 'region']);
 
             if ($gccRaw) {
-                $gccRawString = trim((string) $gccRaw);
-                if (empty($gccImportCountry) && $gccRawString !== '') {
-                    $gccImportCountry = $gccRawString;
-                }
-
-                $gccString = strtoupper($gccRawString);
+                $gccString = strtoupper(trim((string) $gccRaw));
                 $validGccValues = ['GCC', 'AMERICAN', 'CANADIAN', 'EUROPEAN', 'JAPANESE', 'KOREAN', 'CHINESE', 'OTHERS'];
 
-                if (empty($gccImportCategory)) {
-                    if (in_array($gccString, $validGccValues, true)) {
-                        $gccImportCategory = $gccString;
-                    } elseif (str_contains($gccString, 'GCC')) {
-                        $gccImportCategory = 'GCC';
-                    } else {
-                        $mappedGcc = $this->mapCountryToGccImport($gccRawString);
-                        if ($mappedGcc) {
-                            $gccImportCategory = $mappedGcc;
-                        }
+                if (in_array($gccString, $validGccValues, true)) {
+                    $response['general']['gcc_import'] = $gccString;
+                    $response['general']['gcc_import_country'] = (string) $gccRaw;
+                } elseif (str_contains($gccString, 'GCC')) {
+                    $response['general']['gcc_import'] = 'GCC';
+                    $response['general']['gcc_import_country'] = (string) $gccRaw;
+                } else {
+                    $mappedGcc = $this->mapCountryToGccImport($gccRaw);
+                    if ($mappedGcc) {
+                        $response['general']['gcc_import'] = $mappedGcc;
+                        $response['general']['gcc_import_country'] = (string) $gccRaw;
                     }
                 }
             }
@@ -942,15 +938,10 @@ class VinDecoderController extends Controller
                 ], ['manufacturer_country', 'country_of_origin', 'manufacturer_origin']);
 
                 if ($manufacturerCountry) {
-                    if (empty($gccImportCountry)) {
-                        $gccImportCountry = (string) $manufacturerCountry;
-                    }
-
-                    if (empty($gccImportCategory)) {
-                        $mappedFromManufacturer = $this->mapCountryToGccImport($manufacturerCountry);
-                        if ($mappedFromManufacturer) {
-                            $gccImportCategory = $mappedFromManufacturer;
-                        }
+                    $mappedFromManufacturer = $this->mapCountryToGccImport($manufacturerCountry);
+                    if ($mappedFromManufacturer) {
+                        $response['general']['gcc_import'] = $mappedFromManufacturer;
+                        $response['general']['gcc_import_country'] = (string) $manufacturerCountry;
                     }
                 }
             }
