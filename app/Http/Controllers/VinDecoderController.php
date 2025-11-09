@@ -1725,6 +1725,20 @@ class VinDecoderController extends Controller
      */
     private function extractTransmissionGears(array $specifications, array $additionalData = [], array $basicData = [], ?array $rawData = null): ?int
     {
+        if ($rawData) {
+            $rawGears = $this->extractRawValue($rawData, [
+                ['transmission', 'number_of_speeds'],
+                ['vehicle', 'transmission', 'number_of_speeds'],
+                ['specification', 'transmission', 'number_of_speeds'],
+                ['specification', 'transmission', 'gears'],
+                ['drivetrain', 'number_of_gears'],
+            ], ['number_of_speeds', 'transmission_speeds', 'transmission_gears', 'gears']);
+
+            if ($rawGears !== null && $rawGears !== '') {
+                return (int) $rawGears;
+            }
+        }
+
         // First, check transmission object directly in additional_data.data.transmission
         $transmission = $additionalData['transmission'] ?? $basicData['transmission'] ?? null;
         if ($transmission && isset($transmission['number_of_speeds'])) {
@@ -1741,20 +1755,6 @@ class VinDecoderController extends Controller
                 if (!empty($gears)) {
                     return (int) $gears;
                 }
-            }
-        }
-
-        if ($rawData) {
-            $rawGears = $this->extractRawValue($rawData, [
-                ['transmission', 'number_of_speeds'],
-                ['vehicle', 'transmission', 'number_of_speeds'],
-                ['specification', 'transmission', 'number_of_speeds'],
-                ['specification', 'transmission', 'gears'],
-                ['drivetrain', 'number_of_gears'],
-            ], ['number_of_speeds', 'transmission_speeds', 'transmission_gears', 'gears']);
-
-            if ($rawGears !== null && $rawGears !== '') {
-                return (int) $rawGears;
             }
         }
 
