@@ -42,21 +42,17 @@ class DealerVerificationService
             if (isset($data['email_address']) && !isset($data['email'])) {
                 $data['email'] = $data['email_address'];
             }
-            
+
             if (isset($data['dealership_name']) && !isset($data['dealership_company_name'])) {
                 $data['dealership_company_name'] = $data['dealership_name'];
             }
-            
+
             if (isset($data['automotive_brand']) && !isset($data['automotive_brand_represented'])) {
                 $data['automotive_brand_represented'] = $data['automotive_brand'];
             }
-            
-            if (isset($data['business_license_name']) && !isset($data['business_license_number'])) {
-                $data['business_license_number'] = $data['business_license_name'];
-            }
 
             $user = $authenticatedUser ?? User::where('partner_id', $data['partner_id'])->first();
-            
+
             if (!$user) {
                 throw new OdooServiceException('User not found for partner ID: ' . ($data['partner_id'] ?? 'N/A'));
             }
@@ -64,7 +60,7 @@ class DealerVerificationService
             if ($user->is_dealer) {
                 throw new OdooServiceException('User is already a verified dealer');
             }
-            
+
             $data['partner_id'] = $user->partner_id;
 
             Log::info('Looking up subscription plan', [
@@ -74,16 +70,16 @@ class DealerVerificationService
             ]);
 
             $subscriptionPlan = SubscriptionPlan::find($data['subscription_plan_id']);
-            
+
             if (!$subscriptionPlan) {
                 Log::info('Plan not found by database ID, trying odoo_id', [
                     'database_id_search' => $data['subscription_plan_id'],
                     'trying_odoo_id' => true
                 ]);
-                
+
                 $subscriptionPlan = SubscriptionPlan::where('odoo_id', (string) $data['subscription_plan_id'])->first();
             }
-            
+
             if (!$subscriptionPlan) {
                 Log::error('Subscription plan not found - this will cause issues', [
                     'requested_plan_id' => $data['subscription_plan_id'],
@@ -91,9 +87,9 @@ class DealerVerificationService
                     'partner_id' => $data['partner_id'],
                     'available_plans' => SubscriptionPlan::all()->pluck('id', 'name')->toArray()
                 ]);
-                
+
                 $subscriptionPlan = SubscriptionPlan::first() ?? $this->createFallbackSubscriptionPlan($data['subscription_plan_id']);
-                
+
                 Log::warning('Using fallback subscription plan', [
                     'fallback_plan_id' => $subscriptionPlan->id,
                     'fallback_plan_name' => $subscriptionPlan->name,
@@ -115,11 +111,11 @@ class DealerVerificationService
                     'user_id' => $user->id,
                     'subscription_plan_id' => $subscriptionPlan->id ?? 'NOT_SET'
                 ]);
-                
+
                 $dealerApplication = $this->createDealerApplication($user, $data, $subscriptionPlan);
-                
+
                 $applicationAppliedStatus = Status::findByNameAndType('application_applied', 'dealer_application');
-                
+
                 $dealerApplication->update([
                     'status_id' => $applicationAppliedStatus?->id,
                     'odoo_id' => null, // Will be updated after Odoo response
@@ -144,13 +140,13 @@ class DealerVerificationService
                             'odoo_error_code' => $odooResponse['error_code'] ?? null,
                             'odoo_details' => $odooResponse['details'] ?? null,
                         ]);
-                        
+
                         // Update local record with error
                         $dealerApplication->update([
                             'sync_error' => $odooResponse['message'] ?? 'Odoo submission failed',
                             'synced_with_odoo' => false
                         ]);
-                        
+
                         throw new OdooServiceException('Odoo submission failed: ' . ($odooResponse['message'] ?? 'Unknown error'));
                     }
 
@@ -159,9 +155,9 @@ class DealerVerificationService
                         'response_keys' => array_keys($odooResponse),
                         'data_keys' => isset($odooResponse['data']) ? array_keys($odooResponse['data']) : 'no_data_key'
                     ]);
-                    
+
                     $odooId = $odooResponse['data']['id'] ?? $odooResponse['odoo_id'] ?? null;
-                    
+
                     Log::info('Odoo accepted the dealer application', [
                         'application_id' => $dealerApplication->id,
                         'partner_id' => $data['partner_id'],
@@ -170,23 +166,23 @@ class DealerVerificationService
                     ]);
 
                     $underReviewStatus = Status::findByNameAndType('under_review', 'dealer_application');
-                    
+
                     Log::info('Status lookup result', [
                         'status_found' => $underReviewStatus ? true : false,
                         'status_id' => $underReviewStatus?->id,
                         'status_name' => $underReviewStatus?->name
                     ]);
-                    
+
                     $updateData = [
                         'odoo_id' => $odooId,
                         'synced_with_odoo' => true,
                         'sync_error' => null
                     ];
-                    
+
                     if ($underReviewStatus) {
                         $updateData['status_id'] = $underReviewStatus->id;
                     }
-                    
+
                     $dealerApplication->update($updateData);
 
                     Log::info('Dealer application synced with Odoo successfully', [
@@ -239,7 +235,7 @@ class DealerVerificationService
                 throw new OdooServiceException('Failed to connect to Odoo: ' . $e->getMessage());
             }
 
-        } catch (Exception $e) {            
+        } catch (Exception $e) {
             Log::error('Dealer verification submission failed', [
                 'partner_id' => $data['partner_id'] ?? null,
                 'error' => $e->getMessage(),
@@ -253,13 +249,13 @@ class DealerVerificationService
     protected function createDealerApplication(User $user, array $data, SubscriptionPlan $subscriptionPlan): DealerApplication
     {
             $applicationAppliedStatus = Status::findByNameAndType('application_applied', 'dealer_application');
-            
+
             Log::info('Creating dealer application with data', [
                 'vehicles_in_stock' => $data['vehicles_in_stock'] ?? 'not_set',
                 'years_in_business' => $data['years_in_business'] ?? 'not_set',
                 'seller_type' => $data['seller_type'] ?? 'not_set',
             ]);
-            
+
             $applicationData = [
                 'partner_id' => $user->id,
                 'odoo_id' => (string) $user->id,
@@ -268,11 +264,11 @@ class DealerVerificationService
                 'phone_number' => $data['phone_number'],
                 'email' => $data['email'],
                 'dealership_company_name' => $data['dealership_company_name'],
-                'vehicles_in_stock' => isset($data['vehicles_in_stock']) && $data['vehicles_in_stock'] !== '' 
-                    ? (int) $data['vehicles_in_stock'] 
+                'vehicles_in_stock' => isset($data['vehicles_in_stock']) && $data['vehicles_in_stock'] !== ''
+                    ? (int) $data['vehicles_in_stock']
                     : null,
-                'years_in_business' => isset($data['years_in_business']) && $data['years_in_business'] !== '' 
-                    ? (int) $data['years_in_business'] 
+                'years_in_business' => isset($data['years_in_business']) && $data['years_in_business'] !== ''
+                    ? (int) $data['years_in_business']
                     : null,
                 'city_address' => $data['city_address'],
                 'subscription_plan_id' => $subscriptionPlan->id,
@@ -284,14 +280,14 @@ class DealerVerificationService
         if ($data['seller_type'] === 'authorized') {
             $applicationData['automotive_brand_represented'] = $data['automotive_brand_represented'] ?? null;
             $applicationData['business_license_number'] = $data['business_license_number'] ?? null;
-            
+
             if (isset($data['authorization_letter']) && $data['authorization_letter'] instanceof \Illuminate\Http\UploadedFile) {
                 $applicationData['authorization_letter_path'] = $this->storeUploadedFile(
                     $data['authorization_letter'],
                     'dealer-applications/authorization-letters'
                 );
             }
-            
+
             if (isset($data['business_license']) && $data['business_license'] instanceof \Illuminate\Http\UploadedFile) {
                 $applicationData['business_license_path'] = $this->storeUploadedFile(
                     $data['business_license'],
@@ -302,7 +298,7 @@ class DealerVerificationService
 
         try {
             $dealerApplication = DealerApplication::create($applicationData);
-            
+
             Log::info('Dealer application created successfully', [
                 'application_id' => $dealerApplication->id,
                 'vehicles_in_stock' => $dealerApplication->vehicles_in_stock,
@@ -315,7 +311,7 @@ class DealerVerificationService
                 'vehicles_in_stock' => $applicationData['vehicles_in_stock'],
                 'years_in_business' => $applicationData['years_in_business'],
             ]);
-            
+
             throw new \Exception('Failed to create dealer application: ' . $e->getMessage());
         }
 
@@ -377,7 +373,7 @@ class DealerVerificationService
     {
         try {
             $payload = $this->prepareOdooPayload($data, $user, $subscriptionPlan);
-            
+
             Log::info('Sending data to Odoo', [
                 'partner_id' => $data['partner_id'],
                 'seller_type' => $data['seller_type'],
@@ -386,15 +382,15 @@ class DealerVerificationService
             ]);
 
             $hasFiles = $this->hasFileUploads($data);
-            
+
             if ($hasFiles) {
                 $response = Http::timeout(30);
-                
+
                 $attachments = $this->prepareFileAttachments($data);
                 foreach ($attachments as $fieldName => $file) {
                     $response = $response->attach($fieldName, $file->getPathname(), $file->getClientOriginalName());
                 }
-                
+
                 $response = $response->post($this->baseUrl . '/api/verification/submit', $payload);
             } else {
                 $response = Http::timeout(30)->withHeaders([
@@ -405,7 +401,7 @@ class DealerVerificationService
 
             if ($response->successful()) {
                 $responseData = $response->json();
-                
+
                 Log::info('Odoo API Success Response - Full Details', [
                     'http_status' => $response->status(),
                     'response_data' => $responseData,
@@ -413,16 +409,16 @@ class DealerVerificationService
                     'partner_id' => $data['partner_id'] ?? null,
                     'user_id' => $user->id ?? null
                 ]);
-                
+
                 if (isset($responseData['success']) && $responseData['success'] === true) {
                     $odooId = $this->extractOdooId($responseData);
-                    
+
                     Log::info('Odoo response processed successfully', [
                         'odoo_id' => $odooId,
                         'response_data' => $responseData,
                         'data_id' => $responseData['data']['id'] ?? 'NOT_FOUND'
                     ]);
-                    
+
                     if (!$odooId) {
                         Log::warning('Odoo API Response Missing ID', [
                             'response_data' => $responseData,
@@ -430,7 +426,7 @@ class DealerVerificationService
                             'user_id' => $user->id ?? null
                         ]);
                     }
-                    
+
                     return [
                         'success' => true,
                         'odoo_id' => $odooId,
@@ -443,7 +439,7 @@ class DealerVerificationService
                     'partner_id' => $data['partner_id'] ?? null,
                     'partner_id' => $user->id ?? null
                 ]);
-                
+
                 return [
                     'success' => false,
                     'message' => $responseData['message'] ?? 'Failed to submit verification'
@@ -451,7 +447,7 @@ class DealerVerificationService
             }
 
             $responseData = $response->json();
-            
+
             if ($response->status() >= 500) {
                 throw new OdooConnectionException('Odoo service is temporarily unavailable');
             }
@@ -500,13 +496,13 @@ class DealerVerificationService
             'phone_number' => $this->formatPhoneForOdoo($data['phone_number']),
             'email_address' => $data['email'],
             'city_address' => $data['city_address'],
-            'subscription_plan_id' => $subscriptionPlan->odoo_id ?? $subscriptionPlan->id, 
+            'subscription_plan_id' => $subscriptionPlan->odoo_id ?? $subscriptionPlan->id,
         ];
 
         if ($data['seller_type'] === 'authorized') {
             $payload['automotive_brand'] = $data['automotive_brand_represented'] ?? null;
             $payload['business_license_name'] = $data['business_license_number'] ?? null;
-            
+
         }
 
         return $payload;
@@ -521,15 +517,15 @@ class DealerVerificationService
     protected function prepareFileAttachments(array $data): array
     {
         $attachments = [];
-        
+
         if (isset($data['authorization_letter']) && $data['authorization_letter'] instanceof \Illuminate\Http\UploadedFile) {
             $attachments['authorization_letter'] = $data['authorization_letter'];
         }
-        
+
         if (isset($data['business_license']) && $data['business_license'] instanceof \Illuminate\Http\UploadedFile) {
             $attachments['business_license'] = $data['business_license'];
         }
-        
+
         return $attachments;
     }
 
@@ -537,30 +533,30 @@ class DealerVerificationService
     {
         $filename = time() . '_' . uniqid() . '_' . $file->getClientOriginalName();
         $path = $file->storeAs($directory, $filename, 'public');
-        
+
         return $path;
     }
 
     protected function extractOdooId(array $responseData): ?string
     {
 
-        
+
         $possiblePaths = [
-            'data.id',           
-            'result.data.id',    
-            'result.id',         
-            'result.data',       
-            'id',                
-            'result'             
+            'data.id',
+            'result.data.id',
+            'result.id',
+            'result.data',
+            'id',
+            'result'
         ];
-        
+
         foreach ($possiblePaths as $path) {
             $value = data_get($responseData, $path);
             if ($value !== null && (is_numeric($value) || is_string($value))) {
                 return (string) $value;
             }
         }
-        
+
         return null;
     }
 
@@ -568,7 +564,7 @@ class DealerVerificationService
     {
         try {
             $dealerApplication = DealerApplication::findOrFail($applicationId);
-            
+
             DB::beginTransaction();
 
             switch ($status) {
@@ -576,15 +572,15 @@ class DealerVerificationService
                     $dealerApplication->approve();
                     $dealerApplication->user->update(['is_dealer' => 1]);
                     break;
-                    
+
                 case 'rejected':
                     $dealerApplication->reject($reason);
                     break;
-                    
+
                 case 'under_review':
                     $dealerApplication->setUnderReview();
                     break;
-                    
+
                 default:
                     throw new OdooServiceException('Invalid status: ' . $status);
             }
@@ -599,7 +595,7 @@ class DealerVerificationService
 
         } catch (Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Failed to update verification status', [
                 'application_id' => $applicationId,
                 'status' => $status,
@@ -614,7 +610,7 @@ class DealerVerificationService
     {
         try {
             $application = DealerApplication::findOrFail($applicationId);
-            
+
             $allowedStatuses = ['application_applied', 'pending', 'under_review'];
             if (!in_array($application->status?->name, $allowedStatuses)) {
                 throw new OdooServiceException('Application cannot be approved. Current status: ' . ($application->status?->display_name ?? 'Unknown'));
@@ -633,7 +629,7 @@ class DealerVerificationService
             }
 
             $approvedStatus = Status::findByNameAndType('approved', 'dealer_application');
-            
+
             $application->update([
                 'status_id' => $approvedStatus?->id,
                 'approved_at' => now(),
@@ -686,7 +682,7 @@ class DealerVerificationService
     {
         try {
             $application = DealerApplication::findOrFail($applicationId);
-            
+
             $allowedStatuses = ['application_applied', 'pending', 'under_review'];
             if (!in_array($application->status?->name, $allowedStatuses)) {
                 throw new OdooServiceException('Application cannot be rejected. Current status: ' . ($application->status?->display_name ?? 'Unknown'));
@@ -705,7 +701,7 @@ class DealerVerificationService
             }
 
             $rejectedStatus = Status::findByNameAndType('rejected', 'dealer_application');
-            
+
             $application->update([
                 'status_id' => $rejectedStatus?->id,
                 'rejection_reason' => $reason,
@@ -762,12 +758,12 @@ class DealerVerificationService
     {
         try {
             $payload = [
-                'odoo_id' => $odooId, 
+                'odoo_id' => $odooId,
                 'action' => 'approve',
                 'status' => 'approved',
                 'approved_at' => now()->toISOString(),
                 'reviewed_by' => $application->reviewed_by,
-                'partner_id' => $application->user->partner_id, 
+                'partner_id' => $application->user->partner_id,
                 'application_data' => [
                     'seller_type' => $application->seller_type,
                     'dealership_name' => $application->dealership_company_name,
@@ -839,7 +835,7 @@ class DealerVerificationService
     {
         try {
             $payload = [
-                'odoo_id' => $odooId, 
+                'odoo_id' => $odooId,
                 'action' => 'reject',
                 'status' => 'rejected',
                 'rejected_at' => now()->toISOString(),
@@ -925,12 +921,12 @@ class DealerVerificationService
 
         // Remove any non-digit characters
         $cleaned = preg_replace('/[^0-9]/', '', $phoneNumber);
-        
+
         // If already 10+ digits, return as is
         if (strlen($cleaned) >= 10) {
             return $cleaned;
         }
-        
+
         // Pad with leading zeros to make it 10 digits
         return str_pad($cleaned, 10, '0', STR_PAD_LEFT);
     }
@@ -942,12 +938,12 @@ class DealerVerificationService
     protected function formatVehiclesInStockForOdoo($vehiclesInStock): int
     {
         $vehicles = (int) ($vehiclesInStock ?? 0);
-        
+
         // If vehicles is less than 40, set it to 40 to meet Odoo's minimum requirement
         if ($vehicles < 40) {
             return 40;
         }
-        
+
         return $vehicles;
     }
 }
