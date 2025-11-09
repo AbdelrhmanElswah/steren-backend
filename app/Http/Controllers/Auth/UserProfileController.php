@@ -125,16 +125,14 @@ class UserProfileController extends Controller
 
             DB::beginTransaction();
 
-            // Delete old profile picture if exists
-            if ($user->profile_picture) {
-                $this->deleteOldProfilePicture($user);
-            }
+            // Delete old profile picture/media if it exists
+            $this->deleteOldProfilePicture($user);
 
             // Upload new profile picture to S3
             $uploadResult = $this->uploadFileToS3($file, $user, 'profile-pictures');
 
             // Create media record
-            Media::create([
+            $media = Media::create([
                 'media' => $uploadResult['file_name'],
                 'path_file_name' => $uploadResult['path'],
                 'file_type' => $uploadResult['file_type'],
@@ -152,8 +150,7 @@ class UserProfileController extends Controller
             ]);
 
             return $this->successResponse([
-                'user' => new UserResource($user),
-                'profile_picture_url' => $uploadResult['url']
+                'profile_picture' => $media->public_url ?? $uploadResult['url'],
             ], 'Profile picture updated successfully');
 
         } catch (\Exception $e) {

@@ -70,6 +70,16 @@ class User extends Authenticatable
         return $this->morphOne(Media::class, 'modelable')->where('info', 'main');
     }
 
+    public function profilePictureMedia()
+    {
+        return $this->morphOne(Media::class, 'modelable')->where('info', 'profile_picture');
+    }
+
+    public function getProfilePictureAttribute()
+    {
+        return $this->profilePictureMedia?->public_url;
+    }
+
     public function carListings()
     {
         return $this->hasMany(CarListing::class);
