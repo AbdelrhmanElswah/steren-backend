@@ -62,24 +62,16 @@ class VehicleDatabasesService
         }
 
         try {
-            if ($raw) {
-                $url = "https://api.vehicledatabases.com/vin-decode/{$vin}";
-                $response = Http::timeout($this->timeout)
-                    ->withHeaders([
-                        'x-AuthKey' => $this->apiKey,
-                        'Accept' => 'application/json',
-                    ])
-                    ->get($url);
-            } else {
-                $url = str_replace('{vin}', $vin, $this->apiUrl);
-                
-                $response = Http::timeout($this->timeout)
-                    ->withHeaders([
-                        'x-AuthKey' => $this->apiKey,
-                        'Accept' => 'application/json',
-                    ])
-                    ->get($url);
-            }
+            $url = $raw
+                ? "https://api.vehicledatabases.com/vin-decode/{$vin}"
+                : str_replace('{vin}', $vin, $this->apiUrl);
+
+            $response = Http::timeout($this->timeout)
+                ->withHeaders([
+                    'x-AuthKey' => $this->apiKey,
+                    'Accept' => 'application/json',
+                ])
+                ->get($url);
 
             if ($response->successful()) {
                 $data = $response->json();

@@ -156,10 +156,20 @@ class VinDecoderController extends Controller
                 return $this->errorResponse('Failed to decode VIN', 400);
             }
 
+            $rawResult = null;
+            try {
+                $rawResult = $this->vehicleDatabasesService->decodeVin($vin, false, true);
+            } catch (\Throwable $rawException) {
+                Log::warning('VIN raw decode fallback failed', [
+                    'vin' => $vin,
+                    'error' => $rawException->getMessage(),
+                ]);
+            }
+
             $vinData = $result['data'];
 
             // Filter and map the data for car listing creation
-            $filteredData = $this->filterVinDataForListing($vinData);
+            $filteredData = $this->filterVinDataForListing($vinData, $rawResult);
 
             // Check if the brand exists in our system
             if (!$this->validateBrandExists($filteredData)) {
@@ -441,8 +451,18 @@ class VinDecoderController extends Controller
 
             $vinData = $result['data'];
 
+            $rawResult = null;
+            try {
+                $rawResult = $this->vehicleDatabasesService->decodeVin($vin, true, true);
+            } catch (\Throwable $rawException) {
+                Log::warning('VIN OCR raw decode fallback failed', [
+                    'vin' => $vin,
+                    'error' => $rawException->getMessage(),
+                ]);
+            }
+
             // Step 3: Filter and map the data for car listing creation
-            $filteredData = $this->filterVinDataForListing($vinData);
+            $filteredData = $this->filterVinDataForListing($vinData, $rawResult);
 
             // Step 4: Check if the brand exists in our system
             if (!$this->validateBrandExists($filteredData)) {
@@ -613,8 +633,19 @@ class VinDecoderController extends Controller
      * @param array $vinData
      * @return array
      */
-    private function filterVinDataForListing(array $vinData): array
+    private function filterVinDataForListing(array $vinData, ?array $rawResult = null): array
     {
+        $rawData = null;
+        if (is_array($rawResult)) {
+            if (isset($rawResult['data']) && is_array($rawResult['data'])) {
+                $rawData = $rawResult['data'];
+            } elseif (isset($rawResult['result']) && is_array($rawResult['result'])) {
+                $rawData = $rawResult['result'];
+            } else {
+                $rawData = $rawResult;
+            }
+        }
+
         $additionalData = $vinData['additional_data']['data'] ?? [];
         $basicData = $vinData['data'] ?? [];
 
@@ -802,6 +833,93 @@ class VinDecoderController extends Controller
         if (!empty($mappedFuelType)) {
             $response['engine']['fuel_type'] = $mappedFuelType;
         }
+
+        if ($rawData) {
+            $trimOverride = $this->extractRawValue($rawData, [
+                ['specification', 'trim'],
+                ['vehicle', 'trim'],
+                ['vehicle_info', 'trim'],
+                ['general', 'trim'],
+                ['trim'],
+            ], ['trim']);
+
+            if ($trimOverride) {
+                $response['general']['trim'] = (string) $trimOverride;
+            }
+
+            $bodyTypeOverride = $this->extractRawValue($rawData, [
+                ['specification', 'body_type'],
+                ['vehicle', 'body_type'],
+                ['vehicle', 'body_style'],
+                ['general', 'body_type'],
+                ['general', 'body_style'],
+                ['body', 'type'],
+                ['body', 'style'],
+                ['body_type'],
+            ], ['body_type', 'body_style']);
+
+            if ($bodyTypeOverride) {
+                $response['general']['body_type'] = (string) $bodyTypeOverride;
+            }
+
+            $engineSizeOverride = $this->extractRawValue($rawData, [
+                ['engine', 'size'],
+                ['engine', 'engine_size'],
+                ['engine', 'displacement'],
+                ['specification', 'engine_size'],
+                ['specification', 'engine', 'size'],
+                ['technical', 'engine', 'size'],
+            ], ['engine_size', 'engine_displacement', 'displacement']);
+
+            if ($engineSizeOverride) {
+                $normalizedEngineSize = $this->normalizeEngineSize($engineSizeOverride);
+                if ($normalizedEngineSize) {
+                    $response['engine']['engine_size'] = $normalizedEngineSize;
+                }
+            }
+
+            $driveTypeOverride = $this->extractRawValue($rawData, [
+                ['drivetrain', 'drive_type'],
+                ['drivetrain', 'type'],
+                ['drivetrain', 'drivetrain_type'],
+                ['vehicle', 'drive_type'],
+                ['specification', 'drive_type'],
+                ['drive_type'],
+            ], ['drive_type', 'drivetrain']);
+
+            if ($driveTypeOverride) {
+                $mappedDriveType = $this->mapDriveType((string) $driveTypeOverride);
+                if ($mappedDriveType) {
+                    $response['engine']['drive_type'] = $mappedDriveType;
+                }
+            }
+
+            $gccRaw = $this->extractRawValue($rawData, [
+                ['market', 'region'],
+                ['market', 'name'],
+                ['market', 'specification'],
+                ['regional', 'specification'],
+                ['general', 'regional_specification'],
+                ['specification', 'regional_specification'],
+                ['regional_specification'],
+            ], ['regional_specification', 'market', 'market_region', 'market_name', 'region']);
+
+            if ($gccRaw) {
+                $gccString = strtoupper(trim((string) $gccRaw));
+                $validGccValues = ['GCC', 'AMERICAN', 'CANADIAN', 'EUROPEAN', 'JAPANESE', 'KOREAN', 'CHINESE', 'OTHERS'];
+
+                if (in_array($gccString, $validGccValues, true)) {
+                    $response['general']['gcc_import'] = $gccString;
+                } elseif (str_contains($gccString, 'GCC')) {
+                    $response['general']['gcc_import'] = 'GCC';
+                } else {
+                    $mappedGcc = $this->mapCountryToGccImport($gccRaw);
+                    if ($mappedGcc) {
+                        $response['general']['gcc_import'] = $mappedGcc;
+                    }
+                }
+            }
+        }
         
         // Additional fields for backward compatibility and extended data
         // Add brand_id and model_id for internal validation (not exposed in final response)
@@ -855,6 +973,101 @@ class VinDecoderController extends Controller
         }
         
         return $response;
+    }
+
+    private function extractRawValue(?array $rawData, array $paths = [], array $fallbackKeys = [])
+    {
+        if (!$rawData) {
+            return null;
+        }
+
+        foreach ($paths as $path) {
+            $value = $this->getValueByCaseInsensitivePath($rawData, $path);
+            if ($value !== null && $value !== '') {
+                return $value;
+            }
+        }
+
+        if (!empty($fallbackKeys)) {
+            return $this->findFirstMatchInArray($rawData, $fallbackKeys);
+        }
+
+        return null;
+    }
+
+    private function getValueByCaseInsensitivePath(array $data, array $segments)
+    {
+        $current = $data;
+        foreach ($segments as $segment) {
+            if (!is_array($current)) {
+                return null;
+            }
+
+            $found = false;
+            foreach ($current as $key => $value) {
+                if (strtolower((string) $key) === strtolower((string) $segment)) {
+                    $current = $value;
+                    $found = true;
+                    break;
+                }
+            }
+
+            if (!$found) {
+                return null;
+            }
+        }
+
+        return $current;
+    }
+
+    private function findFirstMatchInArray(array $data, array $keys)
+    {
+        $keys = array_map(fn ($k) => strtolower((string) $k), $keys);
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveArrayIterator($data));
+
+        foreach ($iterator as $key => $value) {
+            if (in_array(strtolower((string) $key), $keys, true) && $value !== null && $value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeEngineSize($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            $numericValue = (float) $value;
+            if ($numericValue > 10) {
+                return round($numericValue / 1000, 1) . 'L';
+            }
+
+            return rtrim(rtrim(number_format($numericValue, 1, '.', ''), '0'), '.') . 'L';
+        }
+
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            if ($trimmed === '') {
+                return null;
+            }
+
+            if (preg_match('/(\d+(?:\.\d+)?)(?:\s*(?:l|litre|liter))/i', $trimmed, $matches)) {
+                return $matches[1] . 'L';
+            }
+
+            if (preg_match('/(\d+)\s*cc/i', $trimmed, $matches)) {
+                $cc = (float) $matches[1];
+                return round($cc / 1000, 1) . 'L';
+            }
+
+            return $trimmed;
+        }
+
+        return null;
     }
 
     /**
