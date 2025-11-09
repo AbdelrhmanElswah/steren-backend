@@ -207,6 +207,156 @@ class VinDecoderController extends Controller
     }
 
     /**
+     * Decode VIN and return the raw payload from Vehicle Databases API
+     */
+    public function decodeRaw(VinDecodeRequest $request): JsonResponse
+    {
+        try {
+            $vin = $request->validated()['vin'];
+            $cache = $request->validated()['cache'] ?? true;
+
+            $result = $this->vehicleDatabasesService->decodeVin($vin, $cache);
+
+            if (!$result) {
+                return $this->errorResponse('Failed to decode VIN', 400);
+            }
+
+            return $this->successResponse($result, 'VIN decoded successfully (raw data)');
+        } catch (VehicleDatabasesException $e) {
+            Log::error('VIN raw decode failed', [
+                'vin' => $request->input('vin'),
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+
+            return $this->errorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Exception $e) {
+            Log::error('Unexpected error during VIN raw decode', [
+                'vin' => $request->input('vin'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->errorResponse(
+                'An unexpected error occurred while decoding the VIN',
+                500
+            );
+        }
+    }
+
+    /**
+     * Extract VIN via OCR and return the raw decode payload.
+     */
+    public function ocrAndDecodeRaw(Request $request): JsonResponse
+    {
+        try {
+            Log::info('OCR Raw Request', [
+                'hasFile_file' => $request->hasFile('file'),
+                'hasFile_image' => $request->hasFile('image'),
+                'hasFile_upload' => $request->hasFile('upload'),
+                'allFiles' => array_keys($request->allFiles()),
+                'content_type' => $request->header('Content-Type'),
+                'all_input_keys' => array_keys($request->all()),
+            ]);
+
+            $fileField = null;
+            if ($request->hasFile('file')) {
+                $fileField = 'file';
+            } elseif ($request->hasFile('image')) {
+                $fileField = 'image';
+            } elseif ($request->hasFile('upload')) {
+                $fileField = 'upload';
+            }
+
+            if (!$fileField && ($allFiles = $request->allFiles())) {
+                $fileField = array_key_first($allFiles);
+            }
+
+            if (!$fileField) {
+                $contentType = $request->header('Content-Type', 'not set');
+                $isJson = str_contains($contentType, 'application/json');
+
+                $errorMessage = $isJson
+                    ? 'Invalid request format. The request was sent as JSON but files must be uploaded using multipart/form-data. In Postman: Body tab → form-data → add key "file" (type File) and select your image.'
+                    : 'File is required. Please upload an image file (PNG, JPG, JPEG) using the "file", "image", or "upload" field in multipart/form-data format.';
+
+                Log::warning('OCR raw file upload failed', [
+                    'hasFile_file' => $request->hasFile('file'),
+                    'hasFile_image' => $request->hasFile('image'),
+                    'hasFile_upload' => $request->hasFile('upload'),
+                    'allFiles' => array_keys($request->allFiles()),
+                    'content_type' => $contentType,
+                    'is_json' => $isJson,
+                ]);
+
+                return $this->errorResponse($errorMessage, 400);
+            }
+
+            $request->validate([
+                $fileField => 'required|file|mimes:png,jpg,jpeg|max:10240'
+            ]);
+
+            $file = $request->file($fileField);
+
+            $vinResult = $this->extractVinFromImage($file);
+
+            if (!$vinResult['success']) {
+                return $this->errorResponse(
+                    'Unable to extract VIN from image: ' . $vinResult['message'],
+                    400
+                );
+            }
+
+            $vin = $vinResult['data']['vin'];
+
+            $result = $this->vehicleDatabasesService->decodeVin($vin, true);
+
+            if (!$result) {
+                return $this->errorResponse('Failed to decode VIN', 400);
+            }
+
+            return $this->successResponse([
+                'vin' => $vin,
+                'raw' => $result,
+            ], 'VIN extracted and decoded successfully (raw data)');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $errors = [];
+            foreach ($e->errors() as $field => $fieldErrors) {
+                $errors = array_merge($errors, $fieldErrors);
+            }
+
+            $errorMessage = !empty($errors)
+                ? 'Invalid file: ' . implode(', ', $errors)
+                : 'File validation failed. Please ensure you upload a valid image file (PNG, JPG, JPEG) with a maximum size of 10MB.';
+
+            return $this->errorResponse($errorMessage, 400);
+        } catch (VehicleDatabasesException $e) {
+            Log::error('VIN OCR and raw decode failed', [
+                'error' => $e->getMessage(),
+                'status_code' => $e->getStatusCode(),
+            ]);
+
+            return $this->errorResponse(
+                $e->getMessage(),
+                $e->getStatusCode()
+            );
+        } catch (\Exception $e) {
+            Log::error('Unexpected error during VIN OCR and raw decode', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->errorResponse(
+                'An unexpected error occurred while processing the image',
+                500
+            );
+        }
+    }
+
+    /**
      * Extract VIN from image using OCR and decode it for listing
      *
      * @param Request $request

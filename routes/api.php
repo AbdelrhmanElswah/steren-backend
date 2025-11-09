@@ -454,8 +454,10 @@ Route::prefix('similar-cars')->group(function () {
 Route::prefix('vin')->group(function () {
     // Public VIN decode routes
     Route::post('/decode', [App\Http\Controllers\VinDecoderController::class, 'decode']);
+    Route::post('/decode-raw', [App\Http\Controllers\VinDecoderController::class, 'decodeRaw']);
     Route::post('/decode-for-listing', [App\Http\Controllers\VinDecoderController::class, 'decodeForListing']);
     Route::post('/ocr-and-decode', [App\Http\Controllers\VinDecoderController::class, 'ocrAndDecodeForListing']);
+    Route::post('/ocr-and-decode-raw', [App\Http\Controllers\VinDecoderController::class, 'ocrAndDecodeRaw']);
     Route::get('/info', [App\Http\Controllers\VinDecoderController::class, 'getVinInfo']);
     Route::get('/status', [App\Http\Controllers\VinDecoderController::class, 'status']);
 
