@@ -811,7 +811,8 @@ class VinDecoderController extends Controller
         }
         
         if ($engineSize) {
-            $response['engine']['engine_size'] = $engineSize;
+            $normalizedBaseEngineSize = $this->normalizeEngineSize($engineSize, true);
+            $response['engine']['engine_size'] = $normalizedBaseEngineSize ?? $engineSize;
         }
         
         if ($cylinders) {
@@ -872,7 +873,7 @@ class VinDecoderController extends Controller
             ], ['engine_size', 'engine_displacement', 'displacement']);
 
             if ($engineSizeOverride) {
-                $normalizedEngineSize = $this->normalizeEngineSize($engineSizeOverride);
+                $normalizedEngineSize = $this->normalizeEngineSize($engineSizeOverride, true);
                 if ($normalizedEngineSize) {
                     $response['engine']['engine_size'] = $normalizedEngineSize;
                 }
@@ -916,6 +917,23 @@ class VinDecoderController extends Controller
                     $mappedGcc = $this->mapCountryToGccImport($gccRaw);
                     if ($mappedGcc) {
                         $response['general']['gcc_import'] = $mappedGcc;
+                    }
+                }
+            }
+
+            if (!isset($response['general']['gcc_import']) || $response['general']['gcc_import'] === null) {
+                $manufacturerCountry = $this->extractRawValue($rawData, [
+                    ['manufacturer', 'country'],
+                    ['manufacturer', 'country_of_origin'],
+                    ['manufacturer', 'origin'],
+                    ['specification', 'manufacturer', 'country'],
+                    ['general', 'manufacturer_country'],
+                ], ['manufacturer_country', 'country_of_origin', 'manufacturer_origin']);
+
+                if ($manufacturerCountry) {
+                    $mappedFromManufacturer = $this->mapCountryToGccImport($manufacturerCountry);
+                    if ($mappedFromManufacturer) {
+                        $response['general']['gcc_import'] = $mappedFromManufacturer;
                     }
                 }
             }
@@ -1034,7 +1052,7 @@ class VinDecoderController extends Controller
         return null;
     }
 
-    private function normalizeEngineSize($value): ?string
+    private function normalizeEngineSize($value, bool $stripUnit = false): ?string
     {
         if ($value === null || $value === '') {
             return null;
@@ -1043,10 +1061,12 @@ class VinDecoderController extends Controller
         if (is_numeric($value)) {
             $numericValue = (float) $value;
             if ($numericValue > 10) {
-                return round($numericValue / 1000, 1) . 'L';
+                $liters = round($numericValue / 1000, 1);
+                return $stripUnit ? (float) $liters : $liters . 'L';
             }
 
-            return rtrim(rtrim(number_format($numericValue, 1, '.', ''), '0'), '.') . 'L';
+            $liters = rtrim(rtrim(number_format($numericValue, 1, '.', ''), '0'), '.');
+            return $stripUnit ? (float) $liters : $liters . 'L';
         }
 
         if (is_string($value)) {
@@ -1056,15 +1076,16 @@ class VinDecoderController extends Controller
             }
 
             if (preg_match('/(\d+(?:\.\d+)?)(?:\s*(?:l|litre|liter))/i', $trimmed, $matches)) {
-                return $matches[1] . 'L';
+                return $stripUnit ? (float) $matches[1] : $matches[1] . 'L';
             }
 
             if (preg_match('/(\d+)\s*cc/i', $trimmed, $matches)) {
                 $cc = (float) $matches[1];
-                return round($cc / 1000, 1) . 'L';
+                $liters = round($cc / 1000, 1);
+                return $stripUnit ? (float) $liters : $liters . 'L';
             }
 
-            return $trimmed;
+            return $stripUnit ? (float) $trimmed : $trimmed;
         }
 
         return null;
