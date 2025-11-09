@@ -215,7 +215,7 @@ class VinDecoderController extends Controller
             $vin = $request->validated()['vin'];
             $cache = $request->validated()['cache'] ?? true;
 
-            $result = $this->vehicleDatabasesService->decodeVin($vin, $cache);
+            $result = $this->vehicleDatabasesService->decodeVin($vin, $cache, true);
 
             if (!$result) {
                 return $this->errorResponse('Failed to decode VIN', 400);
@@ -312,7 +312,7 @@ class VinDecoderController extends Controller
 
             $vin = $vinResult['data']['vin'];
 
-            $result = $this->vehicleDatabasesService->decodeVin($vin, true);
+            $result = $this->vehicleDatabasesService->decodeVin($vin, true, true);
 
             if (!$result) {
                 return $this->errorResponse('Failed to decode VIN', 400);

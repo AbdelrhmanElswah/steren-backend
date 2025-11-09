@@ -33,11 +33,15 @@ class VehicleDatabasesService
      * @return array Decoded VIN data
      * @throws VehicleDatabasesException
      */
-    public function decodeVin(string $vin, bool $cache = true): array
+    public function decodeVin(string $vin, bool $cache = true, bool $raw = false): array
     {
         // Validate VIN format
         if (!$this->isValidVin($vin)) {
             throw new VehicleDatabasesException('Invalid VIN format. VIN must be 17 characters long and contain only alphanumeric characters (excluding I, O, Q).', 400);
+        }
+
+        if ($raw) {
+            $cache = false;
         }
 
         // Check cache first if enabled
@@ -58,14 +62,24 @@ class VehicleDatabasesService
         }
 
         try {
-            $url = str_replace('{vin}', $vin, $this->apiUrl);
-            
-            $response = Http::timeout($this->timeout)
-                ->withHeaders([
-                    'x-AuthKey' => $this->apiKey,
-                    'Accept' => 'application/json',
-                ])
-                ->get($url);
+            if ($raw) {
+                $url = "https://api.vehicledatabases.com/vin-decode/{$vin}";
+                $response = Http::timeout($this->timeout)
+                    ->withHeaders([
+                        'x-AuthKey' => $this->apiKey,
+                        'Accept' => 'application/json',
+                    ])
+                    ->get($url);
+            } else {
+                $url = str_replace('{vin}', $vin, $this->apiUrl);
+                
+                $response = Http::timeout($this->timeout)
+                    ->withHeaders([
+                        'x-AuthKey' => $this->apiKey,
+                        'Accept' => 'application/json',
+                    ])
+                    ->get($url);
+            }
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -75,16 +89,19 @@ class VehicleDatabasesService
                     'status_code' => $response->status(),
                 ]);
 
-                // Cache the result if enabled
-                if ($cache) {
-                    $this->cacheResult($vin, $data);
+                if (!$raw) {
+                    if ($cache) {
+                        $this->cacheResult($vin, $data);
+                    }
+
+                    return [
+                        'success' => true,
+                        'data' => $data,
+                        'status_code' => $response->status(),
+                    ];
                 }
 
-                return [
-                    'success' => true,
-                    'data' => $data,
-                    'status_code' => $response->status(),
-                ];
+                return $data;
             }
 
             // Handle API errors
