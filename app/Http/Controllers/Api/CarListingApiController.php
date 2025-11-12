@@ -621,7 +621,7 @@ class CarListingApiController extends Controller
             'model' => $model->odoo_id, // Use Odoo ID only
             'condition' => $validatedData['condition_type'],
             'year' => $validatedData['year'],
-            'gcc_import' => $validatedData['gcc_import'] ?? '',
+            'gcc_import' => $validatedData['gcc_import'] ?? $carListing->gcc_import ?? '',
             'body_type' => $bodyType->odoo_id, // Use Odoo ID only
             'engine_size' => $validatedData['engine_size'] ?? 0,
             'fuel_type' => $fuelTypeName,
