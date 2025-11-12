@@ -27,19 +27,27 @@ class CarListingRecommendationService
 
         $recommendations = collect();
         $primarySource = 'top_picks';
-        $searchHistoryId = null;
+        $searchHistoryIds = [];
 
         if ($user) {
-            $latestSearch = $this->getLatestSearchHistory($user);
+            $recentSearches = $this->getRecentSearchHistories($user, 2);
 
-            if ($latestSearch) {
-                $searchHistoryId = $latestSearch->id;
-                $searchResults = $this->getListingsFromSearchHistory($latestSearch, $limit);
-                $recommendations = $searchResults['listings'];
+            foreach ($recentSearches as $searchHistory) {
+                $searchHistoryIds[] = $searchHistory->id;
 
-                if ($recommendations->isNotEmpty()) {
+                $remaining = $limit - $recommendations->count();
+                if ($remaining <= 0) {
+                    break;
+                }
+
+                $searchResults = $this->getListingsFromSearchHistory($searchHistory, $remaining);
+                $listings = $searchResults['listings'];
+
+                if ($listings->isNotEmpty() && $primarySource !== 'search_history') {
                     $primarySource = 'search_history';
                 }
+
+                $recommendations = $recommendations->merge($listings);
             }
         }
 
@@ -50,7 +58,7 @@ class CarListingRecommendationService
             'meta' => [
                 'limit' => $limit,
                 'source' => $recommendations->isEmpty() ? 'top_picks' : $primarySource,
-                'search_history_id' => $searchHistoryId,
+                'search_history_ids' => $searchHistoryIds,
             ],
         ];
     }
@@ -60,11 +68,15 @@ class CarListingRecommendationService
         return max(1, min($limit, 10));
     }
 
-    private function getLatestSearchHistory(User $user): ?SearchHistory
+    /**
+     * @return \Illuminate\Support\Collection<int, SearchHistory>
+     */
+    private function getRecentSearchHistories(User $user, int $limit): Collection
     {
         return SearchHistory::where('user_id', $user->id)
             ->orderByRaw('COALESCE(last_searched_at, updated_at, created_at) DESC')
-            ->first();
+            ->limit($limit)
+            ->get();
     }
 
     /**
