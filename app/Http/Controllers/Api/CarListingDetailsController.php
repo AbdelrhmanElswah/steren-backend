@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\CarListing;
 use App\Http\Resources\Api\CarListingRecommendationsResource;
 use App\Http\Resources\Api\ModelListingsByConditionResource;
 use App\Services\CarListingRecommendationService;
-use App\Services\CarModelListingService;
+use App\Services\CarBrandListingService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +17,7 @@ class CarListingDetailsController extends Controller
 
     public function __construct(
         private CarListingRecommendationService $carListingRecommendationService,
-        private CarModelListingService $carModelListingService
+        private CarBrandListingService $carBrandListingService
     ) {}
 
     /**
@@ -908,20 +907,17 @@ class CarListingDetailsController extends Controller
         }
     }
 
-    /**
-     * Get all car listings for a model, grouped by condition (new vs used)
-     */
-    public function getModelListingsByCondition(Request $request, int $modelId): JsonResponse
+    public function getBrandListingsByCondition(Request $request, int $brandId): JsonResponse
     {
         try {
-            $result = $this->carModelListingService->getListingsGroupedByCondition($modelId);
+            $result = $this->carBrandListingService->getListingsGroupedByCondition($brandId);
 
             return $this->resourceResponse(
                 new ModelListingsByConditionResource($result),
                 'Car listings grouped by condition retrieved successfully'
             );
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return $this->notFoundResponse('Car model not found');
+            return $this->notFoundResponse('Car brand not found');
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to retrieve car listings: ' . $e->getMessage(), 500);
         }

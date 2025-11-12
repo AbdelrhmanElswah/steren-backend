@@ -3,34 +3,33 @@
 namespace App\Services;
 
 use App\Http\Resources\Api\CarListingResource;
+use App\Models\CarBrand;
 use App\Models\CarListing;
-use App\Models\CarModel;
 use Illuminate\Database\Eloquent\Collection;
 
-class CarModelListingService
+class CarBrandListingService
 {
     /**
-     * Get listings for a model grouped by condition.
+     * Get listings for a brand grouped by condition.
      *
-     * @param  int  $modelId
-     * @return array{model: array<string, mixed>, new: array<string, mixed>, used: array<string, mixed>}
+     * @param  int  $brandId
+     * @return array{brand: array<string, mixed>, new: array<string, mixed>, used: array<string, mixed>}
      *
      * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
      */
-    public function getListingsGroupedByCondition(int $modelId): array
+    public function getListingsGroupedByCondition(int $brandId): array
     {
-        $carModel = CarModel::findOrFail($modelId);
+        $carBrand = CarBrand::findOrFail($brandId);
 
-        $baseQuery = $this->buildBaseQuery($modelId);
+        $baseQuery = $this->buildBaseQuery($brandId);
 
         $newListings = $this->getNewListings(clone $baseQuery);
         $usedListings = $this->getUsedListings(clone $baseQuery, $newListings->pluck('id')->all());
 
         return [
-            'model' => [
-                'id' => $carModel->id,
-                'name' => $carModel->name,
-                'brand_id' => $carModel->car_brand_id,
+            'brand' => [
+                'id' => $carBrand->id,
+                'name' => $carBrand->name,
             ],
             'new' => [
                 'count' => $newListings->count(),
@@ -43,7 +42,7 @@ class CarModelListingService
         ];
     }
 
-    private function buildBaseQuery(int $modelId)
+    private function buildBaseQuery(int $brandId)
     {
         return CarListing::with([
             'brand',
@@ -56,7 +55,7 @@ class CarModelListingService
                     ->orderBy('created_at');
             },
         ])
-        ->where('car_model_id', $modelId)
+        ->where('car_brand_id', $brandId)
         ->where('status', 'active')
         ->whereNull('sold_at');
     }
