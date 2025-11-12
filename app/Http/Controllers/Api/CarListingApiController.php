@@ -517,8 +517,8 @@ class CarListingApiController extends Controller
         $cylinderName = $this->getCylinderName($validatedData['cylinder_id'] ?? null);
 
         // Get city_id from location
-        $cityId = null;
-        if (isset($validatedData['location_id'])) {
+        $cityId = $validatedData['city_id'] ?? null;
+        if (!$cityId && isset($validatedData['location_id'])) {
             $location = \App\Models\Location::find($validatedData['location_id']);
             $cityId = $location ? $location->city_id : null;
         }
@@ -654,6 +654,9 @@ class CarListingApiController extends Controller
             'title' => $validatedData['title'],
             'description' => $validatedData['description'] ?? '',
             'images' => $imageUrls,
+            'inspection' => $inspectionData,
+            'inspection_file' => $request->file('inspection_file') ?? null,
+            'inspection_file_name' => $inspectionFileName,
         ];
     }
 
