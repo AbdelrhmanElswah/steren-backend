@@ -416,7 +416,10 @@ class SearchService
                 'driveType:id,name',
                 'cylinder:id,name',
                 'carCondition:id,name',
-                'user:id,full_name,email,phone'
+                'user' => function ($query) {
+                    $query->select('id', 'full_name', 'display_name', 'profile_picture', 'is_verified', 'is_dealer')
+                          ->with('profilePictureMedia');
+                }
             ]);
 
             // Apply filters

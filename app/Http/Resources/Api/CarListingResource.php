@@ -84,6 +84,23 @@ class CarListingResource extends JsonResource
                     'info' => $primaryMedia->info,
                 ]];
             }),
+            'seller' => $this->whenLoaded('user', function () {
+                $profilePicture = null;
+
+                if ($this->user->relationLoaded('profilePictureMedia') && $this->user->profilePictureMedia) {
+                    $profilePicture = $this->user->profilePictureMedia->public_url ?? $this->user->profilePictureMedia->path_file_name;
+                } elseif (!empty($this->user->profile_picture)) {
+                    $profilePicture = $this->user->profile_picture;
+                }
+
+                return [
+                    'id' => $this->user->id,
+                    'name' => $this->user->display_name ?? $this->user->full_name,
+                    'profile_picture' => $profilePicture,
+                    'is_verified' => (bool) $this->user->is_verified,
+                    'is_dealer' => (bool) $this->user->is_dealer,
+                ];
+            }),
         ];
     }
 }

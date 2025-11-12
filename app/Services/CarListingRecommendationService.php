@@ -138,7 +138,11 @@ class CarListingRecommendationService
                 $query->orderBy('order')->orderBy('created_at');
             },
             'badges', 'carCondition', 'fuelType', 'transmission',
-            'exteriorColor', 'driveType', 'cylinder'
+            'exteriorColor', 'driveType', 'cylinder',
+            'user' => function ($query) {
+                $query->select('id', 'full_name', 'display_name', 'profile_picture', 'is_verified', 'is_dealer')
+                    ->with('profilePictureMedia');
+            }
         ])
         ->where('is_promoted', true)
         ->active()
