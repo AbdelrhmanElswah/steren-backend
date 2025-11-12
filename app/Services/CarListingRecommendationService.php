@@ -1,0 +1,158 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\CarListing;
+use App\Models\SearchHistory;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
+
+class CarListingRecommendationService
+{
+    public function __construct(
+        private SearchService $searchService
+    ) {}
+
+    /**
+     * Get recommended car listings for a user based on their latest search history.
+     *
+     * @param  User|null  $user
+     * @param  int  $limit
+     * @return array{listings: \Illuminate\Support\Collection, meta: array<string, mixed>}
+     */
+    public function getRecommendations(?User $user, int $limit = 2): array
+    {
+        $limit = $this->normalizeLimit($limit);
+
+        $recommendations = collect();
+        $primarySource = 'top_picks';
+        $searchHistoryId = null;
+
+        if ($user) {
+            $latestSearch = $this->getLatestSearchHistory($user);
+
+            if ($latestSearch) {
+                $searchHistoryId = $latestSearch->id;
+                $searchResults = $this->getListingsFromSearchHistory($latestSearch, $limit);
+                $recommendations = $searchResults['listings'];
+
+                if ($recommendations->isNotEmpty()) {
+                    $primarySource = 'search_history';
+                }
+            }
+        }
+
+        $recommendations = $this->mergeWithFallbackListings($recommendations, $limit, $primarySource);
+
+        return [
+            'listings' => $recommendations->unique('id')->take($limit)->values(),
+            'meta' => [
+                'limit' => $limit,
+                'source' => $recommendations->isEmpty() ? 'top_picks' : $primarySource,
+                'search_history_id' => $searchHistoryId,
+            ],
+        ];
+    }
+
+    private function normalizeLimit(int $limit): int
+    {
+        return max(1, min($limit, 10));
+    }
+
+    private function getLatestSearchHistory(User $user): ?SearchHistory
+    {
+        return SearchHistory::where('user_id', $user->id)
+            ->orderByRaw('COALESCE(last_searched_at, updated_at, created_at) DESC')
+            ->first();
+    }
+
+    /**
+     * @return array{listings: Collection}
+     */
+    private function getListingsFromSearchHistory(SearchHistory $searchHistory, int $limit): array
+    {
+        $filters = $searchHistory->filters ?? [];
+
+        if (!isset($filters['search']) && !empty($searchHistory->search_query)) {
+            $filters['search'] = $searchHistory->search_query;
+        }
+
+        $filters = $this->cleanFilters($filters);
+
+        $searchResults = $this->searchService->searchListings($filters, 1, $limit);
+
+        return [
+            'listings' => collect($searchResults['listings'] ?? []),
+        ];
+    }
+
+    /**
+     * Merge current recommendations with fallback sponsored listings if needed.
+     *
+     * @param  Collection  $current
+     * @param  int  $limit
+     * @param  string  $primarySource
+     * @return Collection
+     */
+    private function mergeWithFallbackListings(Collection &$current, int $limit, string &$primarySource): Collection
+    {
+        $neededCount = $limit - $current->count();
+
+        if ($neededCount <= 0) {
+            return $current;
+        }
+
+        $fallback = $this->getSponsoredFallbackListings(
+            $current->pluck('id')->all(),
+            $neededCount
+        );
+
+        if ($fallback->isNotEmpty() && $primarySource !== 'search_history') {
+            $primarySource = 'top_picks';
+        }
+
+        return $current->merge($fallback);
+    }
+
+    /**
+     * Fetch fallback sponsored listings.
+     */
+    private function getSponsoredFallbackListings(array $excludeIds, int $limit): EloquentCollection
+    {
+        return CarListing::with([
+            'brand', 'carModel', 'bodyType', 'location', 'studio',
+            'media' => function ($query) {
+                $query->orderBy('order')->orderBy('created_at');
+            },
+            'badges', 'carCondition', 'fuelType', 'transmission',
+            'exteriorColor', 'driveType', 'cylinder'
+        ])
+        ->sponsored()
+        ->active()
+        ->whereNull('sold_at')
+        ->when(!empty($excludeIds), function ($query) use ($excludeIds) {
+            $query->whereNotIn('id', $excludeIds);
+        })
+        ->orderByDesc('promotion_started_at')
+        ->orderByDesc('created_at')
+        ->limit($limit)
+        ->get();
+    }
+
+    /**
+     * Remove empty filter values to avoid broad queries.
+     */
+    private function cleanFilters(array $filters): array
+    {
+        return array_filter($filters, function ($value) {
+            if (is_array($value)) {
+                $filtered = array_filter($value, fn ($inner) => $inner !== null && $inner !== '');
+                return !empty($filtered);
+            }
+
+            return $value !== null && $value !== '';
+        });
+    }
+}
+

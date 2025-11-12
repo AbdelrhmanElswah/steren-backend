@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CarListing;
+use App\Http\Resources\Api\CarListingRecommendationsResource;
+use App\Services\CarListingRecommendationService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -11,6 +13,10 @@ use Illuminate\Http\JsonResponse;
 class CarListingDetailsController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(
+        private CarListingRecommendationService $carListingRecommendationService
+    ) {}
 
     /**
      * Get all data related to car listing by its ID
@@ -876,6 +882,26 @@ class CarListingDetailsController extends Controller
             return $this->errorResponse('Validation failed: ' . $e->getMessage(), 422, $e->errors());
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to retrieve similar cars: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get recommended car listings based on user's latest search history
+     */
+    public function getYouMayAlsoLike(Request $request): JsonResponse
+    {
+        try {
+            $result = $this->carListingRecommendationService->getRecommendations(
+                $request->user(),
+                (int) $request->get('limit', 2)
+            );
+
+            return $this->resourceResponse(
+                new CarListingRecommendationsResource($result),
+                'You may also like listings retrieved successfully'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve recommended listings: ' . $e->getMessage(), 500);
         }
     }
 }
