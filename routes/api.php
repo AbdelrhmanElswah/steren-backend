@@ -203,6 +203,7 @@ Route::prefix('car-listings')->group(function () {
     // Similar cars API
     Route::get('/similar/search', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getSimilarCars']);
     Route::middleware('auth:sanctum')->get('/you-may-also-like', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getYouMayAlsoLike']);
+    Route::get('/model/{modelId}/condition-groups', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getModelListingsByCondition']);
 
     Route::get('/filter-options', [App\Http\Controllers\Data\CarListingController::class, 'getFilterOptions']);
     Route::get('/trims/{modelId}', [App\Http\Controllers\Data\CarListingController::class, 'getCarTrims']);
