@@ -128,7 +128,7 @@ class CarListingRecommendationService
             'badges', 'carCondition', 'fuelType', 'transmission',
             'exteriorColor', 'driveType', 'cylinder'
         ])
-        ->sponsored()
+        ->where('is_promoted', true)
         ->active()
         ->whereNull('sold_at')
         ->when(!empty($excludeIds), function ($query) use ($excludeIds) {
