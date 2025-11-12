@@ -200,20 +200,20 @@ Route::prefix('carfax')->group(function () {
 // Car Listing Routes - GET only
 Route::prefix('car-listings')->group(function () {
     Route::get('/', [App\Http\Controllers\Data\CarListingController::class, 'getCarListings']);
+    // Similar cars API
+    Route::get('/similar/search', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getSimilarCars']);
+    Route::middleware('auth:sanctum')->get('/you-may-also-like', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getYouMayAlsoLike']);
+
     Route::get('/filter-options', [App\Http\Controllers\Data\CarListingController::class, 'getFilterOptions']);
-    Route::get('/{id}', [App\Http\Controllers\Data\CarListingController::class, 'getCarListingDetails']);
     Route::get('/trims/{modelId}', [App\Http\Controllers\Data\CarListingController::class, 'getCarTrims']);
     Route::get('/news', [App\Http\Controllers\Data\CarListingController::class, 'getNewsArticles']);
+    Route::get('/{id}', [App\Http\Controllers\Data\CarListingController::class, 'getCarListingDetails']);
 
     // Enhanced car listing details API
     Route::get('/{id}/complete', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getCarListingDetails']);
 
     // Car listing with media API
     Route::get('/{id}/with-media', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getCarListingWithMedia']);
-
-    // Similar cars API
-    Route::get('/similar/search', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getSimilarCars']);
-    Route::middleware('auth:sanctum')->get('/you-may-also-like', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getYouMayAlsoLike']);
 });
 
 // User's Own Car Listings - Protected with Sanctum
