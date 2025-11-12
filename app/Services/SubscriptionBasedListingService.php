@@ -59,7 +59,7 @@ class SubscriptionBasedListingService
      * Get top picks for user based on subscription plan
      * COMMENTED OUT: No subscription plans currently
      */
-    public function getTopPicksForUser(User $user, int $limit = 10)
+    public function getTopPicksForUser(User $user, int $limit = 10, array $filters = [])
     {
         // COMMENTED OUT: Subscription plan system
         // $plan = $this->subscriptionService->getSubscriptionPlan($user);
@@ -76,10 +76,10 @@ class SubscriptionBasedListingService
 
         // SIMPLIFIED: Dealers get dealer top picks, others get general
         if ($this->isDealer($user)) {
-            return $this->getDealerTopPicks($user, $limit);
+            return $this->getDealerTopPicks($user, $limit, $filters);
         }
 
-        return $this->getGeneralTopPicks($limit);
+        return $this->getGeneralTopPicks($limit, $filters);
     }
 
     /**
@@ -156,6 +156,10 @@ class SubscriptionBasedListingService
             $query->where('is_featured', $filters['featured']);
         }
 
+        if (isset($filters['city_id'])) {
+            $this->applyCityFilter($query, $filters['city_id']);
+        }
+
         if (isset($filters['sort_by'])) {
             switch ($filters['sort_by']) {
                 case 'price_low':
@@ -194,15 +198,19 @@ class SubscriptionBasedListingService
             ->with([
                 'dealer',
                 'city',
-                'carListings' => function ($query) {
+                'carListings' => function ($query) use ($filters) {
                     $query->where('status', 'active')
                         ->with([
                             'brand:id,name,odoo_id',
                             'carModel:id,name,car_brand_id',
                             'bodyType:id,name',
                             'location:id,name',
-                            'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order'
+                            'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order',
+                            'studio:id,city_id'
                         ])
+                        ->when(isset($filters['city_id']), function ($carQuery) use ($filters) {
+                            $this->applyCityFilter($carQuery, $filters['city_id']);
+                        })
                         ->orderBy('is_featured', 'desc')
                         ->orderBy('created_at', 'desc');
                 }
@@ -357,7 +365,7 @@ class SubscriptionBasedListingService
     /**
      * Get dealer top picks
      */
-    protected function getDealerTopPicks(User $user, int $limit)
+    protected function getDealerTopPicks(User $user, int $limit, array $filters = [])
     {
         $studios = $this->getDealerStudios($user);
         
@@ -367,14 +375,19 @@ class SubscriptionBasedListingService
 
         $studioIds = $studios->pluck('id');
 
-        return CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media', 'studio'])
             ->where('status', 'active')
             ->whereIn('studio_id', $studioIds)
             ->where(function ($query) {
                 $query->where('is_featured', true)
                       ->orWhere('is_sponsored', true);
-            })
-            ->orderBy('featured_at', 'desc')
+            });
+
+        if (!empty($filters['city_id'])) {
+            $this->applyCityFilter($query, $filters['city_id']);
+        }
+
+        return $query->orderBy('featured_at', 'desc')
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get();
@@ -383,12 +396,18 @@ class SubscriptionBasedListingService
     /**
      * Get general top picks
      */
-    protected function getGeneralTopPicks(int $limit)
+    protected function getGeneralTopPicks(int $limit, array $filters = [])
     {
-        return CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media', 'studio'])
             ->where('status', 'active')
-            ->where('is_featured', true)
-            ->orderBy('featured_at', 'desc')
+            ->where('is_featured', true);
+
+        if (!empty($filters['city_id'])) {
+            $this->applyCityFilter($query, $filters['city_id']);
+        }
+
+        return $query->orderBy('featured_at', 'desc')
+            ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get();
     }
@@ -465,6 +484,10 @@ class SubscriptionBasedListingService
             $query->where('price', '<=', $filters['price_to']);
         }
 
+        if (isset($filters['city_id'])) {
+            $this->applyCityFilter($query, $filters['city_id']);
+        }
+
         if (isset($filters['mileage_from'])) {
             $query->where('mileage', '>=', $filters['mileage_from']);
         }
@@ -507,5 +530,22 @@ class SubscriptionBasedListingService
         }
 
         return $query;
+    }
+
+    /**
+     * Apply a standardized city filter to car listing queries, checking both listing and studio cities.
+     */
+    protected function applyCityFilter($query, int $cityId)
+    {
+        if (!$cityId) {
+            return;
+        }
+
+        $query->where(function ($q) use ($cityId) {
+            $q->where('odoo_city_id', $cityId)
+              ->orWhereHas('studio', function ($studioQuery) use ($cityId) {
+                  $studioQuery->where('city_id', $cityId);
+              });
+        });
     }
 }

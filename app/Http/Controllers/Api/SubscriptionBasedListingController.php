@@ -58,13 +58,18 @@ class SubscriptionBasedListingController extends Controller
     {
         try {
             $user = Auth::user();
-            $limit = $request->input('limit', 10);
+            $limit = (int) $request->input('limit', 10);
+            $filters = array_filter(
+                $request->only(['city_id']),
+                fn ($value) => $value !== null && $value !== ''
+            );
 
-            $topPicks = $this->listingService->getTopPicksForUser($user, $limit);
+            $topPicks = $this->listingService->getTopPicksForUser($user, $limit, $filters);
 
             return $this->successResponse([
                 'top_picks' => CarListingResource::collection($topPicks),
                 'count' => $topPicks->count(),
+                'filters_applied' => $filters,
             ], 'Top picks retrieved successfully');
 
         } catch (\Exception $e) {
@@ -113,7 +118,10 @@ class SubscriptionBasedListingController extends Controller
     public function getAllStudios(Request $request): JsonResponse
     {
         try {
-            $filters = $request->all();
+            $filters = array_filter(
+                $request->only(['city_id', 'verified_only', 'sort_by']),
+                fn ($value) => $value !== null && $value !== ''
+            );
             $studios = $this->listingService->getAllStudios($filters);
 
             // Format studios with their listings
