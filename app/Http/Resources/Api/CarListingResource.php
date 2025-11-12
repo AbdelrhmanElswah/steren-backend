@@ -16,12 +16,9 @@ class CarListingResource extends JsonResource
     {
         // Pre-calculate expensive operations
         $media = $this->relationLoaded('media') ? $this->media : null;
-        $primaryImage = $media && $media instanceof \Illuminate\Database\Eloquent\Collection 
-            ? $media->where('info', 'primary')->first()?->path_file_name 
+        $primaryMedia = $media && $media instanceof \Illuminate\Database\Eloquent\Collection 
+            ? $media->where('info', 'primary')->sortBy('order')->first() 
             : null;
-        $images = $media && $media instanceof \Illuminate\Database\Eloquent\Collection 
-            ? $media->pluck('path_file_name')->toArray() 
-            : [];
         
         return [
             'id' => $this->id,
@@ -72,18 +69,20 @@ class CarListingResource extends JsonResource
             'odoo_listing_state' => $this->odoo_listing_state,
             'odoo_response' => $this->when($this->odoo_response, $this->odoo_response),
             // Optimized media handling
-            'media' => $this->whenLoaded('media', function() use ($media) {
-                return $media ? $media->map(function ($media) {
-                    return [
-                        'id' => $media->id,
-                        'file_path' => $media->path_file_name,
-                        'url' => $media->public_url ?? $media->path_file_name,
-                        'file_type' => $media->file_type,
-                        'is_primary' => $media->info === 'primary',
-                        'order' => $media->order ?? 0,
-                        'info' => $media->info,
-                    ];
-                }) : collect();
+            'media' => $this->whenLoaded('media', function() use ($primaryMedia) {
+                if (!$primaryMedia) {
+                    return [];
+                }
+
+                return [[
+                    'id' => $primaryMedia->id,
+                    'file_path' => $primaryMedia->path_file_name,
+                    'url' => $primaryMedia->public_url ?? $primaryMedia->path_file_name,
+                    'file_type' => $primaryMedia->file_type,
+                    'is_primary' => true,
+                    'order' => $primaryMedia->order ?? 0,
+                    'info' => $primaryMedia->info,
+                ]];
             }),
         ];
     }
