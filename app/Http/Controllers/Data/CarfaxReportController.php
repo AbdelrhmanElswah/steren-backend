@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Data;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CarfaxReportResource;
+use App\Http\Requests\Carfax\SubmitCarfaxReportRequest;
 use App\Models\CarfaxReport;
 use App\Models\CarListing;
+use App\Models\Report;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class CarfaxReportController extends Controller
 {
@@ -125,6 +129,67 @@ class CarfaxReportController extends Controller
                 'success' => false,
                 'message' => 'Failed to search Carfax reports: ' . $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Submit a Carfax report to Odoo
+     */
+    public function submitCarfaxReport(SubmitCarfaxReportRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        try {
+            $report = Report::create([
+                'user_id' => $request->user()?->id,
+                'reportable_type' => CarListing::class,
+                'reportable_id' => $data['car_listing_id'],
+                'reason' => $data['reason'],
+                'message' => $data['message'] ?? null,
+                'status' => 'pending',
+            ]);
+
+            $odooPayload = [
+                'car_listing_id' => $data['car_listing_id'],
+                'reason' => $data['reason'],
+                'message' => $data['message'] ?? null,
+            ];
+
+            $response = Http::timeout(30)->post(
+                rtrim(config('services.odoo.base_url'), '/') . '/api/listing/report',
+                $odooPayload
+            );
+
+            if (!$response->successful()) {
+                Log::error('CarfaxReportController: Failed to submit report to Odoo', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'payload' => $odooPayload,
+                ]);
+
+                return $this->errorResponse('Failed to submit report to Odoo', 502, [
+                    'odoo_status' => $response->status(),
+                    'odoo_response' => $response->json(),
+                ]);
+            }
+
+            $report->update([
+                'status' => 'under_review',
+                'admin_notes' => 'Report forwarded to Odoo',
+            ]);
+
+            return $this->successResponse([
+                'report_id' => $report->id,
+                'odoo_response' => $response->json(),
+            ], 'Carfax report submitted successfully', 201);
+        } catch (\Exception $e) {
+            Log::error('CarfaxReportController: Error submitting Carfax report', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'payload' => $data,
+            ]);
+
+            return $this->errorResponse('Failed to submit Carfax report: ' . $e->getMessage(), 500);
         }
     }
 }

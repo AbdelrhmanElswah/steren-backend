@@ -201,6 +201,7 @@ Route::prefix('carfax')->group(function () {
     Route::get('/vin/{vin}', [App\Http\Controllers\Data\CarfaxReportController::class, 'getCarfaxByVin']);
     Route::get('/{carListingId}', [App\Http\Controllers\Data\CarfaxReportController::class, 'getCarfaxReport']);
     Route::get('/search', [App\Http\Controllers\Data\CarfaxReportController::class, 'searchCarfaxReports']);
+    Route::post('/report', [App\Http\Controllers\Data\CarfaxReportController::class, 'submitCarfaxReport']);
 });
 
 // Car Listing Routes - GET only
