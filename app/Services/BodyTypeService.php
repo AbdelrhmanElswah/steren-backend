@@ -27,7 +27,10 @@ class BodyTypeService
 
     public function getBodyTypeOptions(): Collection
     {
-        return $this->getAllBodyTypes();
+        return BodyType::with('medias')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
     }
 
     public function toResourceCollection(Collection $bodyTypes): AnonymousResourceCollection
