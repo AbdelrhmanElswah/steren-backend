@@ -16,6 +16,7 @@ class ModelListingsByConditionResource extends JsonResource
     {
         return [
             'brand' => $this['brand'] ?? [],
+            'studio' => $this['studio'] ?? [],
             'new' => [
                 'count' => $this['new']['count'] ?? 0,
                 'listings' => CarListingResource::collection(

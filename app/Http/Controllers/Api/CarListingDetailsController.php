@@ -7,6 +7,7 @@ use App\Http\Resources\Api\CarListingRecommendationsResource;
 use App\Http\Resources\Api\ModelListingsByConditionResource;
 use App\Services\CarListingRecommendationService;
 use App\Services\CarBrandListingService;
+use App\Services\StudioListingService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +18,8 @@ class CarListingDetailsController extends Controller
 
     public function __construct(
         private CarListingRecommendationService $carListingRecommendationService,
-        private CarBrandListingService $carBrandListingService
+        private CarBrandListingService $carBrandListingService,
+        private StudioListingService $studioListingService
     ) {}
 
     /**
@@ -918,6 +920,22 @@ class CarListingDetailsController extends Controller
             );
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->notFoundResponse('Car brand not found');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve car listings: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function getStudioListingsByCondition(Request $request, int $studioId): JsonResponse
+    {
+        try {
+            $result = $this->studioListingService->getListingsGroupedByCondition($studioId);
+
+            return $this->resourceResponse(
+                new ModelListingsByConditionResource($result),
+                'Car listings grouped by condition retrieved successfully'
+            );
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->notFoundResponse('Studio not found');
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to retrieve car listings: ' . $e->getMessage(), 500);
         }
