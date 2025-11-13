@@ -516,11 +516,36 @@ class CarListingApiController extends Controller
         $exteriorColorName = $this->getExteriorColorName($validatedData['exterior_color_id'] ?? null);
         $cylinderName = $this->getCylinderName($validatedData['cylinder_id'] ?? null);
 
-        // Get city_id from location
+        // Resolve city information and corresponding Odoo ID
         $cityId = $validatedData['city_id'] ?? null;
-        if (!$cityId && isset($validatedData['location_id'])) {
+        $city = null;
+        $location = null;
+        $cityOdooId = null;
+
+        if (isset($validatedData['location_id'])) {
             $location = \App\Models\Location::find($validatedData['location_id']);
-            $cityId = $location ? $location->city_id : null;
+        }
+
+        if ($cityId) {
+            $city = \App\Models\City::find($cityId);
+        } elseif ($location && !empty($location->city_id)) {
+            $cityId = $location->city_id;
+            $city = \App\Models\City::find($cityId);
+        }
+
+        if ($city && !empty($city->odoo_id)) {
+            $cityOdooId = $city->odoo_id;
+        }
+
+        if (!$cityOdooId && $location && !empty($location->odoo_id)) {
+            $cityOdooId = $location->odoo_id;
+        }
+
+        if ($city && empty($cityOdooId)) {
+            Log::warning('City missing Odoo ID for car listing creation', [
+                'city_id' => $city->id,
+                'city_name' => $city->name,
+            ]);
         }
 
         // Prepare inspection data
@@ -557,6 +582,12 @@ class CarListingApiController extends Controller
             $missingOdooIds[] = "Body Type (ID: {$validatedData['car_body_type_id']})";
         }
 
+        if ((($cityId ?? null) || isset($validatedData['location_id'])) && empty($cityOdooId)) {
+            $missingOdooIds[] = $cityId
+                ? "City (ID: {$cityId})"
+                : "Location (ID: {$validatedData['location_id']})";
+        }
+
         if (!empty($missingOdooIds)) {
             Log::error('Missing Odoo IDs for car listing creation', [
                 'missing_odoo_ids' => $missingOdooIds,
@@ -583,7 +614,15 @@ class CarListingApiController extends Controller
                     'odoo_id_type' => gettype($bodyType->odoo_id),
                     'odoo_id_is_null' => is_null($bodyType->odoo_id),
                     'odoo_id_is_empty' => $bodyType->odoo_id === ''
-                ] : null
+                ] : null,
+                'city' => [
+                    'provided_city_id' => $validatedData['city_id'] ?? null,
+                    'resolved_city_id' => $city?->id,
+                    'city_name' => $city?->name,
+                    'city_odoo_id' => $city?->odoo_id,
+                    'location_id' => $validatedData['location_id'] ?? null,
+                    'location_odoo_id' => $location?->odoo_id,
+                ],
             ]);
             
             // Return error response instead of sending to Odoo
@@ -611,7 +650,15 @@ class CarListingApiController extends Controller
                 'laravel_id' => $validatedData['car_body_type_id'],
                 'odoo_id' => $bodyType->odoo_id,
                 'name' => $bodyType->name
-            ]
+            ],
+            'city' => [
+                'provided_city_id' => $validatedData['city_id'] ?? null,
+                'resolved_city_id' => $city?->id,
+                'city_name' => $city?->name,
+                'city_odoo_id' => $cityOdooId,
+                'location_id' => $validatedData['location_id'] ?? null,
+                'location_odoo_id' => $location?->odoo_id ?? null,
+            ],
         ]);
 
         // Prepare car_info with all required fields - Use Odoo IDs only
@@ -644,7 +691,7 @@ class CarListingApiController extends Controller
 
         return [
             'partner_id' => $user->partner_id,
-            'city_id' => $cityId,
+            'city_id' => $cityOdooId,
             'car_info' => $carInfo,
             'price_currency' => $validatedData['price_currency'],
             'price' => $validatedData['price'],
