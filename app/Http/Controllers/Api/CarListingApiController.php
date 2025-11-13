@@ -489,6 +489,7 @@ class CarListingApiController extends Controller
                 'mileage_type' => $carInfo['mileage_type'] ?? 'KM',
                 'mileage' => $carInfo['mileage'],
                 'plate_status' => $carInfo['plate_status'] ?? '',
+                'trim' => $carInfo['trim'] ?? '',
             ],
             'price_currency' => $validatedData['price_currency'],
             'price' => $validatedData['price'],
@@ -688,6 +689,7 @@ class CarListingApiController extends Controller
             'mileage' => $validatedData['mileage'],
             'plate_status' => $validatedData['plate_status'] ?? '',
             'inspection' => $inspectionData,
+            'trim' => $validatedData['trim'] ?? $carListing->trim ?? '',
         ];
 
         // Add inspection file name if available
