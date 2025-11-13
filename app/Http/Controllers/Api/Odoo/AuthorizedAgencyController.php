@@ -150,8 +150,10 @@ class AuthorizedAgencyController extends Controller
                 $resource = AuthorizedAgencyResource::collection($paginated);
                 $resourceData = $resource->response()->getData(true);
 
-                return $this->successResponse([
-                    'authorized_agencies' => $resourceData['data'] ?? [],
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Authorized agencies retrieved successfully',
+                    'data' => $resourceData['data'] ?? [],
                     'pagination' => [
                         'current_page' => $resourceData['meta']['current_page'] ?? $paginated->currentPage(),
                         'per_page' => $resourceData['meta']['per_page'] ?? $paginated->perPage(),
@@ -159,7 +161,7 @@ class AuthorizedAgencyController extends Controller
                         'total' => $resourceData['meta']['total'] ?? $paginated->total(),
                     ],
                     'total' => $paginated->total(),
-                ], 'Authorized agencies retrieved successfully');
+                ]);
             }
 
             $agencies = $query->get();
@@ -167,10 +169,12 @@ class AuthorizedAgencyController extends Controller
             $resource = AuthorizedAgencyResource::collection($agencies);
             $resourceData = $resource->response()->getData(true);
 
-            return $this->successResponse([
-                'authorized_agencies' => $resourceData['data'] ?? [],
+            return response()->json([
+                'success' => true,
+                'message' => 'Authorized agencies retrieved successfully',
+                'data' => $resourceData['data'] ?? [],
                 'total' => $agencies->count(),
-            ], 'Authorized agencies retrieved successfully');
+            ]);
         } catch (\Throwable $e) {
             Log::error('AuthorizedAgencyController@getAuthorizedAgencies error', [
                 'message' => $e->getMessage(),
