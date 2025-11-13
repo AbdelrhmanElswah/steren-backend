@@ -87,6 +87,11 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('subscription-plans/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'deleteByOdooId']);
     Route::post('subscription-plans/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'restoreByOdooId']);
 
+    Route::post('authorized-agencies', [App\Http\Controllers\Api\Odoo\AuthorizedAgencyController::class, 'store']);
+    Route::post('authorized-agencies/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\AuthorizedAgencyController::class, 'updateByOdooId']);
+    Route::post('authorized-agencies/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\AuthorizedAgencyController::class, 'deleteByOdooId']);
+    Route::post('authorized-agencies/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\AuthorizedAgencyController::class, 'restoreByOdooId']);
+
     Route::post('budgets', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'store']);
     Route::post('budgets/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'updateByOdooId']);
     Route::post('budgets/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'deleteByOdooId']);
@@ -126,6 +131,7 @@ Route::prefix('odoo')->group(function () {
     Route::get('locations', [App\Http\Controllers\Api\Odoo\LocationController::class, 'getLocations']);
     Route::get('studios', [App\Http\Controllers\Api\Odoo\StudioController::class, 'getStudios']);
     Route::get('subscription-plans', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'getSubscriptionPlans']);
+    Route::get('authorized-agencies', [App\Http\Controllers\Api\Odoo\AuthorizedAgencyController::class, 'getAuthorizedAgencies']);
     Route::get('budgets', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'getBudgets']);
 });
 
