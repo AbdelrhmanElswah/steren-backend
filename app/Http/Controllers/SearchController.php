@@ -254,6 +254,37 @@ class SearchController extends Controller
     }
 
     /**
+     * Delete a specific search history entry
+     */
+    public function deleteRecentSearch(Request $request, int $searchId): JsonResponse
+    {
+        try {
+            $userId = $request->user()?->id;
+
+            if (!$userId) {
+                return $this->errorResponse('User authentication required', 401);
+            }
+
+            $deleted = $this->searchService->deleteSearchHistory($userId, $searchId);
+
+            if (!$deleted) {
+                return $this->errorResponse('Search history entry not found', 404);
+            }
+
+            return $this->successResponse([], 'Search history entry deleted successfully');
+        } catch (\Exception $e) {
+            Log::error('SearchController: Error deleting recent search', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $request->user()?->id,
+                'search_id' => $searchId,
+            ]);
+
+            return $this->errorResponse('Failed to delete search history entry: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Clear search cache (Admin only)
      */
     public function clearSearchCache(Request $request): JsonResponse

@@ -432,6 +432,7 @@ Route::prefix('search')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/recent-searches', [SearchController::class, 'getRecentSearches']);
         Route::post('/save-search', [SearchController::class, 'saveSearchHistory']);
+        Route::delete('/recent-searches/{searchId}', [SearchController::class, 'deleteRecentSearch']);
     });
 
     // Admin routes

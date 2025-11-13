@@ -176,6 +176,25 @@ class SearchService
     }
 
     /**
+     * Delete a specific search history record for a user
+     */
+    public function deleteSearchHistory(int $userId, int $searchId): bool
+    {
+        $deleted = DB::table('search_histories')
+            ->where('user_id', $userId)
+            ->where('id', $searchId)
+            ->delete();
+
+        if ($deleted) {
+            for ($limit = 1; $limit <= 10; $limit++) {
+                Cache::forget("recent_searches_{$userId}_{$limit}");
+            }
+        }
+
+        return (bool) $deleted;
+    }
+
+    /**
      * Get sponsored car listings for "You May Also Like" section
      */
     public function getSponsoredListings(int $limit = 2): array

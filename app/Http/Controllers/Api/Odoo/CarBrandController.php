@@ -6,9 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Odoo\StoreCarBrandRequest;
 use App\Http\Requests\Api\Odoo\UpdateCarBrandRequest;
 use App\Http\Requests\Api\Odoo\GetCarBrandsRequest;
-use App\Http\Resources\Api\Odoo\AuthorizedAgencyResource;
 use App\Http\Resources\Api\Odoo\CarBrandResource;
-use App\Models\AuthorizedAgency;
 use App\Services\Odoo\CarBrandService;
 use App\Traits\ApiResponse;
 use App\Traits\OdooFetchTrait;
@@ -150,30 +148,13 @@ class CarBrandController extends Controller
                 ->orderBy('name')
                 ->get();
 
-            $authorizedAgencies = AuthorizedAgency::with('media')
-                ->when($request->filled('search'), function ($query) use ($request) {
-                    $query->where('name', 'like', '%' . $request->search . '%');
-                })
-                ->when($request->filled('odoo_id'), function ($query) use ($request) {
-                    $query->where('odoo_id', $request->odoo_id);
-                })
-                ->orderBy('name')
-                ->get();
-
             $brandsResource = CarBrandResource::collection($brands);
-            $agenciesResource = AuthorizedAgencyResource::collection($authorizedAgencies);
-
             $brandsCollection = $brandsResource->response()->getData(true)['data'] ?? [];
-            $agenciesCollection = $agenciesResource->response()->getData(true)['data'] ?? [];
 
             return $this->successResponse([
                 'brands' => $brandsCollection,
-                'authorized_agencies' => $agenciesCollection,
-                'totals' => [
-                    'brands' => $brands->count(),
-                    'authorized_agencies' => $authorizedAgencies->count(),
-                ],
-            ], 'Brands and authorized agencies retrieved successfully');
+                'total' => $brands->count(),
+            ], 'Brands retrieved successfully');
 
         } catch (\Exception $e) {
             Log::error('CarBrandController: Error fetching brands', [
