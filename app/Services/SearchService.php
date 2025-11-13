@@ -544,52 +544,70 @@ class SearchService
         }
 
         // Body type filter
-        if (isset($filters['body_type_id']) && $filters['body_type_id'] !== '' && $filters['body_type_id'] !== null) {
-            $query->where('car_body_type_id', (int)$filters['body_type_id']);
+        $bodyTypeIds = $this->normalizeIds($filters['body_type_ids'] ?? $filters['body_type_id'] ?? null);
+        if (!empty($bodyTypeIds)) {
+            $query->whereIn('car_body_type_id', $bodyTypeIds);
         }
 
         // Fuel type filter
-        if (isset($filters['fuel_type_id']) && $filters['fuel_type_id'] !== '' && $filters['fuel_type_id'] !== null) {
-            $query->where('fuel_type_id', (int)$filters['fuel_type_id']);
+        $fuelTypeIds = $this->normalizeIds($filters['fuel_type_ids'] ?? $filters['fuel_type_id'] ?? null);
+        if (!empty($fuelTypeIds)) {
+            $query->whereIn('fuel_type_id', $fuelTypeIds);
         }
 
         // Transmission filter
-        if (isset($filters['transmission_id']) && $filters['transmission_id'] !== '' && $filters['transmission_id'] !== null) {
-            $query->where('transmission_id', (int)$filters['transmission_id']);
+        $transmissionIds = $this->normalizeIds($filters['transmission_ids'] ?? $filters['transmission_id'] ?? null);
+        if (!empty($transmissionIds)) {
+            $query->whereIn('transmission_id', $transmissionIds);
         }
 
         // Exterior color filter
-        if (isset($filters['exterior_color_id']) && $filters['exterior_color_id'] !== '' && $filters['exterior_color_id'] !== null) {
-            $query->where('exterior_color_id', (int)$filters['exterior_color_id']);
+        $exteriorColorIds = $this->normalizeIds($filters['exterior_color_ids'] ?? $filters['exterior_color_id'] ?? null);
+        if (!empty($exteriorColorIds)) {
+            $query->whereIn('exterior_color_id', $exteriorColorIds);
         }
 
         // Drive type filter
-        if (isset($filters['drive_type_id']) && $filters['drive_type_id'] !== '' && $filters['drive_type_id'] !== null) {
-            $query->where('drive_type_id', (int)$filters['drive_type_id']);
+        $driveTypeIds = $this->normalizeIds($filters['drive_type_ids'] ?? $filters['drive_type_id'] ?? null);
+        if (!empty($driveTypeIds)) {
+            $query->whereIn('drive_type_id', $driveTypeIds);
         }
 
         // Cylinder filter
-        if (isset($filters['cylinder_id']) && $filters['cylinder_id'] !== '' && $filters['cylinder_id'] !== null) {
-            $query->where('cylinder_id', (int)$filters['cylinder_id']);
+        $cylinderIds = $this->normalizeIds($filters['cylinder_ids'] ?? $filters['cylinder_id'] ?? null);
+        if (!empty($cylinderIds)) {
+            $query->whereIn('cylinder_id', $cylinderIds);
         }
 
         // City filter
-        if (isset($filters['city_id']) && $filters['city_id'] !== '' && $filters['city_id'] !== null) {
-            $cityId = (int)$filters['city_id'];
-            $city = City::find($cityId);
-            
-            if ($city) {
-                // Filter by matching location name with city name
-                // Since locations are created with the same name as cities
-                $query->whereHas('location', function($q) use ($city) {
-                    $q->where('name', $city->name);
+        $cityIds = $this->normalizeIds($filters['city_ids'] ?? $filters['city_id'] ?? null);
+        if (!empty($cityIds)) {
+            $cities = City::whereIn('id', $cityIds)->pluck('name');
+            if ($cities->isNotEmpty()) {
+                $query->whereHas('location', function ($q) use ($cities) {
+                    $q->whereIn('name', $cities);
                 });
             }
         }
 
         // Import type filter (GCC/IMPORT)
-        if (isset($filters['import_type_id']) && $filters['import_type_id'] !== '' && $filters['import_type_id'] !== null) {
-            $query->where('import_type_id', (int)$filters['import_type_id']);
+        $importTypeIds = $this->normalizeIds($filters['import_type_ids'] ?? $filters['import_type_id'] ?? null);
+        if (!empty($importTypeIds)) {
+            $query->whereIn('import_type_id', $importTypeIds);
+        }
+
+        $gccImports = $this->normalizeValues($filters['gcc_imports'] ?? $filters['gcc_import'] ?? null);
+        if (!empty($gccImports)) {
+            $normalizedImports = array_map(fn ($value) => strtolower($value), $gccImports);
+            $query->where(function ($q) use ($normalizedImports) {
+                foreach ($normalizedImports as $index => $value) {
+                    if ($index === 0) {
+                        $q->whereRaw('LOWER(gcc_import) = ?', [$value]);
+                    } else {
+                        $q->orWhereRaw('LOWER(gcc_import) = ?', [$value]);
+                    }
+                }
+            });
         }
 
         // Warranty filter
@@ -628,5 +646,39 @@ class SearchService
         // Note: Cache::flush() clears all cache, which may be too aggressive
         // Individual cache keys are handled above, pattern-based clearing
         // would require a cache driver that supports tag-based clearing
+    }
+
+    private function normalizeIds($value): array
+    {
+        if (is_null($value) || $value === '') {
+            return [];
+        }
+
+        if (is_array($value)) {
+            return array_values(array_filter(array_map('intval', $value), fn ($id) => $id !== 0));
+        }
+
+        if (is_string($value) && str_contains($value, ',')) {
+            return array_values(array_filter(array_map('intval', explode(',', $value)), fn ($id) => $id !== 0));
+        }
+
+        return [(int) $value];
+    }
+
+    private function normalizeValues($value): array
+    {
+        if (is_null($value) || $value === '') {
+            return [];
+        }
+
+        if (is_array($value)) {
+            return array_values(array_filter(array_map(fn ($item) => trim((string) $item), $value), fn ($item) => $item !== ''));
+        }
+
+        if (is_string($value) && str_contains($value, ',')) {
+            return array_values(array_filter(array_map(fn ($item) => trim((string) $item), explode(',', $value)), fn ($item) => $item !== ''));
+        }
+
+        return [trim((string) $value)];
     }
 }
