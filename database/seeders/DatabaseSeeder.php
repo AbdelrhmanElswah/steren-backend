@@ -37,6 +37,7 @@ class DatabaseSeeder extends Seeder
             CarListingAnalyticsSeeder::class,
             IraqStatesSeeder::class,
             CarBrandSeeder::class,
+            AuthorizedAgencySeeder::class,
             CarModelSeeder::class,
             BodyTypeSeeder::class,
             BudgetSeeder::class,
