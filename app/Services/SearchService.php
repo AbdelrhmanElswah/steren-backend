@@ -14,6 +14,7 @@ use App\Models\City;
 use App\Models\CylinderOption;
 use App\Models\CarCondition;
 use App\Models\ImportType;
+use App\Models\MileageType;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 
@@ -535,12 +536,18 @@ class SearchService
         $mileageMin = isset($filters['mileage_min']) && $filters['mileage_min'] !== '' && $filters['mileage_min'] !== null ? (int)$filters['mileage_min'] : null;
         $mileageMax = isset($filters['mileage_max']) && $filters['mileage_max'] !== '' && $filters['mileage_max'] !== null ? (int)$filters['mileage_max'] : null;
         
-        if ($mileageMin !== null && $mileageMax !== null) {
-            $query->whereBetween('mileage', [$mileageMin, $mileageMax]);
-        } elseif ($mileageMin !== null) {
-            $query->where('mileage', '>=', $mileageMin);
-        } elseif ($mileageMax !== null) {
-            $query->where('mileage', '<=', $mileageMax);
+        $requestedMileageUnit = $this->normalizeMileageUnit($filters['mileage_unit'] ?? $filters['mileage_units'] ?? null);
+
+        if ($requestedMileageUnit && ($mileageMin !== null || $mileageMax !== null)) {
+            $this->applyMileageFilterWithUnit($query, $mileageMin, $mileageMax, $requestedMileageUnit);
+        } else {
+            if ($mileageMin !== null && $mileageMax !== null) {
+                $query->whereBetween('mileage', [$mileageMin, $mileageMax]);
+            } elseif ($mileageMin !== null) {
+                $query->where('mileage', '>=', $mileageMin);
+            } elseif ($mileageMax !== null) {
+                $query->where('mileage', '<=', $mileageMax);
+            }
         }
 
         // Body type filter
@@ -680,5 +687,127 @@ class SearchService
         }
 
         return [trim((string) $value)];
+    }
+
+    private function normalizeMileageUnit($value): ?string
+    {
+        if (is_array($value)) {
+            $value = reset($value);
+        }
+
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = strtolower(trim((string) $value));
+
+        return match ($normalized) {
+            'km', 'kilometer', 'kilometers', 'kilometre', 'kilometres' => 'km',
+            'mile', 'miles', 'mi' => 'mile',
+            default => null,
+        };
+    }
+
+    private function applyMileageFilterWithUnit($query, ?int $mileageMin, ?int $mileageMax, string $requestedUnit): void
+    {
+        $typeMap = $this->getMileageTypeMap();
+        $kmTypeId = $typeMap['km'] ?? null;
+        $mileTypeId = $typeMap['mile'] ?? null;
+
+        $kmMin = $mileageMin !== null ? $this->convertMileage($mileageMin, $requestedUnit, 'km') : null;
+        $kmMax = $mileageMax !== null ? $this->convertMileage($mileageMax, $requestedUnit, 'km') : null;
+        $mileMin = $mileageMin !== null ? $this->convertMileage($mileageMin, $requestedUnit, 'mile') : null;
+        $mileMax = $mileageMax !== null ? $this->convertMileage($mileageMax, $requestedUnit, 'mile') : null;
+
+        $query->where(function ($outer) use ($kmTypeId, $kmMin, $kmMax, $mileTypeId, $mileMin, $mileMax, $requestedUnit) {
+            if ($kmTypeId) {
+                $outer->orWhere(function ($inner) use ($kmTypeId, $kmMin, $kmMax) {
+                    $inner->where('mileage_type_id', $kmTypeId);
+
+                    if ($kmMin !== null) {
+                        $inner->where('mileage', '>=', $kmMin);
+                    }
+
+                    if ($kmMax !== null) {
+                        $inner->where('mileage', '<=', $kmMax);
+                    }
+                });
+            }
+
+            if ($mileTypeId) {
+                $outer->orWhere(function ($inner) use ($mileTypeId, $mileMin, $mileMax) {
+                    $inner->where('mileage_type_id', $mileTypeId);
+
+                    if ($mileMin !== null) {
+                        $inner->where('mileage', '>=', $mileMin);
+                    }
+
+                    if ($mileMax !== null) {
+                        $inner->where('mileage', '<=', $mileMax);
+                    }
+                });
+            }
+
+            // Listings without mileage_type_id are treated as the requested unit
+            $outer->orWhere(function ($inner) use ($requestedUnit, $kmMin, $kmMax, $mileMin, $mileMax) {
+                $inner->whereNull('mileage_type_id');
+
+                if ($requestedUnit === 'km') {
+                    if ($kmMin !== null) {
+                        $inner->where('mileage', '>=', $kmMin);
+                    }
+
+                    if ($kmMax !== null) {
+                        $inner->where('mileage', '<=', $kmMax);
+                    }
+                } else {
+                    if ($mileMin !== null) {
+                        $inner->where('mileage', '>=', $mileMin);
+                    }
+
+                    if ($mileMax !== null) {
+                        $inner->where('mileage', '<=', $mileMax);
+                    }
+                }
+            });
+        });
+    }
+
+    private function convertMileage(float|int $value, string $fromUnit, string $toUnit): float
+    {
+        if ($fromUnit === $toUnit) {
+            return (float) $value;
+        }
+
+        $conversionFactor = 1.60934; // kilometers in a mile
+
+        return match ([$fromUnit, $toUnit]) {
+            ['km', 'mile'] => (float) $value / $conversionFactor,
+            ['mile', 'km'] => (float) $value * $conversionFactor,
+            default => (float) $value,
+        };
+    }
+
+    private function getMileageTypeMap(): array
+    {
+        static $cache = null;
+
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $cache = [];
+
+        MileageType::query()->select('id', 'name')->get()->each(function ($type) use (&$cache) {
+            $normalized = strtolower($type->name);
+
+            if (in_array($normalized, ['km', 'kilometer', 'kilometers', 'kilometre', 'kilometres'], true)) {
+                $cache['km'] = $type->id;
+            } elseif (in_array($normalized, ['mile', 'miles', 'mi'], true)) {
+                $cache['mile'] = $type->id;
+            }
+        });
+
+        return $cache;
     }
 }
