@@ -12,7 +12,7 @@ class BodyType extends Model
         'odoo_id',
         'name',
         'description',
-        'is_active'
+        'is_active',
     ];
 
     public function userPreferences()

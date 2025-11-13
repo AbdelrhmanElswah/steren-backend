@@ -16,6 +16,7 @@ class Carousel extends Model
         'title',
         'description',
         'button_text',
+        'link_url',
         'start_date',
         'end_date',
         'is_active',

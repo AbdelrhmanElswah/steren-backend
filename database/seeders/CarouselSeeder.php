@@ -49,6 +49,7 @@ class CarouselSeeder extends Seeder
                                 'title' => $carouselData['title'],
                                 'description' => $carouselData['description'],
                                 'button_text' => $carouselData['button_text'],
+                                'link_url' => $carouselData['link_url'] ?? 'https://www.google.com/',
                                 'start_date' => $carouselData['start_date'],
                                 'end_date' => $carouselData['end_date'],
                                 'is_active' => true,

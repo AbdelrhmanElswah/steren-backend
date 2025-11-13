@@ -25,6 +25,7 @@ class CarouselResource extends JsonResource
             'title' => $this->title,
             'description' => $this->description,
             'button_text' => $this->button_text,
+            'link_url' => $this->link_url,
             'start_date' => $this->start_date?->format('Y-m-d'),
             'end_date' => $this->end_date?->format('Y-m-d'),
             'is_active' => $this->is_active,
