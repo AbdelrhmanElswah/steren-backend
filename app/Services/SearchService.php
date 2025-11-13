@@ -417,7 +417,7 @@ class SearchService
                 'cylinder:id,name',
                 'carCondition:id,name',
                 'user' => function ($query) {
-                    $query->selectRaw('id, full_name, full_name as display_name, profile_picture, is_verified, is_dealer')
+                    $query->selectRaw('id, full_name, full_name as display_name, is_verified, is_dealer')
                           ->with('profilePictureMedia');
                 }
             ]);

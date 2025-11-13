@@ -44,9 +44,7 @@ class CarListingDetailsController extends Controller
                 'importType:id,name',
                 'warrantyStatus:id,name',
                 
-                'user' => function ($query) {
-                    $query->selectRaw('id, full_name, full_name as display_name, phone, email');
-                },
+                'user:id,full_name,phone,email',
                 
                 // Media (optimized)
                 'media' => function($query) {
