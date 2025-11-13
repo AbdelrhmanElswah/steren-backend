@@ -151,10 +151,12 @@ class CarBrandController extends Controller
             $brandsResource = CarBrandResource::collection($brands);
             $brandsCollection = $brandsResource->response()->getData(true)['data'] ?? [];
 
-            return $this->successResponse([
-                'brands' => $brandsCollection,
+            return response()->json([
+                'success' => true,
+                'message' => 'Brands retrieved successfully',
+                'data' => $brandsCollection,
                 'total' => $brands->count(),
-            ], 'Brands retrieved successfully');
+            ]);
 
         } catch (\Exception $e) {
             Log::error('CarBrandController: Error fetching brands', [
