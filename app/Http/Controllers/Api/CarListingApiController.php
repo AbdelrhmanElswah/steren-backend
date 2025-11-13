@@ -192,6 +192,8 @@ class CarListingApiController extends Controller
         // Get user and their partner_id
         $user = \App\Models\User::find($validatedData['user_id']);
         
+        $normalizedGccImport = $this->normalizeGccImport($carInfo['gcc_import'] ?? null);
+
         return [
             'user_id' => $validatedData['user_id'],
             'title' => $validatedData['title'],
@@ -203,7 +205,7 @@ class CarListingApiController extends Controller
             'car_model_id' => $carInfo['model'],
             'year' => $carInfo['year'],
             'condition_type' => $carInfo['condition'],
-            'gcc_import' => $carInfo['gcc_import'] ?? null,
+            'gcc_import' => $normalizedGccImport,
             'car_body_type_id' => $carInfo['body_type'],
             'engine_size' => $carInfo['engine_size'] ?? null,
             'fuel_type_id' => $this->getFuelTypeId($carInfo['fuel_type'] ?? null),
@@ -219,7 +221,7 @@ class CarListingApiController extends Controller
             'status' => 'pending', // All new listings start as pending until approved by Odoo
             'views' => 0,
             'is_verified' => ($validatedData['seller_info']['type'] ?? '') === 'verified_seller',
-            'origin_country' => $carInfo['gcc_import'] ?? 'UAE', 
+            'origin_country' => $normalizedGccImport ?? 'UAE',
             'location_id' => $this->getOrCreateLocationId($validatedData), 
         ];
     }
@@ -464,6 +466,8 @@ class CarListingApiController extends Controller
         // Get partner_id from user
         $user = \App\Models\User::find($validatedData['user_id']);
 
+        $normalizedGccImport = $this->normalizeGccImport($carInfo['gcc_import'] ?? null);
+
         return [
             'partner_id' => $user->partner_id,
             'car_info' => [
@@ -472,7 +476,7 @@ class CarListingApiController extends Controller
                 'model' => $carInfo['model'],
                 'condition' => $carInfo['condition'],
                 'year' => $carInfo['year'],
-                'gcc_import' => $carInfo['gcc_import'] ?? '',
+                'gcc_import' => $normalizedGccImport ?? '',
                 'body_type' => $carInfo['body_type'],
                 'engine_size' => $carInfo['engine_size'] ?? 0,
                 'fuel_type' => $this->mapFuelTypeForOdoo($carInfo['fuel_type'] ?? ''),
@@ -661,6 +665,8 @@ class CarListingApiController extends Controller
             ],
         ]);
 
+        $normalizedGccImport = $this->normalizeGccImport($validatedData['gcc_import'] ?? $carListing->gcc_import ?? null);
+
         // Prepare car_info with all required fields - Use Odoo IDs only
         $carInfo = [
             'vin' => $validatedData['vin'] ?? '',
@@ -668,7 +674,7 @@ class CarListingApiController extends Controller
             'model' => $model->odoo_id, // Use Odoo ID only
             'condition' => $validatedData['condition_type'],
             'year' => $validatedData['year'],
-            'gcc_import' => $validatedData['gcc_import'] ?? $carListing->gcc_import ?? '',
+            'gcc_import' => $normalizedGccImport ?? '',
             'body_type' => $bodyType->odoo_id, // Use Odoo ID only
             'engine_size' => $validatedData['engine_size'] ?? 0,
             'fuel_type' => $fuelTypeName,
@@ -1036,13 +1042,15 @@ class CarListingApiController extends Controller
      */
     private function mapFormDataToCarListingData(array $data): array
     {
+        $normalizedGccImport = $this->normalizeGccImport($data['gcc_import'] ?? null);
+
         return [
             'vin' => $data['vin'] ?? null,
             'car_brand_id' => $data['car_brand_id'],
             'car_model_id' => $data['car_model_id'],
             'condition_type' => $data['condition_type'],
             'year' => $data['year'],
-            'gcc_import' => $data['gcc_import'] ?? null,
+            'gcc_import' => $normalizedGccImport,
             'car_body_type_id' => $data['car_body_type_id'],
             'engine_size' => $data['engine_size'] ?? null,
             'fuel_type_id' => $data['fuel_type_id'] ?? null,
@@ -1057,7 +1065,7 @@ class CarListingApiController extends Controller
             'plate_status' => $data['plate_status'] ?? null,
             'doors' => $data['doors'] ?? null,
             'trim' => $data['trim'] ?? null,
-            'origin_country' => $data['origin_country'] ?? null,
+            'origin_country' => $data['origin_country'] ?? $normalizedGccImport ?? null,
             'is_inspected' => $data['is_inspected'] ?? false,
             'is_verified' => $data['is_verified'] ?? false,
             'has_insurance' => $data['has_insurance'] ?? false,
@@ -1399,6 +1407,57 @@ class CarListingApiController extends Controller
         
         $cylinder = \App\Models\CylinderOption::find($cylinderId);
         return $cylinder ? (string) $cylinder->id : '';
+    }
+
+    /**
+     * Normalize GCC import value to consistent string representation
+     */
+    private function normalizeGccImport($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_array($value)) {
+            return null;
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'GCC' : 'Import';
+        }
+
+        $stringValue = trim((string) $value);
+
+        if ($stringValue === '') {
+            return null;
+        }
+
+        $upperValue = strtoupper($stringValue);
+
+        $mapping = [
+            '1' => 'GCC',
+            'TRUE' => 'GCC',
+            'YES' => 'GCC',
+            'GCC' => 'GCC',
+            'GCC SPEC' => 'GCC',
+            'GCC-SPEC' => 'GCC',
+            'GCC_SPEC' => 'GCC',
+            '0' => 'Import',
+            'FALSE' => 'Import',
+            'NO' => 'Import',
+            'NON GCC' => 'Import',
+            'NON-GCC' => 'Import',
+            'NON_GCC' => 'Import',
+            'IMPORT' => 'Import',
+            'IMPORTED' => 'Import',
+        ];
+
+        if (isset($mapping[$upperValue])) {
+            return $mapping[$upperValue];
+        }
+
+        // Preserve known regional strings (e.g., American, Japanese)
+        return $stringValue;
     }
 
     /**
