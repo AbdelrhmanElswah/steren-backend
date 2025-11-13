@@ -74,11 +74,6 @@ return new class extends Migration
                 $columnsToRemove[] = 'seller_email';
             }
             
-            // Redundant with promotion system
-            if (Schema::hasColumn('car_listings', 'is_sponsored')) {
-                $columnsToRemove[] = 'is_sponsored';
-            }
-            
             // Redundant with CarListingAnalytics
             if (Schema::hasColumn('car_listings', 'views')) {
                 $columnsToRemove[] = 'views';
@@ -89,12 +84,6 @@ return new class extends Migration
                 // Drop index first
                 $table->dropIndex(['partner_id']);
                 $columnsToRemove[] = 'partner_id';
-            }
-            
-            // Not implemented/used
-            if (Schema::hasColumn('car_listings', 'studio_id')) {
-                $table->dropForeign(['studio_id']);
-                $columnsToRemove[] = 'studio_id';
             }
             
             if (!empty($columnsToRemove)) {
