@@ -139,10 +139,7 @@ class CarListingRecommendationService
             },
             'badges', 'carCondition', 'fuelType', 'transmission',
             'exteriorColor', 'driveType', 'cylinder',
-            'user' => function ($query) {
-                $query->selectRaw('id, full_name, full_name as display_name, is_verified, is_dealer')
-                    ->with('profilePictureMedia');
-            }
+            'user:id,full_name'
         ])
         ->where('is_promoted', true)
         ->active()

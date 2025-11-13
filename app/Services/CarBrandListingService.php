@@ -54,10 +54,7 @@ class CarBrandListingService
                     ->orderBy('order')
                     ->orderBy('created_at');
             },
-            'user' => function ($query) {
-                $query->selectRaw('id, full_name, full_name as display_name, is_verified, is_dealer')
-                    ->with('profilePictureMedia');
-            },
+            'user:id,full_name',
         ])
         ->where('car_brand_id', $brandId)
         ->where('status', 'active')
