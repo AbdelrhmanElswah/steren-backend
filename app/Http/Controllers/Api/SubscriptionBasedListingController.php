@@ -93,13 +93,13 @@ class SubscriptionBasedListingController extends Controller
                         }
                     }
 
-                    // Get city from location relationship (direct relationship via city_id)
+                    // Get city directly from car listing relationship
                     $city = null;
-                    if ($listing->location && $listing->location->relationLoaded('city')) {
-                        $city = $listing->location->city;
-                    } elseif ($listing->location && $listing->location->city_id) {
+                    if ($listing->relationLoaded('city')) {
+                        $city = $listing->city;
+                    } elseif ($listing->city_id) {
                         // Load city if not already loaded
-                        $city = $listing->location->city;
+                        $city = $listing->city;
                     }
 
                     return [

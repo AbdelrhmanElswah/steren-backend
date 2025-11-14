@@ -56,7 +56,7 @@ class StudioListingService
             ->with([
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
-                'location:id,name',
+                'city:id,name',
                 'carCondition:id,name',
                 'media' => function ($query) {
                     $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')

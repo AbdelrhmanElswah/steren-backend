@@ -124,7 +124,7 @@ class SubscriptionBasedListingService
         }
 
         $query = $studio->carListings()
-            ->with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+            ->with(['brand', 'carModel', 'bodyType', 'city', 'media'])
             ->where('status', 'active');
 
         // Apply filters
@@ -204,7 +204,7 @@ class SubscriptionBasedListingService
                             'brand:id,name,odoo_id',
                             'carModel:id,name,car_brand_id',
                             'bodyType:id,name',
-                            'location:id,name',
+                            'city:id,name',
                             'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order',
                             'studio:id,city_id'
                         ])
@@ -311,7 +311,7 @@ class SubscriptionBasedListingService
      */
     protected function getFreeTierListings(array $filters = [])
     {
-        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'city', 'media'])
             ->where('status', 'active')
             ->where('is_featured', false)
             ->where('is_sponsored', false);
@@ -324,7 +324,7 @@ class SubscriptionBasedListingService
      */
     protected function getStartPlanListings(User $user, array $filters = [])
     {
-        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'city', 'media'])
             ->where('status', 'active');
 
         return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 7);
@@ -335,7 +335,7 @@ class SubscriptionBasedListingService
      */
     protected function getProPlanListings(User $user, array $filters = [])
     {
-        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'city', 'media'])
             ->where('status', 'active');
 
         return $this->applyFilters($query, $filters)->paginate($filters['per_page'] ?? 7);
@@ -346,7 +346,7 @@ class SubscriptionBasedListingService
      */
     protected function getDealerPlanListings(User $user, array $filters = [])
     {
-        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media', 'studio'])
+        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'city', 'media', 'studio'])
             ->where('status', 'active');
 
         // If dealer has studios, prioritize their listings
@@ -381,8 +381,7 @@ class SubscriptionBasedListingService
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
                 'bodyType:id,name',
-                'location:id,name,city_id',
-                'location.city:id,name',
+                'city:id,name',
                 'media' => function($mediaQuery) {
                     $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
                         ->where('info', 'primary')
@@ -432,8 +431,7 @@ class SubscriptionBasedListingService
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
                 'bodyType:id,name',
-                'location:id,name,city_id',
-                'location.city:id,name',
+                'city:id,name',
                 'media' => function($mediaQuery) {
                     $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
                         ->where('info', 'primary')
@@ -481,7 +479,7 @@ class SubscriptionBasedListingService
 
         $studioIds = $studios->pluck('id');
 
-        return CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+        return CarListing::with(['brand', 'carModel', 'bodyType', 'city', 'media'])
             ->where('status', 'active')
             ->whereIn('studio_id', $studioIds)
             ->where('id', '!=', $excludeListing->id)
@@ -497,7 +495,7 @@ class SubscriptionBasedListingService
      */
     protected function getGeneralRecommendations(CarListing $excludeListing, int $limit)
     {
-        return CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media'])
+        return CarListing::with(['brand', 'carModel', 'bodyType', 'city', 'media'])
             ->where('status', 'active')
             ->where('id', '!=', $excludeListing->id)
             ->where('car_brand_id', $excludeListing->car_brand_id)
@@ -556,9 +554,7 @@ class SubscriptionBasedListingService
             $query->where('is_featured', $filters['featured']);
         }
 
-        if (isset($filters['location_id'])) {
-            $query->where('location_id', $filters['location_id']);
-        }
+        // location_id filter removed - use city_id instead
 
         if (isset($filters['sort_by'])) {
             switch ($filters['sort_by']) {
@@ -590,7 +586,7 @@ class SubscriptionBasedListingService
 
     /**
      * Apply a standardized city filter to car listing queries using Laravel city ID only.
-     * Filters listings by checking if the listing's location has a city_id matching the filter city_id.
+     * Filters listings by city_id directly.
      */
     protected function applyCityFilter($query, int $cityId)
     {
@@ -598,7 +594,7 @@ class SubscriptionBasedListingService
             return;
         }
 
-        // Get the city by Laravel ID
+        // Get the city by Laravel ID to validate it exists
         $city = \App\Models\City::find($cityId);
         if (!$city) {
             // If city doesn't exist, return no results
@@ -606,10 +602,7 @@ class SubscriptionBasedListingService
             return;
         }
 
-        // Filter by checking if the listing's location has a city_id matching the filter city_id
-        // Use direct relationship via location.city_id
-        $query->whereHas('location', function ($locationQuery) use ($cityId) {
-            $locationQuery->where('city_id', $cityId);
-        });
+        // Filter by city_id directly on car_listings table
+        $query->where('city_id', $cityId);
     }
 }

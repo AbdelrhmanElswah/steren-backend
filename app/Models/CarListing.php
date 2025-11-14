@@ -35,7 +35,7 @@ class CarListing extends Model
         'is_verified',
         'has_insurance',
         'user_id',
-        'location_id',
+        'city_id',
         'studio_id',
         'car_brand_id',
         'car_body_type_id',
@@ -133,8 +133,8 @@ class CarListing extends Model
         return $this->belongsTo(BodyType::class, 'car_body_type_id');
     }
 
-    public function location() {
-        return $this->belongsTo(Location::class);
+    public function city() {
+        return $this->belongsTo(City::class);
     }
 
     public function studio() {
