@@ -135,27 +135,56 @@ class CarBrandController extends Controller
     public function getBrands(GetCarBrandsRequest $request): JsonResponse
     {
         try {
-            $brands = \App\Models\CarBrand::with('media')
-                ->when($request->filled('search'), function ($query) use ($request) {
-                    $query->where('name', 'like', '%' . $request->search . '%');
-                })
-                ->when($request->filled('id'), function ($query) use ($request) {
-                    $query->where('id', $request->id);
-                })
-                ->when($request->filled('odoo_id'), function ($query) use ($request) {
-                    $query->where('odoo_id', $request->odoo_id);
-                })
-                ->orderBy('name')
-                ->get();
+            // Build cache key based on request parameters
+            $cacheKey = 'odoo_brands_' . md5(serialize($request->only(['search', 'id', 'odoo_id'])));
+            
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($request) {
+                // Only select needed columns for better performance
+                $brands = \App\Models\CarBrand::select('id', 'odoo_id', 'name', 'created_at', 'updated_at', 'deleted_at')
+                    ->with(['media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order,public_url'])
+                    ->when($request->filled('search'), function ($query) use ($request) {
+                        $query->where('name', 'like', '%' . $request->search . '%');
+                    })
+                    ->when($request->filled('id'), function ($query) use ($request) {
+                        $query->where('id', $request->id);
+                    })
+                    ->when($request->filled('odoo_id'), function ($query) use ($request) {
+                        $query->where('odoo_id', $request->odoo_id);
+                    })
+                    ->orderBy('name')
+                    ->get();
 
-            $brandsResource = CarBrandResource::collection($brands);
-            $brandsCollection = $brandsResource->response()->getData(true)['data'] ?? [];
+                // Build response directly without using resource (faster, avoids temporary URL generation)
+                $brandsCollection = $brands->map(function ($brand) {
+                    $mediaLink = null;
+                    if ($brand->media && $brand->media->public_url) {
+                        $mediaLink = $brand->media->public_url;
+                    } elseif ($brand->media && $brand->media->path_file_name) {
+                        $mediaLink = $brand->media->getS3PublicUrl($brand->media->path_file_name);
+                    }
+
+                    return [
+                        'id' => $brand->id,
+                        'odoo_id' => $brand->odoo_id,
+                        'name' => $brand->name,
+                        'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
+                        'created_at' => $brand->created_at?->toISOString(),
+                        'updated_at' => $brand->updated_at?->toISOString(),
+                        'deleted_at' => $brand->deleted_at?->toISOString(),
+                    ];
+                })->toArray();
+
+                return [
+                    'data' => $brandsCollection,
+                    'total' => count($brandsCollection),
+                ];
+            });
 
             return response()->json([
                 'success' => true,
                 'message' => 'Brands retrieved successfully',
-                'data' => $brandsCollection,
-                'total' => $brands->count(),
+                'data' => $result['data'],
+                'total' => $result['total'],
             ]);
 
         } catch (\Exception $e) {
