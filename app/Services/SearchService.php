@@ -424,6 +424,14 @@ class SearchService
         $cacheKey = 'search_listings_' . md5(serialize($filters)) . "_{$page}_{$perPage}";
         
         return Cache::remember($cacheKey, 300, function () use ($filters, $page, $perPage) {
+            // Build base query for filtering (without eager loading for count)
+            $baseQuery = CarListing::query();
+            $this->applySearchFilters($baseQuery, $filters);
+
+            // Get total count using a simplified query with only ID selection for better performance
+            $total = (clone $baseQuery)->select('car_listings.id')->distinct()->count('car_listings.id');
+
+            // Now build the query with eager loading for actual results
             $query = CarListing::with([
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
@@ -439,13 +447,13 @@ class SearchService
                 'user:id,full_name'
             ]);
 
-            // Apply filters
+            // Apply the same filters to the eager-loaded query
             $this->applySearchFilters($query, $filters);
 
-            $total = $query->count();
-            $listings = $query->skip(($page - 1) * $perPage)
+            // Get paginated results
+            $listings = $query->orderBy('created_at', 'desc')
+                ->skip(($page - 1) * $perPage)
                 ->take($perPage)
-                ->orderBy('created_at', 'desc')
                 ->get();
 
             return [
@@ -464,6 +472,9 @@ class SearchService
      */
     private function applySearchFilters($query, array $filters): void
     {
+        // Base filters - always apply these
+        $query->where('status', 'active')->whereNull('sold_at');
+        
         // Text search
         if (isset($filters['search']) && $filters['search'] !== '' && $filters['search'] !== null) {
             $search = trim($filters['search']);
@@ -493,7 +504,10 @@ class SearchService
         // Condition filter
         if (isset($filters['condition_id']) && $filters['condition_id'] !== '' && $filters['condition_id'] !== null) {
             $conditionId = (int)$filters['condition_id'];
-            $condition = CarCondition::find($conditionId);
+            // Cache condition lookup to avoid query on every search
+            $condition = Cache::remember("car_condition_{$conditionId}", 3600, function () use ($conditionId) {
+                return CarCondition::select('id', 'name')->find($conditionId);
+            });
 
             if ($condition) {
                 $conditionName = strtolower($condition->name);
@@ -626,9 +640,6 @@ class SearchService
             }
             $query->where('has_warranty', $warrantyValue);
         }
-
-        // Only active listings
-        $query->where('status', 'active')->whereNull('sold_at');
     }
 
     /**
@@ -800,24 +811,21 @@ class SearchService
 
     private function getMileageTypeMap(): array
     {
-        static $cache = null;
+        // Use Laravel cache instead of static variable for better performance across requests
+        return Cache::remember('mileage_type_map', 3600, function () {
+            $cache = [];
 
-        if ($cache !== null) {
+            MileageType::query()->select('id', 'name')->get()->each(function ($type) use (&$cache) {
+                $normalized = strtolower($type->name);
+
+                if (in_array($normalized, ['km', 'kilometer', 'kilometers', 'kilometre', 'kilometres'], true)) {
+                    $cache['km'] = $type->id;
+                } elseif (in_array($normalized, ['mile', 'miles', 'mi'], true)) {
+                    $cache['mile'] = $type->id;
+                }
+            });
+
             return $cache;
-        }
-
-        $cache = [];
-
-        MileageType::query()->select('id', 'name')->get()->each(function ($type) use (&$cache) {
-            $normalized = strtolower($type->name);
-
-            if (in_array($normalized, ['km', 'kilometer', 'kilometers', 'kilometre', 'kilometres'], true)) {
-                $cache['km'] = $type->id;
-            } elseif (in_array($normalized, ['mile', 'miles', 'mi'], true)) {
-                $cache['mile'] = $type->id;
-            }
         });
-
-        return $cache;
     }
 }
