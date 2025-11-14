@@ -74,8 +74,11 @@ class SubscriptionBasedListingController extends Controller
                 // Always get general top picks (not user-specific)
                 $topPicks = $this->listingService->getGeneralTopPicks($limit, $filters);
                 
+                // Load all cities once and create a map by name to avoid N+1 queries
+                $citiesByName = \App\Models\City::all()->keyBy('name');
+                
                 // Build response directly without using resource (faster, avoids temporary URL generation)
-                $topPicksCollection = $topPicks->map(function ($listing) {
+                $topPicksCollection = $topPicks->map(function ($listing) use ($citiesByName) {
                     // Get primary media
                     $mediaLink = null;
                     $media = $listing->media?->firstWhere('info', 'primary') ?? $listing->media?->first();
@@ -93,6 +96,12 @@ class SubscriptionBasedListingController extends Controller
                         }
                     }
 
+                    // Get city by matching location name (since locations are matched to cities by name)
+                    $city = null;
+                    if ($listing->location && $listing->location->name) {
+                        $city = $citiesByName->get($listing->location->name);
+                    }
+
                     return [
                         'id' => $listing->id,
                         'odoo_id' => $listing->odoo_id,
@@ -105,7 +114,7 @@ class SubscriptionBasedListingController extends Controller
                         'brand' => $listing->brand ? ['id' => $listing->brand->id, 'name' => $listing->brand->name] : null,
                         'car_model' => $listing->carModel ? ['id' => $listing->carModel->id, 'name' => $listing->carModel->name] : null,
                         'body_type' => $listing->bodyType ? ['id' => $listing->bodyType->id, 'name' => $listing->bodyType->name] : null,
-                        'location' => $listing->location ? ['id' => $listing->location->id, 'name' => $listing->location->name] : null,
+                        'city' => $city ? ['id' => $city->id, 'name' => $city->name] : null,
                         'studio' => $listing->studio ? ['id' => $listing->studio->id, 'name' => $listing->studio->name] : null,
                         'is_featured' => $listing->is_featured,
                         'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
