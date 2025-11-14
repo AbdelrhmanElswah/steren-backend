@@ -587,7 +587,7 @@ class SubscriptionBasedListingService
     }
 
     /**
-     * Apply a standardized city filter to car listing queries, checking both listing and studio cities.
+     * Apply a standardized city filter to car listing queries, checking listing location, odoo_city_id, and studio cities.
      */
     protected function applyCityFilter($query, int $cityId)
     {
@@ -595,11 +595,49 @@ class SubscriptionBasedListingService
             return;
         }
 
-        $query->where(function ($q) use ($cityId) {
-            $q->where('odoo_city_id', $cityId)
-              ->orWhereHas('studio', function ($studioQuery) use ($cityId) {
-                  $studioQuery->where('city_id', $cityId);
-              });
+        // Get the city to find matching locations and odoo_id
+        $city = \App\Models\City::find($cityId);
+        if (!$city) {
+            return;
+        }
+
+        // Find all locations that match this city (by name or odoo_id)
+        $matchingLocationIds = \App\Models\Location::where(function ($q) use ($city) {
+            $q->where('name', $city->name);
+            if ($city->odoo_id) {
+                $q->orWhere('odoo_id', $city->odoo_id);
+            }
+        })->pluck('id')->toArray();
+
+        $query->where(function ($q) use ($cityId, $city, $matchingLocationIds) {
+            $hasCondition = false;
+            
+            // Filter by location_id if locations match this city
+            if (!empty($matchingLocationIds)) {
+                $q->whereIn('location_id', $matchingLocationIds);
+                $hasCondition = true;
+            }
+            
+            // OR filter by odoo_city_id matching city's odoo_id
+            if ($city->odoo_id) {
+                if ($hasCondition) {
+                    $q->orWhere('odoo_city_id', $city->odoo_id);
+                } else {
+                    $q->where('odoo_city_id', $city->odoo_id);
+                    $hasCondition = true;
+                }
+            }
+            
+            // OR filter by studio's city_id
+            if ($hasCondition) {
+                $q->orWhereHas('studio', function ($studioQuery) use ($cityId) {
+                    $studioQuery->where('city_id', $cityId);
+                });
+            } else {
+                $q->whereHas('studio', function ($studioQuery) use ($cityId) {
+                    $studioQuery->where('city_id', $cityId);
+                });
+            }
         });
     }
 }
