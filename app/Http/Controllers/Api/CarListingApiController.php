@@ -508,7 +508,7 @@ class CarListingApiController extends Controller
     /**
      * Prepare Odoo data from form data
      */
-    private function prepareOdooDataFromForm(CarListing $carListing, array $validatedData, $request, array $imageUrls = [])
+    private function prepareOdooDataFromForm(?CarListing $carListing, array $validatedData, $request, array $imageUrls = [])
     {
         // Get partner_id from user
         $user = \App\Models\User::find($validatedData['user_id']);
@@ -666,7 +666,7 @@ class CarListingApiController extends Controller
             ],
         ]);
 
-        $normalizedGccImport = $this->normalizeGccImport($validatedData['gcc_import'] ?? $carListing->gcc_import ?? null);
+        $normalizedGccImport = $this->normalizeGccImport($validatedData['gcc_import'] ?? $carListing?->gcc_import ?? null);
 
         // Prepare car_info with all required fields - Use Odoo IDs only
         $carInfo = [
@@ -689,7 +689,7 @@ class CarListingApiController extends Controller
             'mileage' => $validatedData['mileage'],
             'plate_status' => $validatedData['plate_status'] ?? '',
             'inspection' => $inspectionData,
-            'trim' => $validatedData['trim'] ?? $carListing->trim ?? '',
+            'trim' => $validatedData['trim'] ?? $carListing?->trim ?? '',
         ];
 
         // Add inspection file name if available
@@ -932,16 +932,103 @@ class CarListingApiController extends Controller
             $promotionData = $this->handlePromotionSelection($validatedData, $request->user());
             $carListingData = array_merge($carListingData, $promotionData);
 
-            // Create the car listing in local database
+            // Upload images first to get URLs (without creating media records yet)
+            $uploadedImageUrls = [];
+            $uploadedImageFiles = [];
+            if ($request->hasFile('images')) {
+                $images = $request->file('images');
+                if (!is_array($images)) {
+                    $images = [$images];
+                }
+                $uploadedImageFiles = $this->uploadImagesToGetUrls($images);
+                $uploadedImageUrls = array_column($uploadedImageFiles, 'url');
+            }
+
+            // Prepare data for Odoo API FIRST (before creating Laravel listing)
+            $odooData = $this->prepareOdooDataFromForm(null, $validatedData, $request, $uploadedImageUrls);
+
+            // Check if Odoo data preparation failed
+            if (isset($odooData['error']) && $odooData['error']) {
+                DB::rollBack();
+                // Clean up uploaded images if any
+                $this->cleanupUploadedImages($uploadedImageFiles);
+                return $this->errorResponse(
+                    $odooData['message'],
+                    422,
+                    [
+                        'missing_odoo_ids' => $odooData['missing_odoo_ids'] ?? [],
+                        'details' => $odooData['details'] ?? null,
+                        'odoo_response' => null, // No Odoo call made due to preparation failure
+                        'reason' => 'odoo_preparation_failed'
+                    ]
+                );
+            }
+
+            // Send to Odoo API FIRST - Only create Laravel listing if Odoo succeeds
+            $odooResponse = $this->sendToOdoo($odooData);
+
+            // Check if Odoo API call was successful and returned a valid odoo_id
+            $odooId = null;
+            $odooResponseData = null;
+            
+            if ($odooResponse && !isset($odooResponse['error'])) {
+                $odooId = $this->extractOdooListingId($odooResponse);
+                if ($odooId) {
+                    $odooResponseData = $this->extractOdooResponseData($odooResponse);
+                }
+            }
+
+            // If Odoo failed or didn't return odoo_id, rollback and don't save to Laravel
+            if (!$odooId) {
+                DB::rollBack();
+                // Clean up uploaded images if any
+                $this->cleanupUploadedImages($uploadedImageFiles);
+                
+                $errorMessage = 'Failed to create listing in Odoo. Please try again.';
+                if (isset($odooResponse['error'])) {
+                    $errorMessage = $odooResponse['message'] ?? $errorMessage;
+                } elseif ($odooResponse === null) {
+                    $errorMessage = 'Odoo API request failed or timed out. Please try again.';
+                }
+                
+                Log::error('Car listing creation failed: Odoo API did not return valid odoo_id', [
+                    'odoo_response' => $odooResponse,
+                    'odoo_id_extracted' => $odooId,
+                    'user_id' => $request->user()->id,
+                    'odoo_data_sent' => $odooData
+                ]);
+                
+                return $this->errorResponse(
+                    $errorMessage,
+                    422,
+                    [
+                        'odoo_response' => $odooResponse ?? null,
+                        'odoo_id' => $odooId,
+                        'reason' => 'odoo_save_failed',
+                        'odoo_response_full' => $odooResponse // Include full response for debugging
+                    ]
+                );
+            }
+
+            // Odoo succeeded - Now create the listing in Laravel with odoo_id included
+            $carListingData['odoo_id'] = $odooId;
+            if ($odooResponseData) {
+                $carListingData['odoo_listing_id'] = $odooResponseData['listing_id'] ?? null;
+                $carListingData['odoo_vehicle_id'] = $odooResponseData['vehicle_id'] ?? null;
+                $carListingData['odoo_seller_id'] = $odooResponseData['seller_id'] ?? null;
+                $carListingData['odoo_city_id'] = $odooResponseData['city_id'] ?? null;
+                $carListingData['odoo_listing_state'] = $odooResponseData['listing_state'] ?? null;
+            }
+
+            // Create the car listing in local database with odoo_id
             $carListing = CarListing::create($carListingData);
 
             // Consume slot if user is free tier (no active subscription)
             $this->subscriptionService->consumeSlot($request->user());
 
-            // Handle image uploads if provided
-            $uploadedImageUrls = [];
-            if ($request->hasFile('images')) {
-                $uploadedImageUrls = $this->handleImageUploads($carListing, $request->file('images'));
+            // Now attach images to the listing by creating media records
+            if (!empty($uploadedImageFiles)) {
+                $this->attachImagesToListing($carListing, $uploadedImageFiles);
             }
 
             // Handle inspection data and file if provided
@@ -949,47 +1036,11 @@ class CarListingApiController extends Controller
                 $this->handleInspectionFormData($carListing, $validatedData, $request);
             }
 
-            // Prepare data for Odoo API
-            $odooData = $this->prepareOdooDataFromForm($carListing, $validatedData, $request, $uploadedImageUrls);
-
-            // Check if Odoo data preparation failed
-            if (isset($odooData['error']) && $odooData['error']) {
-                DB::rollBack();
-                return $this->errorResponse(
-                    $odooData['message'],
-                    422,
-                    [
-                        'missing_odoo_ids' => $odooData['missing_odoo_ids'] ?? [],
-                        'details' => $odooData['details'] ?? null
-                    ]
-                );
-            }
-
-            // Send to Odoo API
-            $odooResponse = $this->sendToOdoo($odooData);
-
-            if ($odooResponse) {
-                $odooId = $this->extractOdooListingId($odooResponse);
-                if ($odooId) {
-                    // Extract Odoo response data
-                    $odooData = $this->extractOdooResponseData($odooResponse);
-                    
-                    $carListing->update([
-                        'odoo_id' => $odooId,
-                        'odoo_listing_id' => $odooData['listing_id'] ?? null,
-                        'odoo_vehicle_id' => $odooData['vehicle_id'] ?? null,
-                        'odoo_seller_id' => $odooData['seller_id'] ?? null,
-                        'odoo_city_id' => $odooData['city_id'] ?? null,
-                        'odoo_listing_state' => $odooData['listing_state'] ?? null,
-                    ]);
-                    
-                    Log::info('Saved Odoo data to listing', [
-                        'listing_id' => $carListing->id,
-                        'odoo_id' => $odooId,
-                        'odoo_data' => $odooData
-                    ]);
-                }
-            }
+            Log::info('Car listing created successfully with Odoo ID', [
+                'listing_id' => $carListing->id,
+                'odoo_id' => $odooId,
+                'odoo_data' => $odooResponseData
+            ]);
 
             DB::commit();
 
@@ -1025,16 +1076,32 @@ class CarListingApiController extends Controller
                 'status' => 'pending',
                 'message' => 'Car listing created successfully and is pending approval from our team.',
                 'subscription_info' => $subscriptionResponse,
-                'odoo_response' => $odooResponse
+                'odoo_response' => $odooResponse, // Full Odoo response for debugging
+                'odoo_id' => $odooId,
+                'odoo_response_data' => $odooResponseData // Parsed Odoo response data
             ], 'Car listing created successfully and is pending approval');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Car listing creation failed: ' . $e->getMessage());
+            
+            // Clean up uploaded images if any were uploaded before the exception
+            if (isset($uploadedImageFiles) && !empty($uploadedImageFiles)) {
+                $this->cleanupUploadedImages($uploadedImageFiles);
+            }
+            
+            Log::error('Car listing creation failed: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $request->user()->id ?? null,
+                'odoo_response' => $odooResponse ?? null
+            ]);
             
             return $this->errorResponse(
                 'Failed to create car listing: ' . $e->getMessage(),
-                500
+                500,
+                [
+                    'odoo_response' => $odooResponse ?? null, // Include Odoo response if available
+                    'exception' => get_class($e)
+                ]
             );
         }
     }
@@ -1155,6 +1222,130 @@ class CarListingApiController extends Controller
         }
 
         return $uploadedUrls;
+    }
+
+    /**
+     * Upload images to S3 and return URLs without creating media records
+     * This is used before saving to Odoo, so we can send image URLs to Odoo
+     */
+    private function uploadImagesToGetUrls(array $images): array
+    {
+        $uploadedFiles = [];
+        
+        foreach ($images as $index => $image) {
+            try {
+                // Upload directly to S3 without needing a model
+                $filename = time() . '_' . Str::random(10) . '_' . $image->getClientOriginalName();
+                $directory = 'car-listings/temp';
+                
+                $path = Storage::disk('s3')->putFileAs(
+                    $directory,
+                    $image,
+                    $filename,
+                    'public'
+                );
+
+                if (!$path) {
+                    Log::error('Failed to upload image to S3', [
+                        'index' => $index,
+                        'filename' => $filename
+                    ]);
+                    continue;
+                }
+
+                $url = config('filesystems.disks.s3.endpoint') . '/' . $path;
+                $mappedType = $this->mapMimeTypeToEnum($image->getClientMimeType());
+
+                $uploadedFiles[] = [
+                    'file_name' => $filename,
+                    'path' => $path,
+                    'url' => $url,
+                    'file_type' => $mappedType,
+                    'index' => $index,
+                ];
+
+                Log::info('Image uploaded to S3 (temporary)', [
+                    'index' => $index,
+                    'path' => $path,
+                    'url' => $url
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Failed to upload image to S3', [
+                    'index' => $index,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                // Continue with other images even if one fails
+            }
+        }
+
+        return $uploadedFiles;
+    }
+
+    /**
+     * Attach already uploaded images to a car listing by creating media records
+     */
+    private function attachImagesToListing(CarListing $carListing, array $uploadedImageFiles): void
+    {
+        foreach ($uploadedImageFiles as $index => $fileInfo) {
+            try {
+                // Create media record with proper structure
+                $mediaData = [
+                    'modelable_type' => CarListing::class,
+                    'modelable_id' => $carListing->id,
+                    'media' => $fileInfo['file_name'],
+                    'path_file_name' => $fileInfo['path'],
+                    'file_type' => $fileInfo['file_type'],
+                    'info' => ($fileInfo['index'] ?? $index) === 0 ? 'primary' : 'secondary',
+                ];
+
+                // Only add order if the column exists
+                if (Schema::hasColumn('media', 'order')) {
+                    $mediaData['order'] = $fileInfo['index'] ?? $index;
+                }
+
+                $media = Media::create($mediaData);
+
+                Log::info('Media record created successfully for listing', [
+                    'media_id' => $media->id,
+                    'car_listing_id' => $carListing->id,
+                    'file_name' => $fileInfo['file_name'],
+                    'url' => $fileInfo['url']
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Failed to create media record for listing', [
+                    'car_listing_id' => $carListing->id,
+                    'index' => $index,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                // Continue with other images even if one fails
+            }
+        }
+    }
+
+    /**
+     * Clean up uploaded images from S3 if Odoo save fails
+     */
+    private function cleanupUploadedImages(array $uploadedImageFiles): void
+    {
+        foreach ($uploadedImageFiles as $fileInfo) {
+            try {
+                if (isset($fileInfo['path']) && Storage::disk('s3')->exists($fileInfo['path'])) {
+                    Storage::disk('s3')->delete($fileInfo['path']);
+                    Log::info('Cleaned up uploaded image from S3', [
+                        'path' => $fileInfo['path']
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to cleanup uploaded image from S3', [
+                    'path' => $fileInfo['path'] ?? null,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
     }
 
     /**
