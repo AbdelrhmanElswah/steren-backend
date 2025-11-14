@@ -375,15 +375,25 @@ class SubscriptionBasedListingService
 
         $studioIds = $studios->pluck('id');
 
-        $query = CarListing::with([
-            'brand', 
-            'carModel', 
-            'bodyType', 
-            'location', 
-            'media', 
-            'studio',
-            'user.profilePictureMedia'
-        ])
+        // Optimize query with limited column selection and specific media loading
+        $query = CarListing::select('car_listings.*')
+            ->with([
+                'brand:id,name,odoo_id',
+                'carModel:id,name,car_brand_id',
+                'bodyType:id,name',
+                'location:id,name',
+                'media' => function($mediaQuery) {
+                    $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                        ->where('info', 'primary')
+                        ->orderBy('order')
+                        ->limit(1);
+                },
+                'studio:id,name,city_id',
+                'user:id,full_name,email',
+                'user.profilePictureMedia' => function($profileQuery) {
+                    $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info');
+                }
+            ])
             ->where('status', 'active')
             ->whereIn('studio_id', $studioIds)
             ->where(function ($query) {
@@ -397,8 +407,7 @@ class SubscriptionBasedListingService
 
         // Order by total views from analytics (subquery), then featured_at, then created_at
         // Map calculated views to 'views' attribute so the resource can access it
-        return $query->select('car_listings.*')
-            ->leftJoin('car_listing_analytics', function($join) {
+        return $query->leftJoin('car_listing_analytics', function($join) {
                 $join->on('car_listings.id', '=', 'car_listing_analytics.car_listing_id')
                      ->where('car_listing_analytics.metric_type', '=', 'views');
             })
@@ -416,15 +425,25 @@ class SubscriptionBasedListingService
      */
     protected function getGeneralTopPicks(int $limit, array $filters = [])
     {
-        $query = CarListing::with([
-            'brand', 
-            'carModel', 
-            'bodyType', 
-            'location', 
-            'media', 
-            'studio',
-            'user.profilePictureMedia'
-        ])
+        // Optimize query with limited column selection and specific media loading
+        $query = CarListing::select('car_listings.*')
+            ->with([
+                'brand:id,name,odoo_id',
+                'carModel:id,name,car_brand_id',
+                'bodyType:id,name',
+                'location:id,name',
+                'media' => function($mediaQuery) {
+                    $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                        ->where('info', 'primary')
+                        ->orderBy('order')
+                        ->limit(1);
+                },
+                'studio:id,name,city_id',
+                'user:id,full_name,email',
+                'user.profilePictureMedia' => function($profileQuery) {
+                    $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info');
+                }
+            ])
             ->where('status', 'active')
             ->where('is_featured', true);
 
@@ -434,8 +453,7 @@ class SubscriptionBasedListingService
 
         // Order by total views from analytics (subquery), then featured_at, then created_at
         // Map calculated views to 'views' attribute so the resource can access it
-        return $query->select('car_listings.*')
-            ->leftJoin('car_listing_analytics', function($join) {
+        return $query->leftJoin('car_listing_analytics', function($join) {
                 $join->on('car_listings.id', '=', 'car_listing_analytics.car_listing_id')
                      ->where('car_listing_analytics.metric_type', '=', 'views');
             })

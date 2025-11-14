@@ -64,15 +64,76 @@ class SubscriptionBasedListingController extends Controller
                 fn ($value) => $value !== null && $value !== ''
             );
 
-            $topPicks = $this->listingService->getTopPicksForUser($user, $limit, $filters);
+            // Build cache key based on user ID, limit, and filters
+            $cacheKey = 'top_picks_' . $user->id . '_' . $limit . '_' . md5(serialize($filters));
+            
+            // Cache for 1 hour (3600 seconds) - shorter cache for user-specific data
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($user, $limit, $filters) {
+                $topPicks = $this->listingService->getTopPicksForUser($user, $limit, $filters);
+                
+                // Build response directly without using resource (faster, avoids temporary URL generation)
+                $topPicksCollection = $topPicks->map(function ($listing) {
+                    // Get primary media
+                    $mediaLink = null;
+                    $media = $listing->media?->firstWhere('info', 'primary') ?? $listing->media?->first();
+                    if ($media && $media->path_file_name) {
+                        // Use public URL (already optimized, no S3 API calls)
+                        $mediaLink = $media->getS3PublicUrl($media->path_file_name);
+                    }
+                    
+                    // Get user profile picture
+                    $profilePictureLink = null;
+                    if ($listing->user && $listing->user->relationLoaded('profilePictureMedia')) {
+                        $profileMedia = $listing->user->profilePictureMedia;
+                        if ($profileMedia && $profileMedia->path_file_name) {
+                            $profilePictureLink = $profileMedia->getS3PublicUrl($profileMedia->path_file_name);
+                        }
+                    }
+
+                    return [
+                        'id' => $listing->id,
+                        'odoo_id' => $listing->odoo_id,
+                        'title' => $listing->title,
+                        'price' => $listing->price,
+                        'year' => $listing->year,
+                        'mileage' => $listing->mileage,
+                        'views' => $listing->views ?? $listing->total_views ?? 0,
+                        'formatted_views' => $listing->formatted_views ?? '0 Views',
+                        'brand' => $listing->brand ? ['id' => $listing->brand->id, 'name' => $listing->brand->name] : null,
+                        'car_model' => $listing->carModel ? ['id' => $listing->carModel->id, 'name' => $listing->carModel->name] : null,
+                        'body_type' => $listing->bodyType ? ['id' => $listing->bodyType->id, 'name' => $listing->bodyType->name] : null,
+                        'location' => $listing->location ? ['id' => $listing->location->id, 'name' => $listing->location->name] : null,
+                        'studio' => $listing->studio ? ['id' => $listing->studio->id, 'name' => $listing->studio->name] : null,
+                        'is_featured' => $listing->is_featured,
+                        'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
+                        'user' => $listing->user ? [
+                            'id' => $listing->user->id,
+                            'name' => $listing->user->full_name,
+                            'profile_picture' => $profilePictureLink ? ['media_link' => $profilePictureLink] : null,
+                        ] : null,
+                        'created_at' => $listing->created_at?->toISOString(),
+                    ];
+                })->toArray();
+
+                return [
+                    'top_picks' => $topPicksCollection,
+                    'count' => count($topPicksCollection),
+                ];
+            });
 
             return $this->successResponse([
-                'top_picks' => CarListingResource::collection($topPicks),
-                'count' => $topPicks->count(),
+                'top_picks' => $result['top_picks'],
+                'count' => $result['count'],
                 'filters_applied' => $filters,
             ], 'Top picks retrieved successfully');
 
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('SubscriptionBasedListingController: Error fetching top picks', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $user->id ?? null,
+                'filters' => $filters ?? []
+            ]);
             return $this->errorResponse(
                 'Failed to retrieve top picks: ' . $e->getMessage(),
                 500
