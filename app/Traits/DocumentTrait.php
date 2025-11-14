@@ -41,6 +41,7 @@ trait DocumentTrait
 
     /**
      * Get public S3 URL for a document
+     * Optimized: Does not check file existence to avoid slow S3 API calls
      *
      * @param string $path
      * @return string|null
@@ -52,13 +53,9 @@ trait DocumentTrait
                 return null;
             }
 
-            // Check if file exists in S3
-            if (!Storage::disk('s3')->exists($path)) {
-                Log::warning('DocumentTrait: File not found in S3', ['path' => $path]);
-                return null;
-            }
-
-            // Generate public URL
+            // Generate public URL directly without checking existence (much faster)
+            // The existence check was causing significant slowdown during cache warm-up
+            // as it makes an S3 API call for each file
             return Storage::disk('s3')->url($path);
         } catch (\Exception $e) {
             Log::error('DocumentTrait: Error generating S3 public URL', [
