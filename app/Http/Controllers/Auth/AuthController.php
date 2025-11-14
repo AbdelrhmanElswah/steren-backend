@@ -37,6 +37,9 @@ class AuthController extends Controller
     {
         $result = $this->authService->register($request->validated());
 
+        // Load only necessary relationships to avoid N+1 queries
+        $result['user']->loadMissing('profilePictureMedia');
+
         return $this->successResponse([
             'user' => new UserResource($result['user']),
             'otp_sent' => $result['otp_sent'],

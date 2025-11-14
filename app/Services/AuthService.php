@@ -30,28 +30,30 @@ class AuthService
 
     public function register(array $payload): array
     {
-        return DB::transaction(function () use ($payload) {
-            if (isset($payload['email']) && $payload['email']) {
-                $existingUser = User::where('email', $payload['email'])->first();
-                
-                if ($existingUser) {
-                    if ($existingUser->is_pending) {
-                        throw new \Exception('An account with this email already exists but is pending completion. Please use the complete-pending-account endpoint instead.');
-                    } else {
-                        throw new \Exception('An account with this email already exists. Please use login instead.');
-                    }
+        // Check for existing users first (before transaction to avoid locking)
+        if (isset($payload['email']) && $payload['email']) {
+            $existingUser = User::where('email', $payload['email'])->first();
+            
+            if ($existingUser) {
+                if ($existingUser->is_pending) {
+                    throw new \Exception('An account with this email already exists but is pending completion. Please use the complete-pending-account endpoint instead.');
+                } else {
+                    throw new \Exception('An account with this email already exists. Please use login instead.');
                 }
             }
+        }
+        
+        // Check if phone already exists
+        if (isset($payload['phone']) && $payload['phone']) {
+            $existingPhone = User::where('phone', $payload['phone'])->first();
             
-            // Check if phone already exists
-            if (isset($payload['phone']) && $payload['phone']) {
-                $existingPhone = User::where('phone', $payload['phone'])->first();
-                
-                if ($existingPhone) {
-                    throw new \Exception('An account with this phone number already exists.');
-                }
+            if ($existingPhone) {
+                throw new \Exception('An account with this phone number already exists.');
             }
-            
+        }
+        
+        // Create user and related data in transaction
+        $result = DB::transaction(function () use ($payload) {
             $user = User::query()->create([
                 'full_name' => $payload['full_name'] ?? null,
                 'email' => $payload['email'] ?? null,
@@ -63,26 +65,35 @@ class AuthService
             $otp = $this->generateOtp();
             $this->storeOtp($this->phoneKey($user->phone), $otp['code']);
 
-            if ($user->phone && $this->isIraqNumber($user->phone)) {
-                try {
-                    $this->standingTechService->sendOTPWhatsApp($user->phone, $otp['code'], 'en');
-                } catch (\Throwable $e) {
-                    Log::warning('Failed to send WhatsApp OTP on register', [
-                        'user_id' => $user->id,
-                        'phone' => $user->phone,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-
             $token = $user->createToken('otp-verification', ['verify-otp'])->plainTextToken;
 
             return [
                 'user' => $user,
-                'otp_sent' => true,
+                'otp' => $otp['code'],
                 'token' => $token,
             ];
         });
+
+        // Send WhatsApp OTP asynchronously (outside transaction to avoid blocking)
+        if ($result['user']->phone && $this->isIraqNumber($result['user']->phone)) {
+            try {
+                // Use lower timeout to avoid blocking too long
+                $this->standingTechService->sendOTPWhatsApp($result['user']->phone, $result['otp'], 'en');
+            } catch (\Throwable $e) {
+                Log::warning('Failed to send WhatsApp OTP on register', [
+                    'user_id' => $result['user']->id,
+                    'phone' => $result['user']->phone,
+                    'error' => $e->getMessage(),
+                ]);
+                // Don't throw - OTP is stored, user can request resend if needed
+            }
+        }
+
+        return [
+            'user' => $result['user'],
+            'otp_sent' => true,
+            'token' => $result['token'],
+        ];
     }
 
     public function login(string $identifier, string $password): array

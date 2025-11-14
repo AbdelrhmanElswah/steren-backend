@@ -18,7 +18,8 @@ class StandingTechService
         $this->apiUrl = config('services.standingtech.api_url');
         $this->apiToken = config('services.standingtech.api_token');
         $this->defaultSenderId = config('services.standingtech.sender_id');
-        $this->timeout = config('services.standingtech.timeout', 30);
+        // Reduce timeout for registration to avoid blocking (default 10 seconds)
+        $this->timeout = config('services.standingtech.timeout', 10);
 
         // Validate configuration
         if (empty($this->apiToken)) {
