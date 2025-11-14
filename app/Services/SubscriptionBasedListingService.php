@@ -157,7 +157,7 @@ class SubscriptionBasedListingService
         }
 
         if (isset($filters['city_id'])) {
-            $this->applyCityFilter($query, $filters['city_id']);
+            $this->applyCityFilter($query, (int) $filters['city_id']);
         }
 
         if (isset($filters['sort_by'])) {
@@ -209,7 +209,7 @@ class SubscriptionBasedListingService
                             'studio:id,city_id'
                         ])
                         ->when(isset($filters['city_id']), function ($carQuery) use ($filters) {
-                            $this->applyCityFilter($carQuery, $filters['city_id']);
+                            $this->applyCityFilter($carQuery, (int) $filters['city_id']);
                         })
                         ->orderBy('is_featured', 'desc')
                         ->orderBy('created_at', 'desc');
@@ -402,7 +402,7 @@ class SubscriptionBasedListingService
             });
 
         if (!empty($filters['city_id'])) {
-            $this->applyCityFilter($query, $filters['city_id']);
+            $this->applyCityFilter($query, (int) $filters['city_id']);
         }
 
         // Order by total views from analytics (subquery), then featured_at, then created_at
@@ -448,7 +448,7 @@ class SubscriptionBasedListingService
             ->where('is_featured', true);
 
         if (!empty($filters['city_id'])) {
-            $this->applyCityFilter($query, $filters['city_id']);
+            $this->applyCityFilter($query, (int) $filters['city_id']);
         }
 
         // Order by total views from analytics (subquery), then featured_at, then created_at
@@ -539,7 +539,7 @@ class SubscriptionBasedListingService
         }
 
         if (isset($filters['city_id'])) {
-            $this->applyCityFilter($query, $filters['city_id']);
+            $this->applyCityFilter($query, (int) $filters['city_id']);
         }
 
         if (isset($filters['mileage_from'])) {
@@ -598,6 +598,8 @@ class SubscriptionBasedListingService
         // Get the city to find matching locations and odoo_id
         $city = \App\Models\City::find($cityId);
         if (!$city) {
+            // If city doesn't exist, return no results
+            $query->whereRaw('1 = 0');
             return;
         }
 
@@ -609,6 +611,7 @@ class SubscriptionBasedListingService
             }
         })->pluck('id')->toArray();
 
+        // Build the filter conditions with OR logic
         $query->where(function ($q) use ($cityId, $city, $matchingLocationIds) {
             $hasCondition = false;
             
@@ -628,7 +631,7 @@ class SubscriptionBasedListingService
                 }
             }
             
-            // OR filter by studio's city_id
+            // OR filter by studio's city_id (always check this as a fallback)
             if ($hasCondition) {
                 $q->orWhereHas('studio', function ($studioQuery) use ($cityId) {
                     $studioQuery->where('city_id', $cityId);
@@ -637,6 +640,12 @@ class SubscriptionBasedListingService
                 $q->whereHas('studio', function ($studioQuery) use ($cityId) {
                     $studioQuery->where('city_id', $cityId);
                 });
+                $hasCondition = true;
+            }
+            
+            // If somehow no conditions were added, return no results
+            if (!$hasCondition) {
+                $q->whereRaw('1 = 0');
             }
         });
     }
