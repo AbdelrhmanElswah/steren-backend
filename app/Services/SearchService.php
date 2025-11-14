@@ -748,27 +748,37 @@ class SearchService
                 });
             }
 
-            // Listings without mileage_type_id are treated as the requested unit
-            $outer->orWhere(function ($inner) use ($requestedUnit, $kmMin, $kmMax, $mileMin, $mileMax) {
+            // Listings without mileage_type_id should match if they fall within either unit's range
+            // This handles cases where the mileage could be in either unit
+            $outer->orWhere(function ($inner) use ($kmMin, $kmMax, $mileMin, $mileMax, $requestedUnit) {
                 $inner->whereNull('mileage_type_id');
 
-                if ($requestedUnit === 'km') {
-                    if ($kmMin !== null) {
-                        $inner->where('mileage', '>=', $kmMin);
+                // Build conditions for both possible units
+                $inner->where(function ($unitCheck) use ($kmMin, $kmMax, $mileMin, $mileMax, $requestedUnit) {
+                    // Check as if mileage is in km
+                    if ($kmMin !== null || $kmMax !== null) {
+                        $unitCheck->where(function ($kmCheck) use ($kmMin, $kmMax) {
+                            if ($kmMin !== null) {
+                                $kmCheck->where('mileage', '>=', $kmMin);
+                            }
+                            if ($kmMax !== null) {
+                                $kmCheck->where('mileage', '<=', $kmMax);
+                            }
+                        });
                     }
 
-                    if ($kmMax !== null) {
-                        $inner->where('mileage', '<=', $kmMax);
+                    // Check as if mileage is in miles
+                    if ($mileMin !== null || $mileMax !== null) {
+                        $unitCheck->orWhere(function ($mileCheck) use ($mileMin, $mileMax) {
+                            if ($mileMin !== null) {
+                                $mileCheck->where('mileage', '>=', $mileMin);
+                            }
+                            if ($mileMax !== null) {
+                                $mileCheck->where('mileage', '<=', $mileMax);
+                            }
+                        });
                     }
-                } else {
-                    if ($mileMin !== null) {
-                        $inner->where('mileage', '>=', $mileMin);
-                    }
-
-                    if ($mileMax !== null) {
-                        $inner->where('mileage', '<=', $mileMax);
-                    }
-                }
+                });
             });
         });
     }
