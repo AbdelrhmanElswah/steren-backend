@@ -138,7 +138,8 @@ class CarBrandController extends Controller
             // Build cache key based on request parameters
             $cacheKey = 'odoo_brands_' . md5(serialize($request->only(['search', 'id', 'odoo_id'])));
             
-            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($request) {
+            // Cache for 24 hours (86400 seconds)
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
                 // Only select needed columns for better performance
                 $brands = \App\Models\CarBrand::select('id', 'odoo_id', 'name')
                     ->with(['media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order'])
