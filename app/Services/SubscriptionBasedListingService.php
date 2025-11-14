@@ -421,9 +421,9 @@ class SubscriptionBasedListingService
     }
 
     /**
-     * Get general top picks
+     * Get general top picks (public method for public endpoint)
      */
-    protected function getGeneralTopPicks(int $limit, array $filters = [])
+    public function getGeneralTopPicks(int $limit, array $filters = [])
     {
         // Optimize query with limited column selection and specific media loading
         $query = CarListing::select('car_listings.*')
