@@ -387,9 +387,16 @@ class SubscriptionBasedListingService
             $this->applyCityFilter($query, $filters['city_id']);
         }
 
-        // Order by views (total views column) first, then featured_at, then created_at
-        // The views column is updated when tracking views, and reflects total views from analytics
-        return $query->orderBy('views', 'desc')
+        // Order by total views from analytics (subquery), then featured_at, then created_at
+        // Since views column doesn't exist, we calculate total views from analytics
+        return $query->select('car_listings.*')
+            ->leftJoin('car_listing_analytics', function($join) {
+                $join->on('car_listings.id', '=', 'car_listing_analytics.car_listing_id')
+                     ->where('car_listing_analytics.metric_type', '=', 'views');
+            })
+            ->selectRaw('COALESCE(SUM(car_listing_analytics.metric_value), 0) as total_views')
+            ->groupBy('car_listings.id')
+            ->orderBy('total_views', 'desc')
             ->orderBy('featured_at', 'desc')
             ->orderBy('created_at', 'desc')
             ->limit($limit)
@@ -409,9 +416,16 @@ class SubscriptionBasedListingService
             $this->applyCityFilter($query, $filters['city_id']);
         }
 
-        // Order by views (total views column) first, then featured_at, then created_at
-        // The views column is updated when tracking views, and reflects total views from analytics
-        return $query->orderBy('views', 'desc')
+        // Order by total views from analytics (subquery), then featured_at, then created_at
+        // Since views column doesn't exist, we calculate total views from analytics
+        return $query->select('car_listings.*')
+            ->leftJoin('car_listing_analytics', function($join) {
+                $join->on('car_listings.id', '=', 'car_listing_analytics.car_listing_id')
+                     ->where('car_listing_analytics.metric_type', '=', 'views');
+            })
+            ->selectRaw('COALESCE(SUM(car_listing_analytics.metric_value), 0) as total_views')
+            ->groupBy('car_listings.id')
+            ->orderBy('total_views', 'desc')
             ->orderBy('featured_at', 'desc')
             ->orderBy('created_at', 'desc')
             ->limit($limit)

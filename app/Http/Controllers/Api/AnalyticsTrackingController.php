@@ -103,12 +103,6 @@ class AnalyticsTrackingController extends Controller
             // Track the metric for the car listing
             CarListingAnalytics::incrementMetric($carListingId, $metricType, $additionalData);
 
-            // If tracking views, also increment the views column on car_listings table
-            if ($metricType === 'views') {
-                $carListing->increment('views');
-                $carListing->refresh();
-            }
-
             // If user is authenticated, also track in user analytics
             if (auth()->check()) {
                 $user = auth()->user();
@@ -153,7 +147,6 @@ class AnalyticsTrackingController extends Controller
             $metrics = $request->metrics;
 
             $results = [];
-            $viewsCount = 0;
 
             foreach ($metrics as $metric) {
                 $metricType = $metric['type'];
@@ -180,19 +173,11 @@ class AnalyticsTrackingController extends Controller
                     }
                 }
 
-                // If views, also update the views column on car_listings table
-                if ($metricType === 'views') {
-                    $viewsCount += $count;
-                    $carListing->increment('views', $count);
-                }
-
                 $results[] = [
                     'type' => $metricType,
                     'count' => $count,
                 ];
             }
-
-            $carListing->refresh();
 
             // Get updated analytics summary
             $analytics = CarListingAnalytics::getAnalyticsSummary($carListingId);
