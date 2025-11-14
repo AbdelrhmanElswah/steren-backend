@@ -65,7 +65,9 @@ class SubscriptionBasedListingController extends Controller
             );
 
             // Build cache key based on limit and filters (no user ID since it's public)
-            $cacheKey = 'top_picks_public_' . $limit . '_' . md5(serialize($filters));
+            // Use city_id directly in cache key for better cache differentiation
+            $cityId = isset($filters['city_id']) ? '_city_' . (int) $filters['city_id'] : '';
+            $cacheKey = 'top_picks_public_' . $limit . $cityId . '_' . md5(serialize($filters));
             
             // Cache for 24 hours (86400 seconds) - longer cache since it's public data
             $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($limit, $filters) {
