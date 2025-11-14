@@ -588,7 +588,7 @@ class SubscriptionBasedListingService
 
     /**
      * Apply a standardized city filter to car listing queries using Laravel city ID only.
-     * Finds locations that match the city by name, then filters listings by location_id.
+     * Filters listings by checking if the listing's location name matches the city name.
      */
     protected function applyCityFilter($query, int $cityId)
     {
@@ -604,17 +604,10 @@ class SubscriptionBasedListingService
             return;
         }
 
-        // Find all locations that match this city by name (Laravel ID matching only)
-        $matchingLocationIds = \App\Models\Location::where('name', $city->name)
-            ->pluck('id')
-            ->toArray();
-
-        // Filter listings by location_id only - if no locations match, return no results
-        if (!empty($matchingLocationIds)) {
-            $query->whereIn('location_id', $matchingLocationIds);
-        } else {
-            // If no locations match the city name, return no results
-            $query->whereRaw('1 = 0');
-        }
+        // Filter by checking if the listing's location name matches the city name
+        // We filter by the location relationship's name matching the city name
+        $query->whereHas('location', function ($locationQuery) use ($city) {
+            $locationQuery->where('name', $city->name);
+        });
     }
 }
