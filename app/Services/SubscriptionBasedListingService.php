@@ -381,7 +381,8 @@ class SubscriptionBasedListingService
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
                 'bodyType:id,name',
-                'location:id,name',
+                'location:id,name,city_id',
+                'location.city:id,name',
                 'media' => function($mediaQuery) {
                     $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
                         ->where('info', 'primary')
@@ -431,7 +432,8 @@ class SubscriptionBasedListingService
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
                 'bodyType:id,name',
-                'location:id,name',
+                'location:id,name,city_id',
+                'location.city:id,name',
                 'media' => function($mediaQuery) {
                     $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
                         ->where('info', 'primary')
@@ -588,7 +590,7 @@ class SubscriptionBasedListingService
 
     /**
      * Apply a standardized city filter to car listing queries using Laravel city ID only.
-     * Filters listings by checking if the listing's location name matches the city name.
+     * Filters listings by checking if the listing's location has a city_id matching the filter city_id.
      */
     protected function applyCityFilter($query, int $cityId)
     {
@@ -604,10 +606,10 @@ class SubscriptionBasedListingService
             return;
         }
 
-        // Filter by checking if the listing's location name matches the city name
-        // We filter by the location relationship's name matching the city name
-        $query->whereHas('location', function ($locationQuery) use ($city) {
-            $locationQuery->where('name', $city->name);
+        // Filter by checking if the listing's location has a city_id matching the filter city_id
+        // Use direct relationship via location.city_id
+        $query->whereHas('location', function ($locationQuery) use ($cityId) {
+            $locationQuery->where('city_id', $cityId);
         });
     }
 }

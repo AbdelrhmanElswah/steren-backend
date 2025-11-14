@@ -11,7 +11,15 @@ class Location extends Model
 {
     use HasFactory, SoftDeletes, ExcludesSoftDeleted;
 
-    protected $fillable = ['odoo_id', 'name'];
+    protected $fillable = ['odoo_id', 'name', 'city_id'];
+
+    /**
+     * Get the city that owns this location.
+     */
+    public function city()
+    {
+        return $this->belongsTo(City::class);
+    }
 
 }
 

@@ -74,11 +74,8 @@ class SubscriptionBasedListingController extends Controller
                 // Always get general top picks (not user-specific)
                 $topPicks = $this->listingService->getGeneralTopPicks($limit, $filters);
                 
-                // Load all cities once and create a map by name to avoid N+1 queries
-                $citiesByName = \App\Models\City::all()->keyBy('name');
-                
                 // Build response directly without using resource (faster, avoids temporary URL generation)
-                $topPicksCollection = $topPicks->map(function ($listing) use ($citiesByName) {
+                $topPicksCollection = $topPicks->map(function ($listing) {
                     // Get primary media
                     $mediaLink = null;
                     $media = $listing->media?->firstWhere('info', 'primary') ?? $listing->media?->first();
@@ -96,10 +93,13 @@ class SubscriptionBasedListingController extends Controller
                         }
                     }
 
-                    // Get city by matching location name (since locations are matched to cities by name)
+                    // Get city from location relationship (direct relationship via city_id)
                     $city = null;
-                    if ($listing->location && $listing->location->name) {
-                        $city = $citiesByName->get($listing->location->name);
+                    if ($listing->location && $listing->location->relationLoaded('city')) {
+                        $city = $listing->location->city;
+                    } elseif ($listing->location && $listing->location->city_id) {
+                        // Load city if not already loaded
+                        $city = $listing->location->city;
                     }
 
                     return [
