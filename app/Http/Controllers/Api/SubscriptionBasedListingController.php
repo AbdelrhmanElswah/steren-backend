@@ -52,24 +52,25 @@ class SubscriptionBasedListingController extends Controller
     }
 
     /**
-     * Get top picks for user based on subscription plan
+     * Get top picks (public endpoint - no auth required)
+     * Returns general top picks for all users
      */
     public function getTopPicks(Request $request): JsonResponse
     {
         try {
-            $user = Auth::user();
             $limit = (int) $request->input('limit', 10);
             $filters = array_filter(
                 $request->only(['city_id']),
                 fn ($value) => $value !== null && $value !== ''
             );
 
-            // Build cache key based on user ID, limit, and filters
-            $cacheKey = 'top_picks_' . $user->id . '_' . $limit . '_' . md5(serialize($filters));
+            // Build cache key based on limit and filters (no user ID since it's public)
+            $cacheKey = 'top_picks_public_' . $limit . '_' . md5(serialize($filters));
             
-            // Cache for 1 hour (3600 seconds) - shorter cache for user-specific data
-            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($user, $limit, $filters) {
-                $topPicks = $this->listingService->getTopPicksForUser($user, $limit, $filters);
+            // Cache for 24 hours (86400 seconds) - longer cache since it's public data
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($limit, $filters) {
+                // Always get general top picks (not user-specific)
+                $topPicks = $this->listingService->getGeneralTopPicks($limit, $filters);
                 
                 // Build response directly without using resource (faster, avoids temporary URL generation)
                 $topPicksCollection = $topPicks->map(function ($listing) {
@@ -131,7 +132,6 @@ class SubscriptionBasedListingController extends Controller
             \Illuminate\Support\Facades\Log::error('SubscriptionBasedListingController: Error fetching top picks', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'user_id' => $user->id ?? null,
                 'filters' => $filters ?? []
             ]);
             return $this->errorResponse(

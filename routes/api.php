@@ -484,9 +484,14 @@ Route::prefix('studios')->group(function () {
 });
 
 // Subscription-Based Car Listing Routes
+// Public top picks endpoint (no auth required)
+Route::prefix('subscription-listings')->group(function () {
+    Route::get('/top-picks', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getTopPicks']);
+});
+
+// Protected subscription listing routes (require auth)
 Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getCarListings']);
-    Route::get('/top-picks', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getTopPicks']);
     Route::get('/you-may-also-like/{listingId}', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getYouMayAlsoLike']);
     Route::get('/plan-features', [App\Http\Controllers\Api\SubscriptionBasedListingController::class, 'getPlanFeatures']);
 
