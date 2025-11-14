@@ -375,7 +375,15 @@ class SubscriptionBasedListingService
 
         $studioIds = $studios->pluck('id');
 
-        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media', 'studio'])
+        $query = CarListing::with([
+            'brand', 
+            'carModel', 
+            'bodyType', 
+            'location', 
+            'media', 
+            'studio',
+            'user.profilePictureMedia'
+        ])
             ->where('status', 'active')
             ->whereIn('studio_id', $studioIds)
             ->where(function ($query) {
@@ -408,7 +416,15 @@ class SubscriptionBasedListingService
      */
     protected function getGeneralTopPicks(int $limit, array $filters = [])
     {
-        $query = CarListing::with(['brand', 'carModel', 'bodyType', 'location', 'media', 'studio'])
+        $query = CarListing::with([
+            'brand', 
+            'carModel', 
+            'bodyType', 
+            'location', 
+            'media', 
+            'studio',
+            'user.profilePictureMedia'
+        ])
             ->where('status', 'active')
             ->where('is_featured', true);
 
