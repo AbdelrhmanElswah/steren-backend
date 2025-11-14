@@ -140,6 +140,20 @@ class CarfaxReportController extends Controller
         $data = $request->validated();
 
         try {
+            // Get the car listing and its Odoo ID
+            $carListing = CarListing::find($data['car_listing_id']);
+            
+            if (!$carListing) {
+                return $this->errorResponse('Car listing not found', 404);
+            }
+
+            if (!$carListing->odoo_id) {
+                return $this->errorResponse('Car listing does not have an Odoo ID. Please ensure the listing is synced with Odoo.', 422, [
+                    'car_listing_id' => $carListing->id,
+                    'reason' => 'missing_odoo_id'
+                ]);
+            }
+
             $report = Report::create([
                 'user_id' => $request->user()?->id,
                 'reportable_type' => CarListing::class,
@@ -149,11 +163,18 @@ class CarfaxReportController extends Controller
                 'status' => 'pending',
             ]);
 
+            // Use Odoo ID instead of Laravel ID
             $odooPayload = [
-                'car_listing_id' => $data['car_listing_id'],
+                'car_listing_id' => (int) $carListing->odoo_id, // Send Odoo ID, not Laravel ID
                 'reason' => $data['reason'],
                 'message' => $data['message'] ?? null,
             ];
+
+            Log::info('CarfaxReportController: Submitting report to Odoo', [
+                'laravel_car_listing_id' => $carListing->id,
+                'odoo_car_listing_id' => $carListing->odoo_id,
+                'payload' => $odooPayload
+            ]);
 
             $response = Http::timeout(30)->post(
                 rtrim(config('services.odoo.base_url'), '/') . '/api/listing/report',
