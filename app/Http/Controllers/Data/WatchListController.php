@@ -21,25 +21,44 @@ class WatchListController extends Controller
     {
         try {
             $user = auth()->user();
-            
-            $query = Favorite::with([
-                'carListing.brand',
-                'carListing.carModel',
-                'carListing.bodyType',
-                'carListing.location',
-                'carListing.media',
-                'carListing.badges',
-                'carListing.carCondition',
-                'carListing.fuelType',
-                'carListing.transmission',
-                'carListing.exteriorColor',
-                'carListing.driveType',
-                'carListing.cylinder'
-            ])->where('favorites.user_id', $user->id);
-
-            // Apply sorting
             $sortBy = $request->get('sort', 'latest');
-            switch ($sortBy) {
+            $page = $request->get('page', 1);
+            
+            // Build cache key based on user ID, sort, and page
+            $cacheKey = 'watch_list_' . $user->id . '_' . $sortBy . '_' . $page;
+            
+            // Cache for 30 minutes (1800 seconds) - shorter cache for user-specific paginated data
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($user, $sortBy) {
+                // Optimize query with limited column selection and specific media loading
+                $query = Favorite::select('favorites.*')
+                    ->with([
+                        'carListing' => function($listingQuery) {
+                            $listingQuery->select('car_listings.*')
+                                ->with([
+                                    'brand:id,name,odoo_id',
+                                    'carModel:id,name,car_brand_id',
+                                    'bodyType:id,name',
+                                    'location:id,name',
+                                    'media' => function($mediaQuery) {
+                                        $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                                            ->where('info', 'primary')
+                                            ->orderBy('order')
+                                            ->limit(1);
+                                    },
+                                    'badges:id,name',
+                                    'carCondition:id,name',
+                                    'fuelType:id,name',
+                                    'transmission:id,name',
+                                    'exteriorColor:id,name',
+                                    'driveType:id,name',
+                                    'cylinder:id,name'
+                                ]);
+                        }
+                    ])
+                    ->where('favorites.user_id', $user->id);
+
+                // Apply sorting
+                switch ($sortBy) {
                 case 'latest':
                     $query->orderByRecentlyAdded();
                     break;
@@ -76,22 +95,23 @@ class WatchListController extends Controller
                           ->where('favorites.user_id', $user->id)
                           ->orderBy('car_listings.mileage', 'asc');
                     break;
-                default:
-                    $query->orderByRecentlyAdded();
-            }
+                    default:
+                        $query->orderByRecentlyAdded();
+                }
 
-            $favorites = $query->paginate(20);
+                $favorites = $query->paginate(20);
 
-            $data = [
-                'watch_list' => $favorites->items(),
-                'total' => $favorites->total(),
-                'per_page' => $favorites->perPage(),
-                'current_page' => $favorites->currentPage(),
-                'last_page' => $favorites->lastPage(),
-                'count' => $favorites->total(),
-            ];
+                return [
+                    'watch_list' => $favorites->items(),
+                    'total' => $favorites->total(),
+                    'per_page' => $favorites->perPage(),
+                    'current_page' => $favorites->currentPage(),
+                    'last_page' => $favorites->lastPage(),
+                    'count' => $favorites->total(),
+                ];
+            });
 
-            return $this->successResponse($data, 'Watch list retrieved successfully');
+            return $this->successResponse($result, 'Watch list retrieved successfully');
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to retrieve watch list: ' . $e->getMessage(), 500);
         }

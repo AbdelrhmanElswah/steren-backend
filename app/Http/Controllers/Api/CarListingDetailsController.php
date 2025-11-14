@@ -895,16 +895,27 @@ class CarListingDetailsController extends Controller
     public function getYouMayAlsoLike(Request $request): JsonResponse
     {
         try {
-            $result = $this->carListingRecommendationService->getRecommendations(
-                $request->user(),
-                (int) $request->get('limit', 2)
-            );
+            $user = $request->user();
+            $limit = (int) $request->get('limit', 2);
+            
+            // Build cache key based on user ID and limit
+            $cacheKey = 'you_may_also_like_' . ($user?->id ?? 'guest') . '_' . $limit;
+            
+            // Cache for 1 hour (3600 seconds) - shorter cache for user-specific data
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($user, $limit) {
+                return $this->carListingRecommendationService->getRecommendations($user, $limit);
+            });
 
             return $this->resourceResponse(
                 new CarListingRecommendationsResource($result),
                 'You may also like listings retrieved successfully'
             );
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('CarListingDetailsController: Error fetching you may also like', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $request->user()?->id
+            ]);
             return $this->errorResponse('Failed to retrieve recommended listings: ' . $e->getMessage(), 500);
         }
     }

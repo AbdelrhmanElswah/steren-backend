@@ -132,25 +132,39 @@ class CarListingRecommendationService
      */
     private function getSponsoredFallbackListings(array $excludeIds, int $limit): EloquentCollection
     {
-        return CarListing::with([
-            'brand', 'carModel', 'bodyType', 'location', 'studio',
-            'media' => function ($query) {
-                $query->orderBy('order')->orderBy('created_at');
-            },
-            'badges', 'carCondition', 'fuelType', 'transmission',
-            'exteriorColor', 'driveType', 'cylinder',
-            'user:id,full_name'
-        ])
-        ->where('is_promoted', true)
-        ->active()
-        ->whereNull('sold_at')
-        ->when(!empty($excludeIds), function ($query) use ($excludeIds) {
-            $query->whereNotIn('id', $excludeIds);
-        })
-        ->orderByDesc('promotion_started_at')
-        ->orderByDesc('created_at')
-        ->limit($limit)
-        ->get();
+        // Optimize query with limited column selection and specific media loading
+        return CarListing::select('car_listings.*')
+            ->with([
+                'brand:id,name,odoo_id',
+                'carModel:id,name,car_brand_id',
+                'bodyType:id,name',
+                'location:id,name',
+                'studio:id,name,city_id',
+                'media' => function ($query) {
+                    $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                        ->where('info', 'primary')
+                        ->orderBy('order')
+                        ->limit(1);
+                },
+                'badges:id,name',
+                'carCondition:id,name',
+                'fuelType:id,name',
+                'transmission:id,name',
+                'exteriorColor:id,name',
+                'driveType:id,name',
+                'cylinder:id,name',
+                'user:id,full_name'
+            ])
+            ->where('is_promoted', true)
+            ->active()
+            ->whereNull('sold_at')
+            ->when(!empty($excludeIds), function ($query) use ($excludeIds) {
+                $query->whereNotIn('id', $excludeIds);
+            })
+            ->orderByDesc('promotion_started_at')
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get();
     }
 
     /**
