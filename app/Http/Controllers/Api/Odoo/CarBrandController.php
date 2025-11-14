@@ -141,7 +141,7 @@ class CarBrandController extends Controller
             $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($request) {
                 // Only select needed columns for better performance
                 $brands = \App\Models\CarBrand::select('id', 'odoo_id', 'name', 'created_at', 'updated_at', 'deleted_at')
-                    ->with(['media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order,public_url'])
+                    ->with(['media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order'])
                     ->when($request->filled('search'), function ($query) use ($request) {
                         $query->where('name', 'like', '%' . $request->search . '%');
                     })
