@@ -30,18 +30,49 @@ return new class extends Migration
             }
         });
         
-        // Add indexes for better performance (only if columns exist)
-        Schema::table('car_listings', function (Blueprint $table) {
-            if (Schema::hasColumn('car_listings', 'odoo_listing_id')) {
-                $table->index('odoo_listing_id');
+        // Add indexes for better performance (only if columns exist and indexes don't exist)
+        $connection = Schema::getConnection();
+        $databaseName = $connection->getDatabaseName();
+        
+        // Check and add indexes conditionally
+        if (Schema::hasColumn('car_listings', 'odoo_listing_id')) {
+            $indexExists = $connection->selectOne(
+                "SELECT COUNT(*) as count FROM information_schema.statistics 
+                 WHERE table_schema = ? AND table_name = ? AND index_name = ?",
+                [$databaseName, 'car_listings', 'car_listings_odoo_listing_id_index']
+            );
+            if ($indexExists->count == 0) {
+                Schema::table('car_listings', function (Blueprint $table) {
+                    $table->index('odoo_listing_id');
+                });
             }
-            if (Schema::hasColumn('car_listings', 'odoo_vehicle_id')) {
-                $table->index('odoo_vehicle_id');
+        }
+        
+        if (Schema::hasColumn('car_listings', 'odoo_vehicle_id')) {
+            $indexExists = $connection->selectOne(
+                "SELECT COUNT(*) as count FROM information_schema.statistics 
+                 WHERE table_schema = ? AND table_name = ? AND index_name = ?",
+                [$databaseName, 'car_listings', 'car_listings_odoo_vehicle_id_index']
+            );
+            if ($indexExists->count == 0) {
+                Schema::table('car_listings', function (Blueprint $table) {
+                    $table->index('odoo_vehicle_id');
+                });
             }
-            if (Schema::hasColumn('car_listings', 'odoo_seller_id')) {
-                $table->index('odoo_seller_id');
+        }
+        
+        if (Schema::hasColumn('car_listings', 'odoo_seller_id')) {
+            $indexExists = $connection->selectOne(
+                "SELECT COUNT(*) as count FROM information_schema.statistics 
+                 WHERE table_schema = ? AND table_name = ? AND index_name = ?",
+                [$databaseName, 'car_listings', 'car_listings_odoo_seller_id_index']
+            );
+            if ($indexExists->count == 0) {
+                Schema::table('car_listings', function (Blueprint $table) {
+                    $table->index('odoo_seller_id');
+                });
             }
-        });
+        }
     }
 
     /**
