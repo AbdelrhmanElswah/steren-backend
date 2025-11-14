@@ -587,7 +587,8 @@ class SubscriptionBasedListingService
     }
 
     /**
-     * Apply a standardized city filter to car listing queries, checking listing location, odoo_city_id, and studio cities.
+     * Apply a standardized city filter to car listing queries using Laravel city ID only.
+     * Finds locations that match the city by name, then filters listings by location_id.
      */
     protected function applyCityFilter($query, int $cityId)
     {
@@ -595,7 +596,7 @@ class SubscriptionBasedListingService
             return;
         }
 
-        // Get the city to find matching locations and odoo_id
+        // Get the city by Laravel ID
         $city = \App\Models\City::find($cityId);
         if (!$city) {
             // If city doesn't exist, return no results
@@ -603,30 +604,17 @@ class SubscriptionBasedListingService
             return;
         }
 
-        // Find all locations that match this city (by name or odoo_id)
-        $matchingLocationIds = \App\Models\Location::where(function ($q) use ($city) {
-            $q->where('name', $city->name);
-            if ($city->odoo_id) {
-                $q->orWhere('odoo_id', $city->odoo_id);
-            }
-        })->pluck('id')->toArray();
+        // Find all locations that match this city by name (Laravel ID matching only)
+        $matchingLocationIds = \App\Models\Location::where('name', $city->name)
+            ->pluck('id')
+            ->toArray();
 
-        // Build the filter conditions - prioritize location matching
-        $query->where(function ($q) use ($cityId, $city, $matchingLocationIds) {
-            // First, try to filter by location_id if locations match this city
-            if (!empty($matchingLocationIds)) {
-                $q->whereIn('location_id', $matchingLocationIds);
-            } else {
-                // If no locations match the city by name/odoo_id, we need to check other criteria
-                // But we should still require that the location matches the city somehow
-                // Check if listing has odoo_city_id matching city's odoo_id
-                if ($city->odoo_id) {
-                    $q->where('odoo_city_id', $city->odoo_id);
-                } else {
-                    // If city has no odoo_id and no matching locations, return no results
-                    $q->whereRaw('1 = 0');
-                }
-            }
-        });
+        // Filter listings by location_id only - if no locations match, return no results
+        if (!empty($matchingLocationIds)) {
+            $query->whereIn('location_id', $matchingLocationIds);
+        } else {
+            // If no locations match the city name, return no results
+            $query->whereRaw('1 = 0');
+        }
     }
 }
