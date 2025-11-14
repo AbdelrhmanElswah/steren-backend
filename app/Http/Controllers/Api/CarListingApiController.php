@@ -579,12 +579,37 @@ class CarListingApiController extends Controller
         $missingOdooIds = [];
         if (!$brand || is_null($brand->odoo_id) || $brand->odoo_id === '') {
             $missingOdooIds[] = "Brand (ID: {$validatedData['car_brand_id']})";
+        } elseif ($brand->odoo_id == 0 || $brand->odoo_id == $brand->id) {
+            // Warn if odoo_id is 0 or matches Laravel ID (suspicious)
+            Log::warning('Brand odoo_id might be incorrect', [
+                'brand_id' => $brand->id,
+                'odoo_id' => $brand->odoo_id,
+                'name' => $brand->name
+            ]);
         }
+        
         if (!$model || is_null($model->odoo_id) || $model->odoo_id === '') {
             $missingOdooIds[] = "Model (ID: {$validatedData['car_model_id']})";
+        } elseif ($model->odoo_id == 0 || $model->odoo_id == $model->id) {
+            // Warn if odoo_id is 0 or matches Laravel ID (suspicious)
+            Log::warning('Model odoo_id might be incorrect', [
+                'model_id' => $model->id,
+                'odoo_id' => $model->odoo_id,
+                'name' => $model->name
+            ]);
         }
+        
         if (!$bodyType || is_null($bodyType->odoo_id) || $bodyType->odoo_id === '') {
             $missingOdooIds[] = "Body Type (ID: {$validatedData['car_body_type_id']})";
+        } elseif ($bodyType->odoo_id == 0 || $bodyType->odoo_id == $bodyType->id) {
+            // Warn if odoo_id is 0 or matches Laravel ID (suspicious)
+            Log::warning('Body Type odoo_id might be incorrect - odoo_id matches Laravel ID', [
+                'body_type_id' => $bodyType->id,
+                'odoo_id' => $bodyType->odoo_id,
+                'name' => $bodyType->name,
+                'warning' => 'odoo_id matches Laravel ID, this might not be a valid Odoo ID'
+            ]);
+            // Don't fail validation here, but log it for debugging
         }
 
         if ((($cityId ?? null) || isset($validatedData['location_id'])) && empty($cityOdooId)) {
@@ -669,14 +694,41 @@ class CarListingApiController extends Controller
         $normalizedGccImport = $this->normalizeGccImport($validatedData['gcc_import'] ?? $carListing?->gcc_import ?? null);
 
         // Prepare car_info with all required fields - Use Odoo IDs only
+        // Ensure Odoo IDs are properly cast to integers
+        $brandOdooId = (int) $brand->odoo_id;
+        $modelOdooId = (int) $model->odoo_id;
+        $bodyTypeOdooId = (int) $bodyType->odoo_id;
+        
+        // Log what we're sending to Odoo for debugging
+        Log::info('Sending Odoo IDs to API', [
+            'brand' => [
+                'laravel_id' => $brand->id,
+                'odoo_id' => $brandOdooId,
+                'original_odoo_id' => $brand->odoo_id,
+                'name' => $brand->name
+            ],
+            'model' => [
+                'laravel_id' => $model->id,
+                'odoo_id' => $modelOdooId,
+                'original_odoo_id' => $model->odoo_id,
+                'name' => $model->name
+            ],
+            'body_type' => [
+                'laravel_id' => $bodyType->id,
+                'odoo_id' => $bodyTypeOdooId,
+                'original_odoo_id' => $bodyType->odoo_id,
+                'name' => $bodyType->name
+            ]
+        ]);
+        
         $carInfo = [
             'vin' => $validatedData['vin'] ?? '',
-            'brand' => $brand->odoo_id, // Use Odoo ID only
-            'model' => $model->odoo_id, // Use Odoo ID only
+            'brand' => $brandOdooId, // Use Odoo ID only (cast to int)
+            'model' => $modelOdooId, // Use Odoo ID only (cast to int)
             'condition' => $validatedData['condition_type'],
             'year' => $validatedData['year'],
             'gcc_import' => $normalizedGccImport ?? '',
-            'body_type' => $bodyType->odoo_id, // Use Odoo ID only
+            'body_type' => $bodyTypeOdooId, // Use Odoo ID only (cast to int)
             'engine_size' => $validatedData['engine_size'] ?? 0,
             'fuel_type' => $fuelTypeName,
             'cylinders' => $cylinderName,
@@ -984,18 +1036,60 @@ class CarListingApiController extends Controller
                 // Clean up uploaded images if any
                 $this->cleanupUploadedImages($uploadedImageFiles);
                 
-                $errorMessage = 'Failed to create listing in Odoo. Please try again.';
-                if (isset($odooResponse['error'])) {
-                    $errorMessage = $odooResponse['message'] ?? $errorMessage;
+                // Extract friendly error message from Odoo response
+                $errorMessage = 'Failed to create listing. Please try again.';
+                $errorDetails = null;
+                
+                if ($odooResponse && isset($odooResponse['result'])) {
+                    $result = $odooResponse['result'];
+                    
+                    if (isset($result['error'])) {
+                        $error = $result['error'];
+                        $errorCode = $result['error_code'] ?? null;
+                        $details = $result['details'] ?? [];
+                        
+                        // Handle NOT_FOUND errors with friendly messages
+                        if ($errorCode === 'NOT_FOUND') {
+                            $resource = $details['resource'] ?? 'Resource';
+                            $resourceId = $details['id'] ?? 'unknown';
+                            
+                            // Map to user-friendly messages
+                            $resourceMap = [
+                                'Body Type' => 'body type',
+                                'Car Brand' => 'car brand',
+                                'Car Model' => 'car model',
+                                'City' => 'location',
+                                'Fuel Type' => 'fuel type',
+                                'Transmission' => 'transmission',
+                            ];
+                            
+                            $friendlyResource = $resourceMap[$resource] ?? strtolower($resource);
+                            $errorMessage = "The selected {$friendlyResource} is not valid. Please select a different option and try again.";
+                            $errorDetails = [
+                                'resource' => $resource,
+                                'resource_id' => $resourceId,
+                                'suggestion' => 'Please ensure the selected option exists in the system'
+                            ];
+                        } else {
+                            // Use the error message if it's user-friendly
+                            if (strlen($error) < 200 && !str_contains($error, 'Exception')) {
+                                $errorMessage = $error;
+                            }
+                        }
+                    }
                 } elseif ($odooResponse === null) {
-                    $errorMessage = 'Odoo API request failed or timed out. Please try again.';
+                    $errorMessage = 'Unable to connect to the server. Please check your connection and try again.';
+                } elseif (isset($odooResponse['error'])) {
+                    $errorMessage = $odooResponse['message'] ?? $errorMessage;
                 }
                 
                 Log::error('Car listing creation failed: Odoo API did not return valid odoo_id', [
                     'odoo_response' => $odooResponse,
                     'odoo_id_extracted' => $odooId,
                     'user_id' => $request->user()->id,
-                    'odoo_data_sent' => $odooData
+                    'odoo_data_sent' => $odooData,
+                    'friendly_error' => $errorMessage,
+                    'error_details' => $errorDetails
                 ]);
                 
                 return $this->errorResponse(
@@ -1005,6 +1099,7 @@ class CarListingApiController extends Controller
                         'odoo_response' => $odooResponse ?? null,
                         'odoo_id' => $odooId,
                         'reason' => 'odoo_save_failed',
+                        'error_details' => $errorDetails,
                         'odoo_response_full' => $odooResponse // Include full response for debugging
                     ]
                 );
