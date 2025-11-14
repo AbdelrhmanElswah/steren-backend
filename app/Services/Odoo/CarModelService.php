@@ -35,29 +35,34 @@ class CarModelService extends OdooCrudService
 
     public function getBrandsWithModels(array $filters = []): Collection
     {
-        return CarBrand::with(['carModels' => function ($query) use ($filters) {
-            if (!empty($filters['search'])) {
-                $query->where('name', 'like', '%' . $filters['search'] . '%');
-            }
-            if (!empty($filters['id'])) {
-                $query->where('id', $filters['id']);
-            }
-            if (!empty($filters['odoo_id'])) {
-                $query->where('odoo_id', $filters['odoo_id']);
-            }
-            $query->orderBy('name')->limit(50);
-        }, 'media'])
-        ->when(!empty($filters['brand_id']), function ($query) use ($filters) {
-            $query->where('id', $filters['brand_id']);
-        })
-        ->when(!empty($filters['search']), function ($query) use ($filters) {
-            $query->whereHas('carModels', function ($modelQuery) use ($filters) {
-                $modelQuery->where('name', 'like', '%' . $filters['search'] . '%');
-            });
-        })
-        ->orderBy('name')
-        ->limit(50)
-        ->get();
+        return CarBrand::select('id', 'odoo_id', 'name')
+            ->with([
+                'carModels' => function ($query) use ($filters) {
+                    $query->select('id', 'odoo_id', 'name', 'car_brand_id');
+                    if (!empty($filters['search'])) {
+                        $query->where('name', 'like', '%' . $filters['search'] . '%');
+                    }
+                    if (!empty($filters['id'])) {
+                        $query->where('id', $filters['id']);
+                    }
+                    if (!empty($filters['odoo_id'])) {
+                        $query->where('odoo_id', $filters['odoo_id']);
+                    }
+                    $query->orderBy('name')->limit(50);
+                }, 
+                'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order'
+            ])
+            ->when(!empty($filters['brand_id']), function ($query) use ($filters) {
+                $query->where('id', $filters['brand_id']);
+            })
+            ->when(!empty($filters['search']), function ($query) use ($filters) {
+                $query->whereHas('carModels', function ($modelQuery) use ($filters) {
+                    $modelQuery->where('name', 'like', '%' . $filters['search'] . '%');
+                });
+            })
+            ->orderBy('name')
+            ->limit(50)
+            ->get();
     }
 
 

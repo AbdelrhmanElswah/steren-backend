@@ -105,25 +105,56 @@ class BodyTypeController extends Controller
     public function getBodyTypes(GetBodyTypesRequest $request): JsonResponse
     {
         try {
-            $bodyTypes = \App\Models\BodyType::with('medias')
-                ->when($request->filled('search'), function ($query) use ($request) {
-                    $query->where('name', 'like', '%' . $request->search . '%');
-                })
-                ->when($request->filled('id'), function ($query) use ($request) {
-                    $query->where('id', $request->id);
-                })
-                ->when($request->filled('odoo_id'), function ($query) use ($request) {
-                    $query->where('odoo_id', $request->odoo_id);
-                })
-                ->orderBy('name')
-                ->get();
+            // Build cache key based on request parameters
+            $cacheKey = 'odoo_body_types_' . md5(serialize($request->only(['search', 'id', 'odoo_id'])));
+            
+            // Cache for 24 hours (86400 seconds)
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
+                // Only select needed columns for better performance
+                $bodyTypes = \App\Models\BodyType::select('id', 'odoo_id', 'name')
+                    ->with(['medias:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order'])
+                    ->when($request->filled('search'), function ($query) use ($request) {
+                        $query->where('name', 'like', '%' . $request->search . '%');
+                    })
+                    ->when($request->filled('id'), function ($query) use ($request) {
+                        $query->where('id', $request->id);
+                    })
+                    ->when($request->filled('odoo_id'), function ($query) use ($request) {
+                        $query->where('odoo_id', $request->odoo_id);
+                    })
+                    ->orderBy('name')
+                    ->get();
 
-            $collection = BodyTypeResource::collection($bodyTypes);
-            return $collection->additional([
+                // Build response directly without using resource (faster, avoids temporary URL generation)
+                $bodyTypesCollection = $bodyTypes->map(function ($bodyType) {
+                    $mediaLink = null;
+                    if ($bodyType->medias->isNotEmpty()) {
+                        $firstMedia = $bodyType->medias->first();
+                        if ($firstMedia && $firstMedia->path_file_name) {
+                            $mediaLink = $firstMedia->getS3PublicUrl($firstMedia->path_file_name);
+                        }
+                    }
+
+                    return [
+                        'id' => $bodyType->id,
+                        'odoo_id' => $bodyType->odoo_id,
+                        'name' => $bodyType->name,
+                        'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
+                    ];
+                })->toArray();
+
+                return [
+                    'data' => $bodyTypesCollection,
+                    'total' => count($bodyTypesCollection),
+                ];
+            });
+
+            return response()->json([
                 'success' => true,
                 'message' => 'Body types retrieved successfully',
-                'total' => $bodyTypes->count()
-            ])->response();
+                'data' => $result['data'],
+                'total' => $result['total'],
+            ]);
 
         } catch (\Exception $e) {
             Log::error('BodyTypeController: Error fetching body types', [

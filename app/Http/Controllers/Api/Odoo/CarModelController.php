@@ -103,32 +103,49 @@ class CarModelController extends Controller
     public function getCarModels(GetCarModelsRequest $request): JsonResponse
     {
         try {
-            $brandsWithModels = $this->CarModelService->getBrandsWithModels($request->validated());
+            // Build cache key based on request parameters
+            $cacheKey = 'odoo_car_models_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'brand_id'])));
             
-            $formattedBrands = $brandsWithModels->map(function ($brand) use ($request) {
-                $brandResource = new CarBrandResource($brand);
-                $brandData = $brandResource->toArray($request);
+            // Cache for 24 hours (86400 seconds)
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
+                $brandsWithModels = $this->CarModelService->getBrandsWithModels($request->validated());
                 
-                $brandData['models'] = $brand->carModels->map(function ($model) {
-                    return [
-                        'id' => $model->id,
-                        'odoo_id' => $model->odoo_id,
-                        'name' => $model->name,
-                        'car_brand_id' => $model->car_brand_id,
-                        'created_at' => $model->created_at?->toISOString(),
-                        'updated_at' => $model->updated_at?->toISOString(),
-                        'deleted_at' => $model->deleted_at?->toISOString(),
+                // Build response directly without using resources (faster, avoids temporary URL generation)
+                $formattedBrands = $brandsWithModels->map(function ($brand) {
+                    $mediaLink = null;
+                    if ($brand->media && $brand->media->path_file_name) {
+                        $mediaLink = $brand->media->getS3PublicUrl($brand->media->path_file_name);
+                    }
+
+                    $brandData = [
+                        'id' => $brand->id,
+                        'odoo_id' => $brand->odoo_id,
+                        'name' => $brand->name,
+                        'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
+                        'models' => $brand->carModels->map(function ($model) {
+                            return [
+                                'id' => $model->id,
+                                'odoo_id' => $model->odoo_id,
+                                'name' => $model->name,
+                                'car_brand_id' => $model->car_brand_id,
+                            ];
+                        })->toArray(),
                     ];
-                });
-                
-                return $brandData;
+                    
+                    return $brandData;
+                })->toArray();
+
+                return [
+                    'data' => $formattedBrands,
+                    'total' => count($formattedBrands),
+                ];
             });
 
             return response()->json([
                 'success' => true,
                 'message' => 'Car models retrieved successfully',
-                'data' => $formattedBrands,
-                'total' => $formattedBrands->count()
+                'data' => $result['data'],
+                'total' => $result['total'],
             ]);
 
         } catch (\Exception $e) {

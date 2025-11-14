@@ -124,57 +124,139 @@ class AuthorizedAgencyController extends Controller
     public function getAuthorizedAgencies(GetAuthorizedAgenciesRequest $request): JsonResponse
     {
         try {
-            $query = AuthorizedAgency::with('media')
-                ->when($request->filled('search'), function ($q) use ($request) {
-                    $q->where('name', 'like', '%' . $request->search . '%');
-                })
-                ->when($request->filled('id'), function ($q) use ($request) {
-                    $q->where('id', $request->id);
-                })
-                ->when($request->filled('odoo_id'), function ($q) use ($request) {
-                    $q->where('odoo_id', $request->odoo_id);
-                })
-                ->when($request->filled('partner_id'), function ($q) use ($request) {
-                    $q->where('partner_id', $request->partner_id);
-                })
-                ->orderBy('name');
+            // Build cache key based on request parameters
+            $cacheKey = 'odoo_authorized_agencies_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'partner_id', 'per_page', 'page'])));
+            
+            // Cache for 24 hours (86400 seconds)
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
+                // Build query to get partner IDs first
+                $partnerIdsQuery = AuthorizedAgency::query()
+                    ->when($request->filled('search'), function ($q) use ($request) {
+                        $q->where('name', 'like', '%' . $request->search . '%');
+                    })
+                    ->when($request->filled('id'), function ($q) use ($request) {
+                        $q->where('id', $request->id);
+                    })
+                    ->when($request->filled('odoo_id'), function ($q) use ($request) {
+                        $q->where('odoo_id', $request->odoo_id);
+                    })
+                    ->when($request->filled('partner_id'), function ($q) use ($request) {
+                        $q->where('partner_id', $request->partner_id);
+                    });
+                
+                // Get partner IDs to pre-load users and studios
+                $partnerIds = (clone $partnerIdsQuery)->pluck('partner_id')->filter()->unique();
+                
+                // Pre-load users and studios in batches to avoid N+1 queries
+                $studioMap = [];
+                if ($partnerIds->isNotEmpty()) {
+                    $users = \App\Models\User::whereIn('partner_id', $partnerIds)
+                        ->select('id', 'partner_id')
+                        ->get()
+                        ->keyBy('partner_id');
+                    
+                    $userIds = $users->pluck('id');
+                    
+                    if ($userIds->isNotEmpty()) {
+                        $studios = \App\Models\DealerStudio::whereIn('dealer_id', $userIds)
+                            ->select('id', 'dealer_id')
+                            ->get()
+                            ->groupBy('dealer_id');
+                        
+                        foreach ($users as $partnerId => $user) {
+                            if (isset($studios[$user->id]) && $studios[$user->id]->isNotEmpty()) {
+                                $studioMap[$partnerId] = $studios[$user->id]->first()->id;
+                            }
+                        }
+                    }
+                }
 
-            if ($request->filled('per_page')) {
-                $paginated = $query->paginate(
-                    perPage: $request->integer('per_page'),
-                    page: $request->integer('page', 1)
-                );
+                // Build main query with media eager loading
+                $query = AuthorizedAgency::select('id', 'name', 'partner_id')
+                    ->with(['media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order'])
+                    ->when($request->filled('search'), function ($q) use ($request) {
+                        $q->where('name', 'like', '%' . $request->search . '%');
+                    })
+                    ->when($request->filled('id'), function ($q) use ($request) {
+                        $q->where('id', $request->id);
+                    })
+                    ->when($request->filled('odoo_id'), function ($q) use ($request) {
+                        $q->where('odoo_id', $request->odoo_id);
+                    })
+                    ->when($request->filled('partner_id'), function ($q) use ($request) {
+                        $q->where('partner_id', $request->partner_id);
+                    })
+                    ->orderBy('name');
 
-                $paginated->getCollection()->load('media');
+                if ($request->filled('per_page')) {
+                    $paginated = $query->paginate(
+                        perPage: $request->integer('per_page'),
+                        page: $request->integer('page', 1)
+                    );
 
-                $resource = AuthorizedAgencyResource::collection($paginated);
-                $resourceData = $resource->response()->getData(true);
+                    $agenciesCollection = $paginated->getCollection()->map(function ($agency) use ($studioMap) {
+                        $mediaLink = null;
+                        if ($agency->media && $agency->media->path_file_name) {
+                            $mediaLink = $agency->media->getS3PublicUrl($agency->media->path_file_name);
+                        }
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Authorized agencies retrieved successfully',
-                    'data' => $resourceData['data'] ?? [],
-                    'pagination' => [
-                        'current_page' => $resourceData['meta']['current_page'] ?? $paginated->currentPage(),
-                        'per_page' => $resourceData['meta']['per_page'] ?? $paginated->perPage(),
-                        'last_page' => $resourceData['meta']['last_page'] ?? $paginated->lastPage(),
-                        'total' => $resourceData['meta']['total'] ?? $paginated->total(),
-                    ],
-                    'total' => $paginated->total(),
-                ]);
-            }
+                        return [
+                            'id' => $agency->id,
+                            'name' => $agency->name,
+                            'partner_id' => $agency->partner_id,
+                            'studio_id' => $studioMap[$agency->partner_id] ?? null,
+                            'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
+                        ];
+                    })->toArray();
 
-            $agencies = $query->get();
+                    return [
+                        'data' => $agenciesCollection,
+                        'pagination' => [
+                            'current_page' => $paginated->currentPage(),
+                            'per_page' => $paginated->perPage(),
+                            'last_page' => $paginated->lastPage(),
+                            'total' => $paginated->total(),
+                        ],
+                        'total' => $paginated->total(),
+                    ];
+                }
 
-            $resource = AuthorizedAgencyResource::collection($agencies);
-            $resourceData = $resource->response()->getData(true);
+                $agencies = $query->get();
+                
+                $agenciesCollection = $agencies->map(function ($agency) use ($studioMap) {
+                    $mediaLink = null;
+                    if ($agency->media && $agency->media->path_file_name) {
+                        $mediaLink = $agency->media->getS3PublicUrl($agency->media->path_file_name);
+                    }
 
-            return response()->json([
+                    return [
+                        'id' => $agency->id,
+                        'name' => $agency->name,
+                        'partner_id' => $agency->partner_id,
+                        'studio_id' => $studioMap[$agency->partner_id] ?? null,
+                        'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
+                    ];
+                })->toArray();
+
+                return [
+                    'data' => $agenciesCollection,
+                    'total' => count($agenciesCollection),
+                ];
+            });
+
+            $response = [
                 'success' => true,
                 'message' => 'Authorized agencies retrieved successfully',
-                'data' => $resourceData['data'] ?? [],
-                'total' => $agencies->count(),
-            ]);
+                'data' => $result['data'],
+                'total' => $result['total'],
+            ];
+
+            if (isset($result['pagination'])) {
+                $response['pagination'] = $result['pagination'];
+            }
+
+            return response()->json($response);
+
         } catch (\Throwable $e) {
             Log::error('AuthorizedAgencyController@getAuthorizedAgencies error', [
                 'message' => $e->getMessage(),
