@@ -1348,7 +1348,9 @@ class CarListingApiController extends Controller
                     continue;
                 }
 
-                $url = config('filesystems.disks.s3.endpoint') . '/' . $path;
+                // Generate temporary URL that's publicly accessible (valid for 7 days)
+                // This ensures Odoo can access the image when processing the request
+                $url = Storage::disk('s3')->temporaryUrl($path, now()->addDays(7));
                 $mappedType = $this->mapMimeTypeToEnum($image->getClientMimeType());
 
                 $uploadedFiles[] = [
