@@ -17,6 +17,7 @@ class UpdateBodyTypeRequest extends FormRequest
             'odoo_id' => 'nullable|string|max:255',
             'name' => 'sometimes|required|string|max:255',
             'media' => 'nullable|string',
+            'active' => 'nullable|boolean',
         ];
     }
 
@@ -33,6 +34,7 @@ class UpdateBodyTypeRequest extends FormRequest
             'odoo_id' => 'odoo id',
             'name' => 'name',
             'media' => 'media',
+            'active' => 'active',
         ];
     }
 }

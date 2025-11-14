@@ -27,6 +27,12 @@ class BodyTypeService extends OdooCrudService
 
     public function updateByOdooId(string $odooId, array $data): BodyType
     {
+        // Map 'active' to 'is_active' for database column
+        if (array_key_exists('active', $data)) {
+            $data['is_active'] = $data['active'];
+            unset($data['active']);
+        }
+
         $bodyType = parent::updateByOdooId($odooId, $data);
 
         if (array_key_exists('media', $data)) {
