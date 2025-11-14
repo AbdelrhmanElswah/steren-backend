@@ -611,41 +611,21 @@ class SubscriptionBasedListingService
             }
         })->pluck('id')->toArray();
 
-        // Build the filter conditions with OR logic
+        // Build the filter conditions - prioritize location matching
         $query->where(function ($q) use ($cityId, $city, $matchingLocationIds) {
-            $hasCondition = false;
-            
-            // Filter by location_id if locations match this city
+            // First, try to filter by location_id if locations match this city
             if (!empty($matchingLocationIds)) {
                 $q->whereIn('location_id', $matchingLocationIds);
-                $hasCondition = true;
-            }
-            
-            // OR filter by odoo_city_id matching city's odoo_id
-            if ($city->odoo_id) {
-                if ($hasCondition) {
-                    $q->orWhere('odoo_city_id', $city->odoo_id);
-                } else {
-                    $q->where('odoo_city_id', $city->odoo_id);
-                    $hasCondition = true;
-                }
-            }
-            
-            // OR filter by studio's city_id (always check this as a fallback)
-            if ($hasCondition) {
-                $q->orWhereHas('studio', function ($studioQuery) use ($cityId) {
-                    $studioQuery->where('city_id', $cityId);
-                });
             } else {
-                $q->whereHas('studio', function ($studioQuery) use ($cityId) {
-                    $studioQuery->where('city_id', $cityId);
-                });
-                $hasCondition = true;
-            }
-            
-            // If somehow no conditions were added, return no results
-            if (!$hasCondition) {
-                $q->whereRaw('1 = 0');
+                // If no locations match the city by name/odoo_id, we need to check other criteria
+                // But we should still require that the location matches the city somehow
+                // Check if listing has odoo_city_id matching city's odoo_id
+                if ($city->odoo_id) {
+                    $q->where('odoo_city_id', $city->odoo_id);
+                } else {
+                    // If city has no odoo_id and no matching locations, return no results
+                    $q->whereRaw('1 = 0');
+                }
             }
         });
     }
