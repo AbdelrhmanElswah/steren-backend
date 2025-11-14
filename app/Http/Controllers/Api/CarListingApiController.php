@@ -930,8 +930,12 @@ class CarListingApiController extends Controller
     public function storeFormData(CarListingCreateFormRequest $request)
     {
         try {
+            // Get user once and eager load relationships to avoid N+1 queries
+            $user = $request->user();
+            $user->loadMissing(['activeSubscription.subscriptionPlan']);
+            
             // Check if user can create listing based on subscription or free tier
-            $canCreate = $this->subscriptionService->canCreateListing($request->user());
+            $canCreate = $this->subscriptionService->canCreateListing($user);
             
             if (!$canCreate['can_create']) {
                 return $this->errorResponse(
@@ -951,7 +955,7 @@ class CarListingApiController extends Controller
             $validatedData = $request->validated();
 
             // Add authenticated user_id to the data
-            $validatedData['user_id'] = $request->user()->id;
+            $validatedData['user_id'] = $user->id;
 
             // Validate photo count if images are provided
             if ($request->hasFile('images')) {
@@ -962,7 +966,7 @@ class CarListingApiController extends Controller
                 }
                 
                 $photoCount = count($images);
-                $canUpload = $this->subscriptionService->canUploadPhotos($request->user(), $photoCount);
+                $canUpload = $this->subscriptionService->canUploadPhotos($user, $photoCount);
                 
                 if (!$canUpload['can_upload']) {
                     return $this->errorResponse(
@@ -981,7 +985,7 @@ class CarListingApiController extends Controller
             $carListingData = $this->mapFormDataToCarListingData($validatedData);
 
             // Handle promotion selection (if any)
-            $promotionData = $this->handlePromotionSelection($validatedData, $request->user());
+            $promotionData = $this->handlePromotionSelection($validatedData, $user);
             $carListingData = array_merge($carListingData, $promotionData);
 
             // Upload images first to get URLs (without creating media records yet)
