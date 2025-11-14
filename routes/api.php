@@ -314,17 +314,17 @@ Route::prefix('analytics')->middleware('auth:sanctum')->group(function () {
     Route::get('/my-ads', [App\Http\Controllers\Data\AnalyticsController::class, 'getMyAds']);
 });
 
-// Analytics Tracking Routes - POST only
+// Analytics Tracking Routes - GET and POST supported
 Route::prefix('track')->group(function () {
-    Route::post('/car-listing/{carListingId}/view', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackView']);
-    Route::post('/car-listing/{carListingId}/share', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackShare']);
-    Route::post('/car-listing/{carListingId}/call-tap', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackCallTap']);
-    Route::post('/car-listing/{carListingId}/whatsapp-click', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackWhatsAppClick']);
-    Route::post('/car-listing/{carListingId}/sms-click', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackSmsClick']);
-    Route::post('/car-listing/{carListingId}/email-click', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackEmailClick']);
-    Route::post('/car-listing/{carListingId}/watchlist-save', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackWatchlistSave']);
-    Route::post('/car-listing/{carListingId}/favorite', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackFavorite']);
-    Route::post('/car-listing/bulk', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackBulk']);
+    Route::match(['get', 'post'], '/car-listing/{carListingId}/view', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackView']);
+    Route::match(['get', 'post'], '/car-listing/{carListingId}/share', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackShare']);
+    Route::match(['get', 'post'], '/car-listing/{carListingId}/call-tap', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackCallTap']);
+    Route::match(['get', 'post'], '/car-listing/{carListingId}/whatsapp-click', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackWhatsAppClick']);
+    Route::match(['get', 'post'], '/car-listing/{carListingId}/sms-click', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackSmsClick']);
+    Route::match(['get', 'post'], '/car-listing/{carListingId}/email-click', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackEmailClick']);
+    Route::match(['get', 'post'], '/car-listing/{carListingId}/watchlist-save', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackWatchlistSave']);
+    Route::match(['get', 'post'], '/car-listing/{carListingId}/favorite', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackFavorite']);
+    Route::match(['get', 'post'], '/car-listing/bulk', [App\Http\Controllers\Api\AnalyticsTrackingController::class, 'trackBulk']);
 });
 
 // Payment Processing Routes - GET only

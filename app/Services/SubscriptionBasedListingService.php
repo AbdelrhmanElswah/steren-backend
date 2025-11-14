@@ -387,7 +387,10 @@ class SubscriptionBasedListingService
             $this->applyCityFilter($query, $filters['city_id']);
         }
 
-        return $query->orderBy('featured_at', 'desc')
+        // Order by views (total views column) first, then featured_at, then created_at
+        // The views column is updated when tracking views, and reflects total views from analytics
+        return $query->orderBy('views', 'desc')
+            ->orderBy('featured_at', 'desc')
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get();
@@ -406,7 +409,10 @@ class SubscriptionBasedListingService
             $this->applyCityFilter($query, $filters['city_id']);
         }
 
-        return $query->orderBy('featured_at', 'desc')
+        // Order by views (total views column) first, then featured_at, then created_at
+        // The views column is updated when tracking views, and reflects total views from analytics
+        return $query->orderBy('views', 'desc')
+            ->orderBy('featured_at', 'desc')
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get();

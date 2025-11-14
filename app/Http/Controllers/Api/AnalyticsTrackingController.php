@@ -103,16 +103,27 @@ class AnalyticsTrackingController extends Controller
             // Track the metric for the car listing
             CarListingAnalytics::incrementMetric($carListingId, $metricType, $additionalData);
 
+            // If tracking views, also increment the views column on car_listings table
+            if ($metricType === 'views') {
+                $carListing->increment('views');
+                $carListing->refresh();
+            }
+
             // If user is authenticated, also track in user analytics
             if (auth()->check()) {
                 $user = auth()->user();
                 UserAnalytics::incrementMetric($user->id, $metricType, $additionalData);
             }
 
+            // Get updated analytics summary
+            $analytics = CarListingAnalytics::getAnalyticsSummary($carListingId);
+
             return $this->successResponse([
                 'metric_type' => $metricType,
                 'car_listing_id' => $carListingId,
                 'timestamp' => now()->toISOString(),
+                'analytics' => $analytics,
+                'total_views' => $analytics['views'] ?? 0, // Include total views for convenience
             ], ucfirst(str_replace('_', ' ', $metricType)) . ' tracked successfully');
 
         } catch (\Exception $e) {
@@ -138,29 +149,60 @@ class AnalyticsTrackingController extends Controller
 
         try {
             $carListingId = $request->car_listing_id;
+            $carListing = CarListing::findOrFail($carListingId);
             $metrics = $request->metrics;
 
             $results = [];
+            $viewsCount = 0;
 
             foreach ($metrics as $metric) {
-                for ($i = 0; $i < $metric['count']; $i++) {
-                    CarListingAnalytics::incrementMetric($carListingId, $metric['type']);
+                $metricType = $metric['type'];
+                $count = $metric['count'];
+
+                // Prepare additional data for bulk tracking
+                $additionalData = [
+                    'user_agent' => $request->userAgent(),
+                    'ip_address' => $request->ip(),
+                    'timestamp' => now()->toISOString(),
+                    'bulk_tracking' => true,
+                ];
+
+                if (auth()->check()) {
+                    $additionalData['user_id'] = auth()->id();
+                }
+
+                // Increment metric count times
+                for ($i = 0; $i < $count; $i++) {
+                    CarListingAnalytics::incrementMetric($carListingId, $metricType, $additionalData);
                     
                     if (auth()->check()) {
-                        UserAnalytics::incrementMetric(auth()->id(), $metric['type']);
+                        UserAnalytics::incrementMetric(auth()->id(), $metricType, $additionalData);
                     }
                 }
 
+                // If views, also update the views column on car_listings table
+                if ($metricType === 'views') {
+                    $viewsCount += $count;
+                    $carListing->increment('views', $count);
+                }
+
                 $results[] = [
-                    'type' => $metric['type'],
-                    'count' => $metric['count'],
+                    'type' => $metricType,
+                    'count' => $count,
                 ];
             }
+
+            $carListing->refresh();
+
+            // Get updated analytics summary
+            $analytics = CarListingAnalytics::getAnalyticsSummary($carListingId);
 
             return $this->successResponse([
                 'car_listing_id' => $carListingId,
                 'tracked_metrics' => $results,
                 'timestamp' => now()->toISOString(),
+                'analytics' => $analytics,
+                'total_views' => $analytics['views'] ?? 0,
             ], 'Bulk metrics tracked successfully');
 
         } catch (\Exception $e) {

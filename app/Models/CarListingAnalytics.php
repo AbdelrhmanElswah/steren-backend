@@ -126,6 +126,16 @@ class CarListingAnalytics extends Model
     }
 
     /**
+     * Get total favorites for a car listing
+     */
+    public static function getTotalFavorites($carListingId)
+    {
+        return static::where('car_listing_id', $carListingId)
+            ->where('metric_type', 'favorites')
+            ->sum('metric_value');
+    }
+
+    /**
      * Get analytics summary for a car listing
      */
     public static function getAnalyticsSummary($carListingId)
@@ -138,6 +148,7 @@ class CarListingAnalytics extends Model
             'sms' => static::getTotalSmsClicks($carListingId),
             'email' => static::getTotalEmailClicks($carListingId),
             'watchlist_saves' => static::getTotalWatchlistSaves($carListingId),
+            'favorites' => static::getTotalFavorites($carListingId),
         ];
     }
 
