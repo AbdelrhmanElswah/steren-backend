@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('locations', function (Blueprint $table) {
-            $table->foreignId('city_id')->nullable()->after('odoo_id')->constrained('cities')->onDelete('set null');
+            // Check if odoo_id exists to determine where to place city_id
+            $afterColumn = Schema::hasColumn('locations', 'odoo_id') ? 'odoo_id' : 'name';
+            $table->foreignId('city_id')->nullable()->after($afterColumn)->constrained('cities')->onDelete('set null');
             $table->index('city_id');
         });
     }
