@@ -15,18 +15,27 @@ class AuthorizedAgencyResource extends JsonResource
         $useTemporaryUrl = $this->shouldUseTemporaryUrls($request);
         $expirationMinutes = $this->getExpirationMinutes($request);
 
+        // Fetch studio_id based on partner_id
+        $studioId = null;
+        if ($this->partner_id) {
+            $user = \App\Models\User::where('partner_id', $this->partner_id)->first();
+            if ($user) {
+                $studio = \App\Models\DealerStudio::where('dealer_id', $user->id)->first();
+                if ($studio) {
+                    $studioId = $studio->id;
+                }
+            }
+        }
+
         return [
             'id' => $this->id,
-            'odoo_id' => $this->odoo_id,
             'name' => $this->name,
             'partner_id' => $this->partner_id,
+            'studio_id' => $studioId,
             'media' => $this->when(
                 $this->relationLoaded('media') && $this->media,
                 $this->getStandardMedia($this->media, $request, $useTemporaryUrl, $expirationMinutes)
             ),
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
-            'deleted_at' => $this->deleted_at?->toISOString(),
         ];
     }
 }
