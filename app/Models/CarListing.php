@@ -485,10 +485,25 @@ class CarListing extends Model
     }
 
     public function getFormattedViewsAttribute() {
-        if ($this->views >= 1000) {
-            return number_format($this->views / 1000, 1) . 'K Views';
+        // Get views from attribute (may come from query) or from accessor
+        $views = $this->attributes['views'] ?? $this->total_views ?? 0;
+        if ($views >= 1000) {
+            return number_format($views / 1000, 1) . 'K Views';
         }
-        return $this->views . ' Views';
+        return $views . ' Views';
+    }
+    
+    /**
+     * Get views attribute - either from query result or from analytics
+     */
+    public function getViewsAttribute()
+    {
+        // If views is set from query (e.g., from selectRaw), return it
+        if (isset($this->attributes['views'])) {
+            return (int) $this->attributes['views'];
+        }
+        // Otherwise, get from analytics
+        return $this->total_views;
     }
 
     public function scopeByVin($query, $vin) {
