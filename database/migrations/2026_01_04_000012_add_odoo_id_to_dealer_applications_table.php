@@ -12,7 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('dealer_applications', function (Blueprint $table) {
-            $table->string('odoo_id')->nullable()->after('user_id');
+            // Check if user_id exists (old) or partner_id exists (new) to determine where to place odoo_id
+            $afterColumn = Schema::hasColumn('dealer_applications', 'partner_id') 
+                ? 'partner_id' 
+                : (Schema::hasColumn('dealer_applications', 'user_id') ? 'user_id' : 'id');
+            $table->string('odoo_id')->nullable()->after($afterColumn);
         });
     }
 
