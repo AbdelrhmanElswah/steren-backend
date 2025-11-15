@@ -13,6 +13,7 @@
         "laravel/nightwatch": "^1.14",
         "laravel/octane": "^2.12",
         "laravel/sanctum": "^4.2",
+        "laravel/telescope": "^5.15",
         "laravel/tinker": "^2.10.1",
         "league/flysystem-aws-s3-v3": "^3.29"
     },
