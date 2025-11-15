@@ -114,7 +114,7 @@ class AccountController extends Controller
                     'brand:id,name,odoo_id',
                     'carModel:id,name,car_brand_id', 
                     'bodyType:id,name',
-                    'location:id,name',
+                    'city:id,name,odoo_id',
                     'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order',
                     'carCondition:id,name',
                     'fuelType:id,name',
