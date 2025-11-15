@@ -5,6 +5,7 @@ namespace App\Services\Odoo;
 use App\Models\Carousel;
 use App\Models\Media;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class CarouselService extends OdooCrudService
@@ -22,6 +23,9 @@ class CarouselService extends OdooCrudService
             $this->handleCarouselImage($carousel, $data['media']);
         }
 
+        // Clear all carousel cache after creation
+        $this->clearCarouselCache();
+
         return $carousel;
     }
 
@@ -37,7 +41,115 @@ class CarouselService extends OdooCrudService
             }
         }
 
+        // Clear all carousel cache after update
+        $this->clearCarouselCache();
+
         return $carousel;
+    }
+
+    public function deleteByOdooId(string $odooId): bool
+    {
+        $result = parent::deleteByOdooId($odooId);
+        
+        // Clear all carousel cache after deletion
+        $this->clearCarouselCache();
+        
+        return $result;
+    }
+
+    public function restoreByOdooId(string $odooId): Carousel
+    {
+        $carousel = parent::restoreByOdooId($odooId);
+        
+        // Clear all carousel cache after restore
+        $this->clearCarouselCache();
+        
+        return $carousel;
+    }
+
+    /**
+     * Clear all carousel-related cache
+     * This includes:
+     * - carousels_active_* (with limit or 'all')
+     * - carousels_all_* (with md5 hash)
+     * - carousel_* (individual carousel cache)
+     */
+    protected function clearCarouselCache(): void
+    {
+        try {
+            // Try to clear cache by pattern if Redis is available
+            $store = Cache::getStore();
+            if (method_exists($store, 'getRedis')) {
+                $redis = $store->getRedis();
+                if ($redis instanceof \Redis || $redis instanceof \Predis\Client) {
+                    $pattern = '*carousel*';
+                    $prefix = config('cache.prefix', config('database.redis.options.prefix', ''));
+                    
+                    // Get all keys matching the pattern
+                    $keys = $redis->keys($prefix . $pattern);
+                    
+                    if (!empty($keys)) {
+                        // Remove prefix from keys
+                        if ($prefix) {
+                            $keys = array_map(function($key) use ($prefix) {
+                                return str_replace($prefix, '', $key);
+                            }, $keys);
+                        }
+                        
+                        // Delete all matching keys
+                        foreach ($keys as $key) {
+                            Cache::forget($key);
+                        }
+                        
+                        return;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // Fall back to manual cache clearing if pattern matching fails
+            \Illuminate\Support\Facades\Log::warning('CarouselService: Could not clear cache by pattern', [
+                'error' => $e->getMessage()
+            ]);
+        }
+        
+        // Clear common cache keys manually (fallback)
+        $this->clearCommonCarouselCacheKeys();
+    }
+
+    /**
+     * Clear common carousel cache keys manually
+     * Used as fallback when pattern matching is not available
+     */
+    protected function clearCommonCarouselCacheKeys(): void
+    {
+        // Clear active carousels cache (common variations)
+        Cache::forget('carousels_active_all');
+        Cache::forget('carousels_active_10');
+        Cache::forget('carousels_active_20');
+        Cache::forget('carousels_active_50');
+        
+        // Clear all carousels cache (common filter combinations)
+        // Note: Since the key includes md5 hash, we can't predict all variations
+        // But we can clear common ones
+        $commonFilters = [
+            ['active_only' => false, 'search' => null],
+            ['active_only' => true, 'search' => null],
+            ['active_only' => false],
+            ['active_only' => true],
+        ];
+        
+        foreach ($commonFilters as $filters) {
+            $cacheKey = 'carousels_all_' . md5(serialize($filters));
+            Cache::forget($cacheKey);
+        }
+        
+        // Clear individual carousel cache for all existing carousels
+        // This is less efficient but ensures cache is cleared
+        Carousel::select('odoo_id')->chunk(100, function ($carousels) {
+            foreach ($carousels as $carousel) {
+                Cache::forget('carousel_' . $carousel->odoo_id);
+            }
+        });
     }
 
     /**
