@@ -203,46 +203,34 @@ class AuthService
                     'message' => $clientResult['message']
                 ];
 
-                // Update user with partner_id and odoo_id
-                if ($clientResult['success'] && $clientResult['partner_id']) {
-                    $user->update([
-                        'partner_id' => $clientResult['partner_id'],
-                        'odoo_id' => $clientResult['partner_id'] // Set odoo_id to the same value as partner_id
-                    ]);
-                    
-                    Log::info('User updated with Odoo partner_id during OTP verification', [
-                        'user_id' => $user->id,
-                        'partner_id' => $clientResult['partner_id'],
-                        'odoo_id' => $clientResult['partner_id']
-                    ]);
-                }
+                // User is already updated in ClientService with partner_id and odoo_id
+                $user->refresh();
+                
+                Log::info('User updated with Odoo partner_id during OTP verification', [
+                    'user_id' => $user->id,
+                    'partner_id' => $user->partner_id,
+                    'odoo_id' => $user->odoo_id
+                ]);
 
-            } catch (\Exception $e) {
-                Log::error('Client creation failed during OTP verification', [
+            } catch (OdooConnectionException|OdooPartnerCreationException $e) {
+                Log::error('Odoo client creation failed during OTP verification - deleting user', [
                     'user_id' => $user->id,
                     'phone' => $clientData['phone'],
                     'client_data' => $clientData,
                     'error' => $e->getMessage()
                 ]);
 
-                // Set fallback partner_id and odoo_id using user ID
-                $fallbackPartnerId = 'PARTNER_' . $user->id;
-                $user->update([
-                    'partner_id' => $fallbackPartnerId,
-                    'odoo_id' => $fallbackPartnerId
+                // Delete the user since Odoo creation failed
+                $userId = $user->id;
+                $user->delete();
+                
+                Log::info('User deleted due to Odoo client creation failure', [
+                    'user_id' => $userId,
+                    'phone' => $clientData['phone']
                 ]);
 
-                $clientIntegration = [
-                    'success' => false,
-                    'partner_id' => $fallbackPartnerId,
-                    'message' => 'Client creation failed: ' . $e->getMessage() . '. Using fallback ID.'
-                ];
-                
-                Log::info('User updated with fallback partner_id during OTP verification', [
-                    'user_id' => $user->id,
-                    'partner_id' => $fallbackPartnerId,
-                    'odoo_id' => $fallbackPartnerId
-                ]);
+                // Re-throw the exception to prevent token creation
+                throw new \Exception('User registration failed: Unable to create client in Odoo. ' . $e->getMessage());
             }
         } else {
             // User doesn't have full_name, but we still want to create Odoo client
@@ -276,44 +264,31 @@ class AuthService
                     'message' => $clientResult['message']
                 ];
                 
-                // Update user with partner_id and odoo_id
-                if ($clientResult['success'] && $clientResult['partner_id']) {
-                    $user->update([
-                        'partner_id' => $clientResult['partner_id'],
-                        'odoo_id' => $clientResult['partner_id']
-                    ]);
-                    
-                    Log::info('User updated with Odoo partner_id (no full_name case)', [
-                        'user_id' => $user->id,
-                        'partner_id' => $clientResult['partner_id'],
-                        'odoo_id' => $clientResult['partner_id']
-                    ]);
-                }
+                // User is already updated in ClientService with partner_id and odoo_id
+                $user->refresh();
                 
-            } catch (\Exception $e) {
-                Log::error('Client creation failed during OTP verification (no full_name case)', [
+                Log::info('User updated with Odoo partner_id (no full_name case)', [
+                    'user_id' => $user->id,
+                    'partner_id' => $user->partner_id,
+                    'odoo_id' => $user->odoo_id
+                ]);
+                
+            } catch (OdooConnectionException|OdooPartnerCreationException $e) {
+                Log::error('Odoo client creation failed during OTP verification (no full_name case) - deleting user', [
                     'user_id' => $user->id,
                     'error' => $e->getMessage()
                 ]);
 
-                // Set fallback partner_id and odoo_id using user ID
-                $fallbackPartnerId = 'PARTNER_' . $user->id;
-                $user->update([
-                    'partner_id' => $fallbackPartnerId,
-                    'odoo_id' => $fallbackPartnerId
+                // Delete the user since Odoo creation failed
+                $userId = $user->id;
+                $user->delete();
+                
+                Log::info('User deleted due to Odoo client creation failure (no full_name case)', [
+                    'user_id' => $userId
                 ]);
 
-                $clientIntegration = [
-                    'success' => false,
-                    'partner_id' => $fallbackPartnerId,
-                    'message' => 'Client creation failed: ' . $e->getMessage() . '. Using fallback ID.'
-                ];
-                
-                Log::info('User updated with fallback partner_id (no full_name case)', [
-                    'user_id' => $user->id,
-                    'partner_id' => $fallbackPartnerId,
-                    'odoo_id' => $fallbackPartnerId
-                ]);
+                // Re-throw the exception to prevent token creation
+                throw new \Exception('User registration failed: Unable to create client in Odoo. ' . $e->getMessage());
             }
         }
 
@@ -451,7 +426,8 @@ class AuthService
                 'message' => 'Client creation not attempted'
             ];
             
-            if ($userData['full_name'] && ($userData['email'] ?? $user->email)) {
+            // Only create Odoo client if user doesn't already have a partner_id
+            if (!$user->partner_id && $userData['full_name'] && ($userData['email'] ?? $user->email)) {
                 try {
                     $clientResult = $this->clientService->createClient([
                         'full_name' => $userData['full_name'],
@@ -465,22 +441,51 @@ class AuthService
                         'message' => $clientResult['message']
                     ];
                     
-                    $user->update(['partner_id' => $clientResult['partner_id']]);
+                    // User is already updated in ClientService with partner_id and odoo_id
+                    $user->refresh();
                     
-                } catch (\Exception $e) {
-                    Log::error('Client creation failed during social authentication', [
+                } catch (OdooConnectionException|OdooPartnerCreationException $e) {
+                    Log::error('Client creation failed during social authentication - deleting user', [
                         'user_id' => $user->id,
                         'firebase_uid' => $firebaseUserInfo['firebase_uid'],
                         'provider' => $provider,
                         'error' => $e->getMessage()
                     ]);
                     
-                    $clientIntegration = [
-                        'success' => false,
-                        'partner_id' => null,
-                        'message' => 'Client creation failed: ' . $e->getMessage()
-                    ];
+                    // Delete the user since Odoo creation failed (we only enter this block if user doesn't have partner_id)
+                    $userId = $user->id;
+                    $user->delete();
+                    
+                    Log::info('User deleted due to Odoo client creation failure during social auth', [
+                        'user_id' => $userId,
+                        'firebase_uid' => $firebaseUserInfo['firebase_uid']
+                    ]);
+                    
+                    // Re-throw the exception to prevent token creation
+                    throw new AuthenticationException('Social authentication failed: Unable to create client in Odoo. ' . $e->getMessage());
                 }
+            } elseif (!$user->partner_id) {
+                // User doesn't have partner_id and we can't create Odoo client due to missing data
+                Log::error('Social authentication cannot create Odoo client - missing required data', [
+                    'user_id' => $user->id,
+                    'firebase_uid' => $firebaseUserInfo['firebase_uid'],
+                    'provider' => $provider,
+                    'has_full_name' => !empty($userData['full_name']),
+                    'has_email' => !empty($userData['email'] ?? $user->email)
+                ]);
+                
+                // Delete the user since we can't create Odoo client
+                $userId = $user->id;
+                $user->delete();
+                
+                throw new AuthenticationException('Social authentication failed: Missing required information to create client in Odoo.');
+            } else {
+                // User already has partner_id, use it
+                $clientIntegration = [
+                    'success' => true,
+                    'partner_id' => $user->partner_id,
+                    'message' => 'User already has partner_id'
+                ];
             }
             
             $token = $user->createToken('social-auth')->plainTextToken;
@@ -538,7 +543,7 @@ class AuthService
                 'phone_verified_at' => now(),
             ]);
 
-            // Create Odoo client integration
+            // Create Odoo client integration - REQUIRED
             $clientIntegration = [
                 'success' => false,
                 'partner_id' => null,
@@ -572,41 +577,26 @@ class AuthService
                     'message' => $clientResult['message']
                 ];
                 
-                $user->update([
-                    'partner_id' => $clientResult['partner_id'],
-                    'odoo_id' => $clientResult['partner_id'] 
-                ]);
+                // User is already updated in ClientService with partner_id and odoo_id
+                $user->refresh();
                 
                 Log::info('User updated with Odoo partner_id', [
                     'user_id' => $user->id,
-                    'partner_id' => $clientResult['partner_id'],
-                    'odoo_id' => $clientResult['partner_id']
+                    'partner_id' => $user->partner_id,
+                    'odoo_id' => $user->odoo_id
                 ]);
                 
-            } catch (\Exception $e) {
-                Log::error('Client creation failed during pending account completion', [
+            } catch (OdooConnectionException|OdooPartnerCreationException $e) {
+                Log::error('Client creation failed during pending account completion - rolling back', [
                     'user_id' => $user->id,
                     'error' => $e->getMessage()
                 ]);
                 
-                // Set fallback partner_id and odoo_id using user ID
-                $fallbackPartnerId = 'PARTNER_' . $user->id;
-                $user->update([
-                    'partner_id' => $fallbackPartnerId,
-                    'odoo_id' => $fallbackPartnerId
-                ]);
+                // Rollback the transaction - user update will be reverted
+                DB::rollBack();
                 
-                $clientIntegration = [
-                    'success' => false,
-                    'partner_id' => $fallbackPartnerId,
-                    'message' => 'Client creation failed: ' . $e->getMessage() . '. Using fallback ID.'
-                ];
-                
-                Log::info('User updated with fallback partner_id', [
-                    'user_id' => $user->id,
-                    'partner_id' => $fallbackPartnerId,
-                    'odoo_id' => $fallbackPartnerId
-                ]);
+                // Re-throw the exception to prevent account completion
+                throw new \Exception('Account completion failed: Unable to create client in Odoo. ' . $e->getMessage());
             }
 
             DB::commit();

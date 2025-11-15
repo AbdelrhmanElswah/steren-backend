@@ -20,32 +20,34 @@ class ClientService
     {
         return DB::transaction(function () use ($payload) {
             try {
-                $odooClientId = null;
-                $odooClientData = null;
-                $odooSuccess = false;
-
-                try {
-                    $odooResult = $this->odooService->createClient($payload);
-                    
-                    if ($odooResult['success']) {
-                        $odooClientId = $odooResult['odoo_client_id'];
-                        $odooClientData = $odooResult['client_data'];
-                        $odooSuccess = true;
-                        
-                        Log::info('Client created successfully in Odoo', [
-                            'odoo_client_id' => $odooClientId,
-                            'phone' => $payload['phone']
-                        ]);
-                    }
-                } catch (OdooConnectionException|OdooPartnerCreationException $e) {
-                    Log::warning('Odoo client creation failed, continuing with local creation', [
+                // Odoo client creation is REQUIRED - throw exception if it fails
+                $odooResult = $this->odooService->createClient($payload);
+                
+                if (!$odooResult['success']) {
+                    Log::error('Odoo client creation failed - no success flag', [
                         'payload' => $payload,
-                        'error' => $e->getMessage(),
-                        'error_code' => $e->getErrorCode() ?? 'UNKNOWN'
+                        'result' => $odooResult
                     ]);
+                    throw new OdooPartnerCreationException('Failed to create client in Odoo: ' . ($odooResult['message'] ?? 'Unknown error'));
                 }
 
-                $partnerId = $odooSuccess ? (string) $odooClientId : $this->generatePartnerId();
+                $odooClientId = $odooResult['odoo_client_id'];
+                $odooClientData = $odooResult['client_data'];
+                
+                if (!$odooClientId) {
+                    Log::error('Odoo client creation succeeded but no client ID returned', [
+                        'payload' => $payload,
+                        'result' => $odooResult
+                    ]);
+                    throw new OdooPartnerCreationException('Odoo client created but no client ID returned');
+                }
+
+                Log::info('Client created successfully in Odoo', [
+                    'odoo_client_id' => $odooClientId,
+                    'phone' => $payload['phone']
+                ]);
+
+                $partnerId = (string) $odooClientId;
 
                 $user = User::updateOrCreate(
                     ['phone' => $payload['phone']],
@@ -54,33 +56,36 @@ class ClientService
                         'email' => $payload['email'],
                         'phone' => $payload['phone'],
                         'partner_id' => $partnerId,
-                        'odoo_id' => $odooClientId ? (string) $odooClientId : null,
+                        'odoo_id' => (string) $odooClientId,
                         'phone_verified_at' => now(),
                     ]
                 );
 
-                Log::info('Client created successfully', [
+                Log::info('Client created successfully in both systems', [
                     'user_id' => $user->id,
                     'partner_id' => $partnerId,
                     'odoo_client_id' => $odooClientId,
-                    'odoo_success' => $odooSuccess,
                     'phone' => $payload['phone']
                 ]);
-
-                $message = $odooSuccess 
-                    ? 'Client created successfully in both systems'
-                    : 'Client created successfully (Odoo integration unavailable)';
 
                 return [
                     'success' => true,
                     'partner_id' => $partnerId,
                     'odoo_client_id' => $odooClientId,
-                    'odoo_success' => $odooSuccess,
+                    'odoo_success' => true,
                     'user' => $user,
                     'odoo_client_data' => $odooClientData,
-                    'message' => $message
+                    'message' => 'Client created successfully in both systems'
                 ];
 
+            } catch (OdooConnectionException|OdooPartnerCreationException $e) {
+                Log::error('Odoo client creation failed - throwing exception', [
+                    'payload' => $payload,
+                    'error' => $e->getMessage(),
+                    'error_code' => $e->getErrorCode() ?? 'UNKNOWN'
+                ]);
+                // Re-throw to prevent user creation
+                throw $e;
             } catch (\Exception $e) {
                 Log::error('Failed to create client', [
                     'payload' => $payload,
@@ -91,15 +96,6 @@ class ClientService
                 throw $e;
             }
         });
-    }
-
-    private function generatePartnerId(): string
-    {
-        do {
-            $partnerId = 'PARTNER_' . strtoupper(Str::random(8));
-        } while (User::where('partner_id', $partnerId)->exists());
-
-        return $partnerId;
     }
 
     public function getClientByPartnerId(string $partnerId): ?User
