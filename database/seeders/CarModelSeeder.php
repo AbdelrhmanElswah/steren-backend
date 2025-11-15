@@ -61,24 +61,39 @@ class CarModelSeeder extends Seeder
                             $apiOffset = $pagination['offset'] ?? 0;
                             $apiCount = $pagination['count'] ?? count($models);
                             $apiLimit = $pagination['limit'] ?? 0;
+                            $actualModelsCount = count($models);
                             
                             // Check if API returned all models in one response (API ignored pagination)
                             // This happens when:
-                            // 1. API limit is 0 (no pagination applied) and count equals total_count
-                            // 2. The actual models array length equals or exceeds total_count (we got all models)
-                            // 3. API count equals total_count (metadata confirms all models returned)
-                            $actualModelsCount = count($models);
+                            // 1. API limit is 0 (no pagination applied) - API ignores pagination parameters
+                            // 2. API count equals total_count (metadata confirms all models returned)
+                            // 3. We're on first request (offset=0) and API limit is 0
+                            // 4. The actual models array length equals or exceeds total_count
+                            $isFirstRequest = ($offset == 0 && count($allModels) == 0);
                             
-                            // If API has limit=0 and count=total_count, it means API ignored pagination and returned all
-                            if ($apiLimit == 0 && $apiCount == $totalCount) {
-                                $this->command->info("API returned all {$totalCount} models in a single response (limit=0, pagination not applied). Processing once and stopping.");
+                            // If API has limit=0, pagination is NOT applied - API will always return all models
+                            // We should only process the first response to get all unique models
+                            if ($apiLimit == 0) {
+                                if ($isFirstRequest) {
+                                    $this->command->info("API has limit=0 (pagination not applied). Processing all {$actualModelsCount} models from first response and stopping.");
+                                    $allModels = array_merge($allModels, $models);
+                                } else {
+                                    $this->command->warn("API has limit=0 but we already processed first request. Stopping to avoid duplicates.");
+                                }
+                                $hasNext = false;
+                                break;
+                            }
+                            
+                            // If API count equals total_count, all models were returned
+                            if ($apiCount == $totalCount && $totalCount > 0) {
+                                $this->command->info("API returned all {$totalCount} models (count={$apiCount}). Processing once and stopping.");
                                 $allModels = array_merge($allModels, $models);
                                 $hasNext = false;
                                 break;
                             }
                             
                             // If we actually received all models in the response
-                            if ($actualModelsCount >= $totalCount) {
+                            if ($actualModelsCount >= $totalCount && $totalCount > 0) {
                                 $this->command->info("Received all {$totalCount} models in response. Processing once and stopping.");
                                 $allModels = array_merge($allModels, $models);
                                 $hasNext = false;
