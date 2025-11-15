@@ -52,14 +52,65 @@ class AuthService
             }
         }
         
+        // Create partner in Odoo FIRST, then create user in Laravel with partner_id
+        $partnerId = null;
+        $odooId = null;
+        
+        // Only create Odoo partner if we have required data (full_name, email, phone)
+        if (!empty($payload['full_name']) && !empty($payload['email']) && !empty($payload['phone'])) {
+            try {
+                Log::info('Creating Odoo partner during registration', [
+                    'full_name' => $payload['full_name'],
+                    'phone' => $payload['phone'],
+                    'email' => $payload['email']
+                ]);
+                
+                // Call OdooService directly to create partner without creating user
+                $odooResult = $this->odooService->createClient([
+                    'full_name' => $payload['full_name'],
+                    'phone' => $payload['phone'],
+                    'email' => $payload['email']
+                ]);
+                
+                if ($odooResult['success'] && $odooResult['odoo_client_id']) {
+                    $partnerId = (string) $odooResult['odoo_client_id'];
+                    $odooId = (string) $odooResult['odoo_client_id'];
+                    
+                    Log::info('Odoo partner created successfully during registration', [
+                        'partner_id' => $partnerId,
+                        'odoo_id' => $odooId
+                    ]);
+                } else {
+                    throw new OdooPartnerCreationException('Odoo partner creation failed: ' . ($odooResult['message'] ?? 'Unknown error'));
+                }
+            } catch (OdooConnectionException|OdooPartnerCreationException $e) {
+                Log::error('Odoo partner creation failed during registration', [
+                    'error' => $e->getMessage(),
+                    'payload' => $payload
+                ]);
+                
+                // Don't create user if Odoo partner creation fails
+                throw new \Exception('Registration failed: Unable to create partner in Odoo. ' . $e->getMessage());
+            }
+        } else {
+            // Missing required data for Odoo - will create partner during OTP verification
+            Log::info('Missing required data for Odoo partner creation during registration. Will create during OTP verification.', [
+                'has_full_name' => !empty($payload['full_name']),
+                'has_email' => !empty($payload['email']),
+                'has_phone' => !empty($payload['phone'])
+            ]);
+        }
+        
         // Create user and related data in transaction
-        $result = DB::transaction(function () use ($payload) {
+        $result = DB::transaction(function () use ($payload, $partnerId, $odooId) {
             $user = User::query()->create([
                 'full_name' => $payload['full_name'] ?? null,
                 'email' => $payload['email'] ?? null,
                 'phone' => $payload['phone'] ?? null,
                 'password' => isset($payload['password']) ? Hash::make($payload['password']) : null,
                 'firebase_uid' => $payload['firebase_uid'] ?? null,
+                'partner_id' => $partnerId,
+                'odoo_id' => $odooId,
             ]);
 
             $otp = $this->generateOtp();
@@ -173,7 +224,19 @@ class AuthService
             'message' => 'Client creation not attempted'
         ];
 
-        if ($clientData && isset($clientData['full_name'])) {
+        // If user already has partner_id from registration, skip Odoo creation
+        if ($user->partner_id) {
+            Log::info('User already has partner_id from registration, skipping Odoo client creation during OTP verification', [
+                'user_id' => $user->id,
+                'partner_id' => $user->partner_id
+            ]);
+            
+            $clientIntegration = [
+                'success' => true,
+                'partner_id' => $user->partner_id,
+                'message' => 'Partner already created during registration'
+            ];
+        } elseif ($clientData && isset($clientData['full_name'])) {
             try {
                 $email = $clientData['email'] ?? $clientData['phone'] . '@steren.app';
                 
@@ -184,33 +247,34 @@ class AuthService
                     'email' => $email
                 ]);
                 
-                $clientResult = $this->clientService->createClient([
+                // Call OdooService directly to create partner without creating user
+                $odooResult = $this->odooService->createClient([
                     'full_name' => $clientData['full_name'],
                     'phone' => $clientData['phone'],
                     'email' => $email
                 ]);
                 
-                Log::info('Odoo client creation result during OTP verification', [
-                    'user_id' => $user->id,
-                    'success' => $clientResult['success'],
-                    'partner_id' => $clientResult['partner_id'],
-                    'message' => $clientResult['message']
-                ]);
-
-                $clientIntegration = [
-                    'success' => $clientResult['success'],
-                    'partner_id' => $clientResult['partner_id'],
-                    'message' => $clientResult['message']
-                ];
-
-                // User is already updated in ClientService with partner_id and odoo_id
-                $user->refresh();
-                
-                Log::info('User updated with Odoo partner_id during OTP verification', [
-                    'user_id' => $user->id,
-                    'partner_id' => $user->partner_id,
-                    'odoo_id' => $user->odoo_id
-                ]);
+                if ($odooResult['success'] && $odooResult['odoo_client_id']) {
+                    $partnerId = (string) $odooResult['odoo_client_id'];
+                    $user->update([
+                        'partner_id' => $partnerId,
+                        'odoo_id' => (string) $odooResult['odoo_client_id']
+                    ]);
+                    
+                    $clientIntegration = [
+                        'success' => true,
+                        'partner_id' => $partnerId,
+                        'message' => 'Partner created successfully'
+                    ];
+                    
+                    Log::info('User updated with Odoo partner_id during OTP verification', [
+                        'user_id' => $user->id,
+                        'partner_id' => $partnerId,
+                        'odoo_id' => $odooResult['odoo_client_id']
+                    ]);
+                } else {
+                    throw new OdooPartnerCreationException('Odoo partner creation failed: ' . ($odooResult['message'] ?? 'Unknown error'));
+                }
 
             } catch (OdooConnectionException|OdooPartnerCreationException $e) {
                 Log::error('Odoo client creation failed during OTP verification - deleting user', [
@@ -232,9 +296,9 @@ class AuthService
                 // Re-throw the exception to prevent token creation
                 throw new \Exception('User registration failed: Unable to create client in Odoo. ' . $e->getMessage());
             }
-        } else {
-            // User doesn't have full_name, but we still want to create Odoo client
-            Log::info('User missing full_name, attempting Odoo client creation with available data', [
+        } elseif (!$user->partner_id) {
+            // User doesn't have partner_id and no clientData - try to create with available user data
+            Log::info('User missing partner_id and clientData, attempting Odoo client creation with available data', [
                 'user_id' => $user->id,
                 'phone' => $user->phone,
                 'email' => $user->email,
@@ -245,36 +309,37 @@ class AuthService
                 $email = $user->email ?? $user->phone . '@steren.app';
                 $fullName = $user->full_name ?? 'User ' . $user->id;
                 
-                $clientResult = $this->clientService->createClient([
+                // Call OdooService directly to create partner without creating user
+                $odooResult = $this->odooService->createClient([
                     'full_name' => $fullName,
                     'phone' => $user->phone,
                     'email' => $email
                 ]);
                 
-                Log::info('Odoo client creation result for user without full_name', [
-                    'user_id' => $user->id,
-                    'success' => $clientResult['success'],
-                    'partner_id' => $clientResult['partner_id'],
-                    'message' => $clientResult['message']
-                ]);
-                
-                $clientIntegration = [
-                    'success' => $clientResult['success'],
-                    'partner_id' => $clientResult['partner_id'],
-                    'message' => $clientResult['message']
-                ];
-                
-                // User is already updated in ClientService with partner_id and odoo_id
-                $user->refresh();
-                
-                Log::info('User updated with Odoo partner_id (no full_name case)', [
-                    'user_id' => $user->id,
-                    'partner_id' => $user->partner_id,
-                    'odoo_id' => $user->odoo_id
-                ]);
+                if ($odooResult['success'] && $odooResult['odoo_client_id']) {
+                    $partnerId = (string) $odooResult['odoo_client_id'];
+                    $user->update([
+                        'partner_id' => $partnerId,
+                        'odoo_id' => (string) $odooResult['odoo_client_id']
+                    ]);
+                    
+                    $clientIntegration = [
+                        'success' => true,
+                        'partner_id' => $partnerId,
+                        'message' => 'Partner created successfully'
+                    ];
+                    
+                    Log::info('User updated with Odoo partner_id (no clientData case)', [
+                        'user_id' => $user->id,
+                        'partner_id' => $partnerId,
+                        'odoo_id' => $odooResult['odoo_client_id']
+                    ]);
+                } else {
+                    throw new OdooPartnerCreationException('Odoo partner creation failed: ' . ($odooResult['message'] ?? 'Unknown error'));
+                }
                 
             } catch (OdooConnectionException|OdooPartnerCreationException $e) {
-                Log::error('Odoo client creation failed during OTP verification (no full_name case) - deleting user', [
+                Log::error('Odoo client creation failed during OTP verification (no clientData case) - deleting user', [
                     'user_id' => $user->id,
                     'error' => $e->getMessage()
                 ]);
@@ -283,7 +348,7 @@ class AuthService
                 $userId = $user->id;
                 $user->delete();
                 
-                Log::info('User deleted due to Odoo client creation failure (no full_name case)', [
+                Log::info('User deleted due to Odoo client creation failure (no clientData case)', [
                     'user_id' => $userId
                 ]);
 
