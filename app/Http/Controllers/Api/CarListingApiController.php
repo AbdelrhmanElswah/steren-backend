@@ -205,6 +205,7 @@ class CarListingApiController extends Controller
             'car_model_id' => $carInfo['model'],
             'year' => $carInfo['year'],
             'condition_type' => $carInfo['condition'],
+            'car_condition_id' => $this->getCarConditionIdFromConditionType($carInfo['condition'] ?? null),
             'gcc_import' => $normalizedGccImport,
             'car_body_type_id' => $carInfo['body_type'],
             'engine_size' => $carInfo['engine_size'] ?? null,
@@ -280,6 +281,24 @@ class CarListingApiController extends Controller
         
         $driveType = \App\Models\DriveType::where('name', $driveTypeName)->first();
         return $driveType ? $driveType->id : null;
+    }
+
+    /**
+     * Get car condition ID from condition_type
+     * Maps "used" -> CarCondition "Used", "new" -> CarCondition "New"
+     */
+    private function getCarConditionIdFromConditionType($conditionType): ?int
+    {
+        if (!$conditionType) {
+            return null;
+        }
+
+        // Normalize condition_type to match CarCondition name
+        $conditionName = ucfirst(strtolower($conditionType)); // "used" -> "Used", "new" -> "New"
+        
+        $carCondition = \App\Models\CarCondition::where('name', $conditionName)->first();
+        
+        return $carCondition ? $carCondition->id : null;
     }
 
     /**
@@ -1218,6 +1237,7 @@ class CarListingApiController extends Controller
             'car_brand_id' => $data['car_brand_id'],
             'car_model_id' => $data['car_model_id'],
             'condition_type' => $data['condition_type'],
+            'car_condition_id' => $this->getCarConditionIdFromConditionType($data['condition_type'] ?? null),
             'year' => $data['year'],
             'gcc_import' => $normalizedGccImport,
             'car_body_type_id' => $data['car_body_type_id'],
