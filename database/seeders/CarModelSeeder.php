@@ -46,20 +46,42 @@ class CarModelSeeder extends Seeder
                     
                     if (isset($data['result']['data']) && is_array($data['result']['data'])) {
                         $models = $data['result']['data'];
+                        
+                        // If no models returned, stop pagination
+                        if (empty($models)) {
+                            $this->command->info("No more models returned. Stopping pagination.");
+                            break;
+                        }
+                        
                         $allModels = array_merge($allModels, $models);
+                        $modelsCount = count($models);
                         
                         // Get pagination info
                         if (isset($data['result']['meta']['pagination'])) {
                             $pagination = $data['result']['meta']['pagination'];
-                            $totalCount = $pagination['total_count'] ?? count($allModels);
+                            $totalCount = $pagination['total_count'] ?? $totalCount;
                             $hasNext = $pagination['has_next'] ?? false;
-                            $offset = $pagination['offset'] + $pagination['count'];
                             
-                            $this->command->info("Fetched " . count($models) . " models (Total so far: " . count($allModels) . " / {$totalCount})");
+                            // Calculate next offset ourselves (current offset + number of models fetched)
+                            $offset = $offset + $modelsCount;
+                            
+                            // Safety check: stop if we've fetched more than total_count
+                            if (count($allModels) >= $totalCount) {
+                                $this->command->info("Reached total count ({$totalCount}). Stopping pagination.");
+                                $hasNext = false;
+                            }
+                            
+                            // Safety check: stop if has_next is true but we got fewer models than limit (means we're at the end)
+                            if ($hasNext && $modelsCount < $limit) {
+                                $this->command->info("Received fewer models than limit. Stopping pagination.");
+                                $hasNext = false;
+                            }
+                            
+                            $this->command->info("Fetched {$modelsCount} models (Total so far: " . count($allModels) . " / {$totalCount})");
                         } else {
-                            // If no pagination metadata, assume we got all results
+                            // If no pagination metadata, stop after first page
+                            $this->command->info("Fetched " . count($models) . " models (No pagination info, stopping)");
                             $hasNext = false;
-                            $this->command->info("Fetched " . count($models) . " models (No pagination info, assuming complete)");
                         }
                     } else {
                         $this->command->error('Invalid response format from Odoo API');
