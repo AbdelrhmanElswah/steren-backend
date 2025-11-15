@@ -543,8 +543,5 @@ Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(functi
         Route::post('/schedule', [App\Http\Controllers\Api\NotificationController::class, 'schedule']);
     });
 
-// Admin Cache Management Routes
-Route::prefix('admin/cache')->middleware('auth:sanctum')->group(function () {
-    Route::post('/clear-all', [App\Http\Controllers\Api\Admin\CacheController::class, 'clearAll']);
-    Route::post('/clear-pattern', [App\Http\Controllers\Api\Admin\CacheController::class, 'clearPattern']);
-});
+// Cache clearing endpoint - Odoo only (requires Odoo API key)
+Route::post('cache/clear', [App\Http\Controllers\CacheController::class, 'clear'])->middleware('odoo.tracking');
