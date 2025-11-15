@@ -269,7 +269,7 @@ class CarListingController extends Controller
         try {
             $data = [
                 'conditions' => \App\Models\CarCondition::all()->makeHidden(['created_at', 'updated_at']),
-                'body_types' => \App\Models\BodyType::all()->makeHidden(['created_at', 'updated_at', 'deleted_at']),
+                'body_types' => \App\Models\BodyType::all()->makeHidden(['created_at', 'updated_at', 'deleted_at', 'description', 'is_active']),
                 'fuel_types' => \App\Models\FuelType::all()->makeHidden(['created_at', 'updated_at']),
                 'cylinders' => \App\Models\CylinderOption::all()->makeHidden(['created_at', 'updated_at']),
                 'transmissions' => \App\Models\Transmission::all()->makeHidden(['created_at', 'updated_at']),
@@ -278,7 +278,7 @@ class CarListingController extends Controller
                 'import_types' => \App\Models\ImportType::all()->makeHidden(['created_at', 'updated_at']),
                 'cities' => \App\Models\City::all()->makeHidden(['created_at', 'updated_at', 'deleted_at']),
                 'brands' => CarBrand::with('carModels')->get()->map(function ($brand) {
-                    $brand->makeHidden(['created_at', 'updated_at', 'deleted_at']);
+                    $brand->makeHidden(['created_at', 'updated_at', 'deleted_at', 'description', 'is_active', 'logo']);
                     $brand->carModels->makeHidden(['created_at', 'updated_at', 'deleted_at']);
                     return $brand;
                 }),
