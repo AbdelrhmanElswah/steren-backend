@@ -58,7 +58,20 @@ class CarModelSeeder extends Seeder
                             $pagination = $data['result']['meta']['pagination'];
                             $totalCount = $pagination['total_count'] ?? $totalCount;
                             $hasNext = $pagination['has_next'] ?? false;
+                            $apiOffset = $pagination['offset'] ?? 0;
+                            $apiCount = $pagination['count'] ?? count($models);
+                            $apiLimit = $pagination['limit'] ?? 0;
                             
+                            // Check if API returned all models in one response (API ignored pagination)
+                            // This happens when count >= total_count, meaning all models were returned regardless of limit/offset
+                            if ($apiCount >= $totalCount) {
+                                $this->command->info("API returned all {$totalCount} models in a single response (pagination not applied). Processing once and stopping.");
+                                $allModels = array_merge($allModels, $models);
+                                $hasNext = false;
+                                break;
+                            }
+                            
+                            // API supports pagination - process normally
                             // Only take the models we need (in case we exceed total_count)
                             $currentCount = count($allModels);
                             $neededCount = $totalCount - $currentCount;
@@ -74,8 +87,15 @@ class CarModelSeeder extends Seeder
                             $allModels = array_merge($allModels, $modelsToAdd);
                             $modelsCount = count($modelsToAdd);
                             
-                            // Calculate next offset ourselves (current offset + number of models actually added)
-                            $offset = $offset + count($models);
+                            // Calculate next offset: use API's offset + count if API respects pagination,
+                            // otherwise use our own calculation
+                            if ($apiOffset > 0 || ($apiOffset == 0 && $currentCount > 0)) {
+                                // API respects offset - use its offset + count
+                                $offset = $apiOffset + $apiCount;
+                            } else {
+                                // API might not respect offset - use our calculation
+                                $offset = $offset + count($models);
+                            }
                             
                             // If we took fewer models than returned, we've reached the total
                             if (count($modelsToAdd) < count($models)) {
@@ -90,9 +110,9 @@ class CarModelSeeder extends Seeder
                             
                             $this->command->info("Fetched {$modelsCount} models (Total so far: " . count($allModels) . " / {$totalCount}, has_next: " . ($hasNext ? 'true' : 'false') . ")");
                         } else {
-                            // If no pagination metadata, just add all models and stop after first page
+                            // If no pagination metadata, assume API returned all models - process once and stop
                             $allModels = array_merge($allModels, $models);
-                            $this->command->info("Fetched " . count($models) . " models (No pagination info, stopping)");
+                            $this->command->info("Fetched " . count($models) . " models (No pagination info, assuming complete response)");
                             $hasNext = false;
                         }
                     } else {
