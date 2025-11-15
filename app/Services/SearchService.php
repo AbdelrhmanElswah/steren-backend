@@ -436,7 +436,7 @@ class SearchService
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
                 'bodyType:id,name',
-                'location:id,name',
+                'city:id,name,odoo_id',
                 'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order',
                 'fuelType:id,name',
                 'transmission:id,name',
@@ -480,12 +480,12 @@ class SearchService
             $search = trim($filters['search']);
             if (!empty($search)) {
                 $query->where(function($q) use ($search) {
-                    $q->where('title', 'like', "%{$search}%")
+                    $q->whereRaw('LOWER(title) LIKE ?', ['%' . strtolower($search) . '%'])
                       ->orWhereHas('brand', function($q) use ($search) {
-                          $q->where('name', 'like', "%{$search}%");
+                          $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($search) . '%']);
                       })
                       ->orWhereHas('carModel', function($q) use ($search) {
-                          $q->where('name', 'like', "%{$search}%");
+                          $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($search) . '%']);
                       });
                 });
             }
@@ -603,12 +603,7 @@ class SearchService
         // City filter
         $cityIds = $this->normalizeIds($filters['city_ids'] ?? $filters['city_id'] ?? null);
         if (!empty($cityIds)) {
-            $cities = City::whereIn('id', $cityIds)->pluck('name');
-            if ($cities->isNotEmpty()) {
-                $query->whereHas('location', function ($q) use ($cities) {
-                    $q->whereIn('name', $cities);
-                });
-            }
+            $query->whereIn('city_id', $cityIds);
         }
 
         // Import type filter (GCC/IMPORT)
