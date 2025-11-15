@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\CarModel;
 use App\Models\CarBrand;
@@ -11,220 +10,123 @@ use Illuminate\Support\Facades\Log;
 
 class CarModelSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $this->command->info('Fetching car models from Odoo API...');
-        
+
         try {
             $allModels = [];
             $offset = 0;
-            $limit = 100; // Fetch 100 records per page
-            $hasNext = true;
-            $totalCount = 0;
-            
-            while ($hasNext) {
-                $this->command->info("Fetching page (offset: {$offset}, limit: {$limit})...");
-                
+            $limit = 100;
+
+            while (true) {
+                $this->command->info("Fetching (offset: {$offset}, limit: {$limit})");
+
+                // Correct request format for your Odoo API
                 $response = Http::withHeaders([
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
                 ])->post(config('services.odoo.base_url') . '/api/models', [
-                    'jsonrpc' => '2.0',
-                    'id' => null,
-                    'method' => 'call',
-                    'params' => [
-                        'limit' => $limit,
-                        'offset' => $offset
-                    ]
+                    "limit" => $limit,
+                    "offset" => $offset
                 ]);
-                
-                if ($response->successful()) {
-                    $data = $response->json();
-                    
-                    if (isset($data['result']['data']) && is_array($data['result']['data'])) {
-                        $models = $data['result']['data'];
-                        
-                        // If no models returned, stop pagination
-                        if (empty($models)) {
-                            $this->command->info("No more models returned. Stopping pagination.");
-                            break;
-                        }
-                        
-                        // Get pagination info first to know the total count
-                        if (isset($data['result']['meta']['pagination'])) {
-                            $pagination = $data['result']['meta']['pagination'];
-                            $totalCount = $pagination['total_count'] ?? $totalCount;
-                            $hasNext = $pagination['has_next'] ?? false;
-                            $apiOffset = $pagination['offset'] ?? 0;
-                            $apiCount = $pagination['count'] ?? count($models);
-                            $apiLimit = $pagination['limit'] ?? 0;
-                            $actualModelsCount = count($models);
-                            
-                            // Check if API returned all models in one response (API ignored pagination)
-                            // This happens when:
-                            // 1. API limit is 0 (no pagination applied) - API ignores pagination parameters
-                            // 2. API count equals total_count (metadata confirms all models returned)
-                            // 3. We're on first request (offset=0) and API limit is 0
-                            // 4. The actual models array length equals or exceeds total_count
-                            $isFirstRequest = ($offset == 0 && count($allModels) == 0);
-                            
-                            // If API has limit=0, pagination is NOT applied - API will always return all models
-                            // We should only process the first response to get all unique models
-                            if ($apiLimit == 0) {
-                                if ($isFirstRequest) {
-                                    $this->command->info("API has limit=0 (pagination not applied). Processing all {$actualModelsCount} models from first response and stopping.");
-                                    $allModels = array_merge($allModels, $models);
-                                } else {
-                                    $this->command->warn("API has limit=0 but we already processed first request. Stopping to avoid duplicates.");
-                                }
-                                $hasNext = false;
-                                break;
-                            }
-                            
-                            // If API count equals total_count, all models were returned
-                            if ($apiCount == $totalCount && $totalCount > 0) {
-                                $this->command->info("API returned all {$totalCount} models (count={$apiCount}). Processing once and stopping.");
-                                $allModels = array_merge($allModels, $models);
-                                $hasNext = false;
-                                break;
-                            }
-                            
-                            // If we actually received all models in the response
-                            if ($actualModelsCount >= $totalCount && $totalCount > 0) {
-                                $this->command->info("Received all {$totalCount} models in response. Processing once and stopping.");
-                                $allModels = array_merge($allModels, $models);
-                                $hasNext = false;
-                                break;
-                            }
-                            
-                            // API supports pagination - process normally
-                            // Only take the models we need (in case we exceed total_count)
-                            $currentCount = count($allModels);
-                            $neededCount = $totalCount - $currentCount;
-                            
-                            if ($neededCount <= 0) {
-                                // Already have enough, don't add any more
-                                $this->command->info("Already have {$totalCount} models. Stopping pagination.");
-                                break;
-                            }
-                            
-                            // Only take as many models as we need
-                            $modelsToAdd = array_slice($models, 0, $neededCount);
-                            $allModels = array_merge($allModels, $modelsToAdd);
-                            $modelsCount = count($modelsToAdd);
-                            
-                            // Calculate next offset: use API's offset + count if API respects pagination,
-                            // otherwise use our own calculation
-                            if ($apiOffset > 0 || ($apiOffset == 0 && $currentCount > 0)) {
-                                // API respects offset - use its offset + count
-                                $offset = $apiOffset + $apiCount;
-                            } else {
-                                // API might not respect offset - use our calculation
-                                $offset = $offset + count($models);
-                            }
-                            
-                            // If we took fewer models than returned, we've reached the total
-                            if (count($modelsToAdd) < count($models)) {
-                                $this->command->info("Reached total count ({$totalCount}). Stopping pagination.");
-                                $hasNext = false;
-                            }
-                            
-                            // Safety check: stop if has_next is false (no more pages)
-                            if (!$hasNext) {
-                                $this->command->info("No more pages available (has_next: false). Stopping pagination.");
-                            }
-                            
-                            $this->command->info("Fetched {$modelsCount} models (Total so far: " . count($allModels) . " / {$totalCount}, has_next: " . ($hasNext ? 'true' : 'false') . ")");
-                        } else {
-                            // If no pagination metadata, assume API returned all models - process once and stop
-                            $allModels = array_merge($allModels, $models);
-                            $this->command->info("Fetched " . count($models) . " models (No pagination info, assuming complete response)");
-                            $hasNext = false;
-                        }
-                    } else {
-                        $this->command->error('Invalid response format from Odoo API');
-                        Log::error('CarModelSeeder: Invalid response format', ['response' => $data]);
-                        break;
-                    }
-                } else {
-                    $this->command->error('Failed to fetch car models from Odoo API. Status: ' . $response->status());
-                    Log::error('CarModelSeeder: API request failed', [
+
+                if (!$response->successful()) {
+                    $this->command->error("Request failed. Status: " . $response->status());
+                    Log::error('CarModelSeeder API failure', [
                         'status' => $response->status(),
-                        'response' => $response->body()
+                        'body' => $response->body()
                     ]);
                     break;
                 }
-            }
-            
-            $this->command->info("Total models fetched: " . count($allModels));
-            
-            // Remove duplicates based on odoo_id (keep the last occurrence)
-            $uniqueModels = [];
-            $duplicateCount = 0;
-            foreach ($allModels as $model) {
-                $odooId = $model['id'];
-                if (isset($uniqueModels[$odooId])) {
-                    $duplicateCount++;
+
+                $json = $response->json();
+
+                // Odoo format: result.data
+                if (!isset($json['result']['data']) || !is_array($json['result']['data'])) {
+                    $this->command->error('Invalid API response format.');
+                    Log::error('Invalid format', ['response' => $json]);
+                    break;
                 }
-                $uniqueModels[$odooId] = $model;
+
+                $models = $json['result']['data'];
+
+                // Stop if no more data
+                if (empty($models)) {
+                    $this->command->info("No more models returned. Pagination complete.");
+                    break;
+                }
+
+                $count = count($models);
+                $this->command->info("Fetched {$count} models");
+
+                // Add to buffer
+                $allModels = array_merge($allModels, $models);
+
+                // Increase offset
+                $offset += $count;
+
+                // Stop if less than limit (last page)
+                if ($count < $limit) {
+                    $this->command->info("Last page detected (returned {$count} < {$limit}).");
+                    break;
+                }
             }
+
+            $this->command->info("Total raw models fetched: " . count($allModels));
+
+            // Deduplicate by odoo_id
+            $uniqueModels = [];
+            foreach ($allModels as $m) {
+                $uniqueModels[$m['id']] = $m;
+            }
+
             $allModels = array_values($uniqueModels);
-            
-            if ($duplicateCount > 0) {
-                $this->command->warn("Found {$duplicateCount} duplicate odoo_ids in API response. Removed duplicates.");
-                $this->command->info("Unique models to process: " . count($allModels));
-            }
-            
-            $this->command->info("Processing car models...");
-            
-            $createdCount = 0;
-            $updatedCount = 0;
-            $skippedCount = 0;
-            
+
+            $this->command->info("Unique models after removing duplicates: " . count($allModels));
+
+
+            // Insert / update models
+            $created = 0;
+            $updated = 0;
+            $skipped = 0;
+
             foreach ($allModels as $model) {
-                // Find the local car brand by its odoo_id
-                $carBrand = CarBrand::where('odoo_id', $model['brand_id'])->first();
-                
-                if (!$carBrand) {
-                    $this->command->warn("Brand with odoo_id {$model['brand_id']} not found for model: {$model['name']}. Skipping...");
-                    $skippedCount++;
+
+                // brand_id must match local CarBrand odoo_id
+                $brand = CarBrand::where('odoo_id', $model['brand_id'])->first();
+
+                if (!$brand) {
+                    $this->command->warn("Brand not found (odoo_id={$model['brand_id']}) → Skipping model {$model['name']}");
+                    $skipped++;
                     continue;
                 }
-                
-                // Create or update the car model
+
                 $carModel = CarModel::updateOrCreate(
                     ['odoo_id' => $model['id']],
                     [
                         'name' => $model['name'],
-                        'car_brand_id' => $carBrand->id,
-                        'odoo_id' => $model['id']
+                        'car_brand_id' => $brand->id
                     ]
                 );
-                
-                // Check if it was newly created or updated
-                if ($carModel->wasRecentlyCreated) {
-                    $createdCount++;
-                } else {
-                    $updatedCount++;
-                }
+
+                $carModel->wasRecentlyCreated ? $created++ : $updated++;
             }
-            
-            $this->command->info("Car models seeded successfully!");
-            $this->command->info("  - Total fetched from API: " . count($allModels));
-            $this->command->info("  - Newly created: {$createdCount}");
-            $this->command->info("  - Updated: {$updatedCount}");
-            $this->command->info("  - Skipped (brand not found): {$skippedCount}");
-            
+
+            // Final log summary
+            $this->command->info("Seeding completed:");
+            $this->command->info("  - Total unique from API: " . count($allModels));
+            $this->command->info("  - Created: {$created}");
+            $this->command->info("  - Updated: {$updated}");
+            $this->command->info("  - Skipped (brand missing): {$skipped}");
+
         } catch (\Exception $e) {
-            $this->command->error('Error fetching car models: ' . $e->getMessage());
-            Log::error('CarModelSeeder: Exception occurred', [
+            $this->command->error("Exception: " . $e->getMessage());
+
+            Log::error('CarModelSeeder exception', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
         }
     }
 }
-
