@@ -534,13 +534,17 @@ Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(functi
         Route::post('/fcm/register', [App\Http\Controllers\Api\NotificationController::class, 'registerToken']);
         Route::post('/fcm/deactivate', [App\Http\Controllers\Api\NotificationController::class, 'deactivateToken']);
 
-        // Admin notification sending (requires admin role)
-        Route::middleware('admin')->group(function () {
-            Route::post('/send/user', [App\Http\Controllers\Api\NotificationController::class, 'sendToUser']);
-            Route::post('/send/users', [App\Http\Controllers\Api\NotificationController::class, 'sendToUsers']);
-            Route::post('/send/all', [App\Http\Controllers\Api\NotificationController::class, 'sendToAll']);
-            Route::post('/send/dealers', [App\Http\Controllers\Api\NotificationController::class, 'sendToDealers']);
-            Route::post('/send/template', [App\Http\Controllers\Api\NotificationController::class, 'sendTemplate']);
-            Route::post('/schedule', [App\Http\Controllers\Api\NotificationController::class, 'schedule']);
-        });
+        // Admin notification sending (requires admin role - checked in controller)
+        Route::post('/send/user', [App\Http\Controllers\Api\NotificationController::class, 'sendToUser']);
+        Route::post('/send/users', [App\Http\Controllers\Api\NotificationController::class, 'sendToUsers']);
+        Route::post('/send/all', [App\Http\Controllers\Api\NotificationController::class, 'sendToAll']);
+        Route::post('/send/dealers', [App\Http\Controllers\Api\NotificationController::class, 'sendToDealers']);
+        Route::post('/send/template', [App\Http\Controllers\Api\NotificationController::class, 'sendTemplate']);
+        Route::post('/schedule', [App\Http\Controllers\Api\NotificationController::class, 'schedule']);
     });
+
+// Admin Cache Management Routes
+Route::prefix('admin/cache')->middleware('auth:sanctum')->group(function () {
+    Route::post('/clear-all', [App\Http\Controllers\Api\Admin\CacheController::class, 'clearAll']);
+    Route::post('/clear-pattern', [App\Http\Controllers\Api\Admin\CacheController::class, 'clearPattern']);
+});
