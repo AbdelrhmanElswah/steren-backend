@@ -63,9 +63,23 @@ class CarModelSeeder extends Seeder
                             $apiLimit = $pagination['limit'] ?? 0;
                             
                             // Check if API returned all models in one response (API ignored pagination)
-                            // This happens when count >= total_count, meaning all models were returned regardless of limit/offset
-                            if ($apiCount >= $totalCount) {
-                                $this->command->info("API returned all {$totalCount} models in a single response (pagination not applied). Processing once and stopping.");
+                            // This happens when:
+                            // 1. API limit is 0 (no pagination applied) and count equals total_count
+                            // 2. The actual models array length equals or exceeds total_count (we got all models)
+                            // 3. API count equals total_count (metadata confirms all models returned)
+                            $actualModelsCount = count($models);
+                            
+                            // If API has limit=0 and count=total_count, it means API ignored pagination and returned all
+                            if ($apiLimit == 0 && $apiCount == $totalCount) {
+                                $this->command->info("API returned all {$totalCount} models in a single response (limit=0, pagination not applied). Processing once and stopping.");
+                                $allModels = array_merge($allModels, $models);
+                                $hasNext = false;
+                                break;
+                            }
+                            
+                            // If we actually received all models in the response
+                            if ($actualModelsCount >= $totalCount) {
+                                $this->command->info("Received all {$totalCount} models in response. Processing once and stopping.");
                                 $allModels = array_merge($allModels, $models);
                                 $hasNext = false;
                                 break;
