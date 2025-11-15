@@ -65,19 +65,18 @@ class CarModelSeeder extends Seeder
                             // Calculate next offset ourselves (current offset + number of models fetched)
                             $offset = $offset + $modelsCount;
                             
-                            // Safety check: stop if we've fetched more than total_count
+                            // Safety check: stop if we've fetched more than or equal to total_count
                             if (count($allModels) >= $totalCount) {
                                 $this->command->info("Reached total count ({$totalCount}). Stopping pagination.");
                                 $hasNext = false;
                             }
                             
-                            // Safety check: stop if has_next is true but we got fewer models than limit (means we're at the end)
-                            if ($hasNext && $modelsCount < $limit) {
-                                $this->command->info("Received fewer models than limit. Stopping pagination.");
-                                $hasNext = false;
+                            // Safety check: stop if has_next is false (no more pages)
+                            if (!$hasNext) {
+                                $this->command->info("No more pages available (has_next: false). Stopping pagination.");
                             }
                             
-                            $this->command->info("Fetched {$modelsCount} models (Total so far: " . count($allModels) . " / {$totalCount})");
+                            $this->command->info("Fetched {$modelsCount} models (Total so far: " . count($allModels) . " / {$totalCount}, has_next: " . ($hasNext ? 'true' : 'false') . ")");
                         } else {
                             // If no pagination metadata, stop after first page
                             $this->command->info("Fetched " . count($models) . " models (No pagination info, stopping)");
