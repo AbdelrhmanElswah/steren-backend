@@ -53,20 +53,32 @@ class CarModelSeeder extends Seeder
                             break;
                         }
                         
-                        $allModels = array_merge($allModels, $models);
-                        $modelsCount = count($models);
-                        
-                        // Get pagination info
+                        // Get pagination info first to know the total count
                         if (isset($data['result']['meta']['pagination'])) {
                             $pagination = $data['result']['meta']['pagination'];
                             $totalCount = $pagination['total_count'] ?? $totalCount;
                             $hasNext = $pagination['has_next'] ?? false;
                             
-                            // Calculate next offset ourselves (current offset + number of models fetched)
-                            $offset = $offset + $modelsCount;
+                            // Only take the models we need (in case we exceed total_count)
+                            $currentCount = count($allModels);
+                            $neededCount = $totalCount - $currentCount;
                             
-                            // Safety check: stop if we've fetched more than or equal to total_count
-                            if (count($allModels) >= $totalCount) {
+                            if ($neededCount <= 0) {
+                                // Already have enough, don't add any more
+                                $this->command->info("Already have {$totalCount} models. Stopping pagination.");
+                                break;
+                            }
+                            
+                            // Only take as many models as we need
+                            $modelsToAdd = array_slice($models, 0, $neededCount);
+                            $allModels = array_merge($allModels, $modelsToAdd);
+                            $modelsCount = count($modelsToAdd);
+                            
+                            // Calculate next offset ourselves (current offset + number of models actually added)
+                            $offset = $offset + count($models);
+                            
+                            // If we took fewer models than returned, we've reached the total
+                            if (count($modelsToAdd) < count($models)) {
                                 $this->command->info("Reached total count ({$totalCount}). Stopping pagination.");
                                 $hasNext = false;
                             }
@@ -78,7 +90,8 @@ class CarModelSeeder extends Seeder
                             
                             $this->command->info("Fetched {$modelsCount} models (Total so far: " . count($allModels) . " / {$totalCount}, has_next: " . ($hasNext ? 'true' : 'false') . ")");
                         } else {
-                            // If no pagination metadata, stop after first page
+                            // If no pagination metadata, just add all models and stop after first page
+                            $allModels = array_merge($allModels, $models);
                             $this->command->info("Fetched " . count($models) . " models (No pagination info, stopping)");
                             $hasNext = false;
                         }
