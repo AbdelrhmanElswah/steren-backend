@@ -222,6 +222,7 @@ class CarListingApiController extends Controller
             'views' => 0,
             'is_verified' => ($validatedData['seller_info']['type'] ?? '') === 'verified_seller',
             'origin_country' => $normalizedGccImport ?? 'UAE',
+            'city_id' => $carInfo['city_id'] ?? null,
             'location_id' => $this->getOrCreateLocationId($validatedData), 
         ];
     }
@@ -1237,6 +1238,7 @@ class CarListingApiController extends Controller
             'is_inspected' => $data['is_inspected'] ?? false,
             'is_verified' => $data['is_verified'] ?? false,
             'has_insurance' => $data['has_insurance'] ?? false,
+            'city_id' => $data['city_id'] ?? null,
             'location_id' => $this->getOrCreateLocationIdFromFormData($data),
             'import_type_id' => $data['import_type_id'] ?? null,
             'warranty_status_id' => $data['warranty_status_id'] ?? null,
