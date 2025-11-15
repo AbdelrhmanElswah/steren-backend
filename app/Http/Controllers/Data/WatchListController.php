@@ -38,7 +38,7 @@ class WatchListController extends Controller
                                     'brand:id,name,odoo_id',
                                     'carModel:id,name,car_brand_id',
                                     'bodyType:id,name',
-                                    'location:id,name',
+                                    'city:id,name,odoo_id',
                                     'media' => function($mediaQuery) {
                                         $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
                                             ->where('info', 'primary')

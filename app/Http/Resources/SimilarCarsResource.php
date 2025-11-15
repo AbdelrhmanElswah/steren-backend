@@ -49,10 +49,10 @@ class SimilarCarsResource extends JsonResource
                 'icon' => $this->bodyType?->media ? asset('storage/' . $this->bodyType->media->path_file_name) : null,
             ]),
             
-            'location' => $this->when($this->location, [
-                'id' => $this->location?->id,
-                'city' => $this->location?->city?->name,
-                'area' => $this->location?->area,
+            'city' => $this->when($this->city, [
+                'id' => $this->city?->id,
+                'name' => $this->city?->name,
+                'odoo_id' => $this->city?->odoo_id,
             ]),
             
             'fuel_type' => $this->when($this->fuelType, [

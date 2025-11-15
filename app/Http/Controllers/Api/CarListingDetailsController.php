@@ -33,7 +33,7 @@ class CarListingDetailsController extends Controller
                 'carModel:id,name,car_brand_id',
                 'carTrim:id,name,car_model_id',
                 'bodyType:id,name',
-                'location:id,name',
+                'city:id,name,odoo_id',
                 'studio:id,name',
                 
                 'carCondition:id,name',

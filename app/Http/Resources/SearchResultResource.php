@@ -44,9 +44,10 @@ class SearchResultResource extends JsonResource
                 'email' => $this->user?->email,
                 'phone' => $this->user?->phone,
             ]),
-            'location' => $this->whenLoaded('location', [
-                'id' => $this->location?->id,
-                'name' => $this->location?->name,
+            'city' => $this->whenLoaded('city', [
+                'id' => $this->city?->id,
+                'name' => $this->city?->name,
+                'odoo_id' => $this->city?->odoo_id,
             ]),
             
             // Relationships - matching /car-listings format
@@ -65,11 +66,6 @@ class SearchResultResource extends JsonResource
             'bodyType' => $this->when($this->bodyType, [
                 'id' => $this->bodyType?->id,
                 'name' => $this->bodyType?->name,
-            ]),
-            
-            'location' => $this->when($this->location, [
-                'id' => $this->location?->id,
-                'name' => $this->location?->name,
             ]),
             
             'fuelType' => $this->when($this->fuelType, [
