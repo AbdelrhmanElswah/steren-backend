@@ -276,7 +276,7 @@ class CarListingController extends Controller
                 'exterior_colors' => \App\Models\ExteriorColor::all(),
                 'drive_types' => \App\Models\DriveType::all(),
                 'import_types' => \App\Models\ImportType::all(),
-                'cities' => \App\Models\City::with('country')->get(),
+                'cities' => \App\Models\City::all(),
                 'brands' => CarBrand::with('carModels')->get(),
                 'status_options' => [
                     ['value' => 'active', 'label' => 'Active'],

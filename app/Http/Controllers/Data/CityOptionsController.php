@@ -13,16 +13,12 @@ class CityOptionsController extends Controller
     use ApiResponse;
 
     /**
-     * Get all cities as options (optionally filtered by country)
+     * Get all cities as options
      */
     public function getCityOptions(Request $request): JsonResponse
     {
         try {
-            $query = City::with('country')->orderBy('name');
-            
-            if ($request->has('country_id')) {
-                $query->where('country_id', $request->country_id);
-            }
+            $query = City::orderBy('name');
             
             $cities = $query->get();
             
@@ -30,8 +26,6 @@ class CityOptionsController extends Controller
                 return [
                     'value' => $city->id,
                     'label' => $city->name,
-                    'country_id' => $city->country_id,
-                    'country_name' => $city->country->name,
                 ];
             });
 
