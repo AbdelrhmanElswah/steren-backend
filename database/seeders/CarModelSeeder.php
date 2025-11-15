@@ -111,9 +111,28 @@ class CarModelSeeder extends Seeder
             }
             
             $this->command->info("Total models fetched: " . count($allModels));
+            
+            // Remove duplicates based on odoo_id (keep the last occurrence)
+            $uniqueModels = [];
+            $duplicateCount = 0;
+            foreach ($allModels as $model) {
+                $odooId = $model['id'];
+                if (isset($uniqueModels[$odooId])) {
+                    $duplicateCount++;
+                }
+                $uniqueModels[$odooId] = $model;
+            }
+            $allModels = array_values($uniqueModels);
+            
+            if ($duplicateCount > 0) {
+                $this->command->warn("Found {$duplicateCount} duplicate odoo_ids in API response. Removed duplicates.");
+                $this->command->info("Unique models to process: " . count($allModels));
+            }
+            
             $this->command->info("Processing car models...");
             
-            $successCount = 0;
+            $createdCount = 0;
+            $updatedCount = 0;
             $skippedCount = 0;
             
             foreach ($allModels as $model) {
@@ -127,7 +146,7 @@ class CarModelSeeder extends Seeder
                 }
                 
                 // Create or update the car model
-                CarModel::updateOrCreate(
+                $carModel = CarModel::updateOrCreate(
                     ['odoo_id' => $model['id']],
                     [
                         'name' => $model['name'],
@@ -136,10 +155,19 @@ class CarModelSeeder extends Seeder
                     ]
                 );
                 
-                $successCount++;
+                // Check if it was newly created or updated
+                if ($carModel->wasRecentlyCreated) {
+                    $createdCount++;
+                } else {
+                    $updatedCount++;
+                }
             }
             
-            $this->command->info("Car models seeded successfully! (Success: {$successCount}, Skipped: {$skippedCount}, Total fetched: " . count($allModels) . ")");
+            $this->command->info("Car models seeded successfully!");
+            $this->command->info("  - Total fetched from API: " . count($allModels));
+            $this->command->info("  - Newly created: {$createdCount}");
+            $this->command->info("  - Updated: {$updatedCount}");
+            $this->command->info("  - Skipped (brand not found): {$skippedCount}");
             
         } catch (\Exception $e) {
             $this->command->error('Error fetching car models: ' . $e->getMessage());
