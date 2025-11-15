@@ -268,16 +268,20 @@ class CarListingController extends Controller
     {
         try {
             $data = [
-                'conditions' => \App\Models\CarCondition::all(),
-                'body_types' => \App\Models\BodyType::all(),
-                'fuel_types' => \App\Models\FuelType::all(),
-                'cylinders' => \App\Models\CylinderOption::all(),
-                'transmissions' => \App\Models\Transmission::all(),
-                'exterior_colors' => \App\Models\ExteriorColor::all(),
-                'drive_types' => \App\Models\DriveType::all(),
-                'import_types' => \App\Models\ImportType::all(),
-                'cities' => \App\Models\City::all(),
-                'brands' => CarBrand::with('carModels')->get(),
+                'conditions' => \App\Models\CarCondition::all()->makeHidden(['created_at', 'updated_at']),
+                'body_types' => \App\Models\BodyType::all()->makeHidden(['created_at', 'updated_at', 'deleted_at']),
+                'fuel_types' => \App\Models\FuelType::all()->makeHidden(['created_at', 'updated_at']),
+                'cylinders' => \App\Models\CylinderOption::all()->makeHidden(['created_at', 'updated_at']),
+                'transmissions' => \App\Models\Transmission::all()->makeHidden(['created_at', 'updated_at']),
+                'exterior_colors' => \App\Models\ExteriorColor::all()->makeHidden(['created_at', 'updated_at']),
+                'drive_types' => \App\Models\DriveType::all()->makeHidden(['created_at', 'updated_at']),
+                'import_types' => \App\Models\ImportType::all()->makeHidden(['created_at', 'updated_at']),
+                'cities' => \App\Models\City::all()->makeHidden(['created_at', 'updated_at', 'deleted_at']),
+                'brands' => CarBrand::with('carModels')->get()->map(function ($brand) {
+                    $brand->makeHidden(['created_at', 'updated_at', 'deleted_at']);
+                    $brand->carModels->makeHidden(['created_at', 'updated_at', 'deleted_at']);
+                    return $brand;
+                }),
                 'status_options' => [
                     ['value' => 'active', 'label' => 'Active'],
                     ['value' => 'sold', 'label' => 'Sold'],
