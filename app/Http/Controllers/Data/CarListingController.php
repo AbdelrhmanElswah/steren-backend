@@ -37,7 +37,10 @@ class CarListingController extends Controller
                 'carModel:id,name,car_brand_id', 
                 'bodyType:id,name',
                 'city:id,name,odoo_id',
-                'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order',
+                'media' => function($mediaQuery) {
+                    $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                        ->orderBy('order');
+                },
                 'carCondition:id,name',
                 'fuelType:id,name',
                 'transmission:id,name',
@@ -154,7 +157,10 @@ class CarListingController extends Controller
 
             // If brand_id is specified and no listings found, still return brand info
             if ($request->filled('brand_id') && $listings->total() == 0) {
-                $brand = \App\Models\CarBrand::with('media')->find($request->brand_id);
+                $brand = \App\Models\CarBrand::with(['media' => function($query) {
+                    $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info')
+                        ->where('info', 'logo');
+                }])->find($request->brand_id);
                 if ($brand) {
                     $data['brand_info'] = [
                         'id' => $brand->id,
@@ -182,7 +188,11 @@ class CarListingController extends Controller
         try {
             $listing = CarListing::with([
                 'brand', 'carModel', 'carTrim', 'bodyType', 'city', 'studio',
-                'media', 'badges', 'carCondition', 'fuelType', 'transmission',
+                'media' => function($mediaQuery) {
+                    $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                        ->orderBy('order');
+                },
+                'badges', 'carCondition', 'fuelType', 'transmission',
                 'exteriorColor', 'driveType', 'cylinder', 'user',
                 'features', 'specifications'
             ])->findOrFail($id);

@@ -142,9 +142,7 @@ class CarListingRecommendationService
                 'studio:id,name,city_id',
                 'media' => function ($query) {
                     $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
-                        ->where('info', 'primary')
-                        ->orderBy('order')
-                        ->limit(1);
+                        ->orderBy('order');
                 },
                 'badges:id,name',
                 'carCondition:id,name',

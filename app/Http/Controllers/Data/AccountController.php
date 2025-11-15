@@ -115,7 +115,10 @@ class AccountController extends Controller
                     'carModel:id,name,car_brand_id', 
                     'bodyType:id,name',
                     'city:id,name,odoo_id',
-                    'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order',
+                    'media' => function($mediaQuery) {
+                        $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                            ->orderBy('order');
+                    },
                     'carCondition:id,name',
                     'fuelType:id,name',
                     'transmission:id,name',

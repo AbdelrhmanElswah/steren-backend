@@ -60,9 +60,7 @@ class StudioListingService
                 'carCondition:id,name',
                 'media' => function ($query) {
                     $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
-                        ->where('info', 'primary')
-                        ->orderBy('order')
-                        ->limit(1);
+                        ->orderBy('order');
                 },
                 'user:id,full_name',
             ])

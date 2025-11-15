@@ -48,11 +48,10 @@ class CarListingDetailsController extends Controller
                 
                 'user:id,full_name,phone,email',
                 
-                // Media (optimized)
+                // Media (optimized - only primary image for listing)
                 'media' => function($query) {
-                    $query->select('id', 'modelable_id', 'path_file_name', 'file_type', 'order', 'info')
-                          ->orderBy('order')
-                          ->orderBy('created_at');
+                    $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                          ->orderBy('order');
                 },
                 
                 // Features and specifications (conditional loading)
@@ -362,9 +361,11 @@ class CarListingDetailsController extends Controller
                 // User and contact info
                 'user',
                 
-                // Media with detailed information
+                // Media with detailed information (optimized - limit columns)
                 'media' => function($query) {
-                    $query->orderBy('order')->orderBy('created_at');
+                    $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                          ->orderBy('order')
+                          ->orderBy('created_at');
                 },
                 
                 // Features and specifications
@@ -626,7 +627,11 @@ class CarListingDetailsController extends Controller
 
             $query = CarListing::with([
                 'brand', 'carModel', 'carTrim', 'bodyType', 'city', 'studio',
-                'media', 'badges', 'carCondition', 'fuelType', 'transmission',
+                'media' => function($mediaQuery) {
+                    $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                        ->orderBy('order');
+                },
+                'badges', 'carCondition', 'fuelType', 'transmission',
                 'exteriorColor', 'driveType', 'cylinder', 'status',
                 'listingPromotion', 'analytics'
             ])
@@ -774,7 +779,11 @@ class CarListingDetailsController extends Controller
 
             $query = CarListing::with([
                 'brand', 'carModel', 'bodyType', 'city', 'studio',
-                'media', 'badges', 'carCondition', 'fuelType', 'transmission',
+                'media' => function($mediaQuery) {
+                    $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                        ->orderBy('order');
+                },
+                'badges', 'carCondition', 'fuelType', 'transmission',
                 'exteriorColor', 'driveType', 'cylinder'
             ])
             ->where('car_brand_id', $request->brand_id)
@@ -807,7 +816,11 @@ class CarListingDetailsController extends Controller
                 $additionalLimit = $limit - $similarCars->count();
                 $additionalCars = CarListing::with([
                     'brand', 'carModel', 'bodyType', 'city', 'studio',
-                    'media', 'badges', 'carCondition', 'fuelType', 'transmission',
+                    'media' => function($mediaQuery) {
+                        $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                            ->orderBy('order');
+                    },
+                    'badges', 'carCondition', 'fuelType', 'transmission',
                     'exteriorColor', 'driveType', 'cylinder'
                 ])
                 ->where('car_brand_id', $request->brand_id)
@@ -841,7 +854,11 @@ class CarListingDetailsController extends Controller
                 if ($originalModel && $originalModel->body_type_id) {
                     $additionalCars = CarListing::with([
                         'brand', 'carModel', 'bodyType', 'city', 'studio',
-                        'media', 'badges', 'carCondition', 'fuelType', 'transmission',
+                        'media' => function($mediaQuery) {
+                            $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                                ->orderBy('order');
+                        },
+                        'badges', 'carCondition', 'fuelType', 'transmission',
                         'exteriorColor', 'driveType', 'cylinder'
                     ])
                     ->where('car_body_type_id', $originalModel->body_type_id)

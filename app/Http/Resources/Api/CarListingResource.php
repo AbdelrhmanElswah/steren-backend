@@ -17,7 +17,7 @@ class CarListingResource extends JsonResource
         // Pre-calculate expensive operations
         $media = $this->relationLoaded('media') ? $this->media : null;
         $primaryMedia = $media && $media instanceof \Illuminate\Database\Eloquent\Collection 
-            ? $media->where('info', 'primary')->sortBy('order')->first() 
+            ? $media->sortBy('order')->first() 
             : null;
         
         return [

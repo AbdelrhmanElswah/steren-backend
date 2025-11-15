@@ -50,8 +50,7 @@ class CarBrandListingService
             'city',
             'carCondition',
             'media' => function ($query) {
-                $query->where('info', 'primary')
-                    ->orderBy('order')
+                $query->orderBy('order')
                     ->orderBy('created_at');
             },
             'user:id,full_name',

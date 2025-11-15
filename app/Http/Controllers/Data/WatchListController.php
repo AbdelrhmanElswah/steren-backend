@@ -41,9 +41,7 @@ class WatchListController extends Controller
                                     'city:id,name,odoo_id',
                                     'media' => function($mediaQuery) {
                                         $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
-                                            ->where('info', 'primary')
-                                            ->orderBy('order')
-                                            ->limit(1);
+                                            ->orderBy('order');
                                     },
                                     'badges:id,name',
                                     'carCondition:id,name',

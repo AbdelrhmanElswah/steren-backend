@@ -384,9 +384,7 @@ class SubscriptionBasedListingService
                 'city:id,name',
                 'media' => function($mediaQuery) {
                     $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
-                        ->where('info', 'primary')
-                        ->orderBy('order')
-                        ->limit(1);
+                        ->orderBy('order');
                 },
                 'studio:id,name,city_id',
                 'user:id,full_name,email',
@@ -434,9 +432,7 @@ class SubscriptionBasedListingService
                 'city:id,name',
                 'media' => function($mediaQuery) {
                     $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
-                        ->where('info', 'primary')
-                        ->orderBy('order')
-                        ->limit(1);
+                        ->orderBy('order');
                 },
                 'studio:id,name,city_id',
                 'user:id,full_name,email',
