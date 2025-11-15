@@ -25,21 +25,22 @@ class CarListingController extends Controller
     public function getCarListings(Request $request): JsonResponse
     {
         try {
-            $cacheKey = 'car_listings_' . md5(serialize($request->all()));
-            
-            $cachedResult = Cache::get($cacheKey);
-            if ($cachedResult) {
-                return $this->successResponse($cachedResult, 'Car listings retrieved from cache');
-            }
-
+            // Base query with relationships
             $query = CarListing::with([
                 'brand:id,name,odoo_id',
-                'carModel:id,name,car_brand_id', 
+                'carModel:id,name,car_brand_id',
                 'bodyType:id,name',
                 'city:id,name,odoo_id',
-                'media' => function($mediaQuery) {
-                    $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
-                        ->orderBy('order');
+                'media' => function ($mediaQuery) {
+                    $mediaQuery->select(
+                        'id',
+                        'modelable_type',
+                        'modelable_id',
+                        'path_file_name',
+                        'file_type',
+                        'info',
+                        'order'
+                    )->orderBy('order');
                 },
                 'carCondition:id,name',
                 'fuelType:id,name',
@@ -47,81 +48,94 @@ class CarListingController extends Controller
                 'exteriorColor:id,name',
                 'driveType:id,name',
                 'cylinder:id,name',
-                'user:id,full_name,email,phone'
+                'user:id,full_name,email,phone',
             ]);
 
-            // Apply filters
-            if ($request->filled('search')) {
+            /*
+        |--------------------------------------------------------------------------
+        | Filters
+        |--------------------------------------------------------------------------
+        */
+
+            // Search (title, brand name, model name)
+            $query->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->search;
-                $query->where(function($q) use ($search) {
-                    $q->where('title', 'like', "%{$search}%")
-                      ->orWhereHas('brand', function($q) use ($search) {
-                          $q->where('name', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('carModel', function($q) use ($search) {
-                          $q->where('name', 'like', "%{$search}%");
-                      });
+
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('title', 'like', "%{$search}%")
+                        ->orWhereHas('brand', function ($brandQuery) use ($search) {
+                            $brandQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('carModel', function ($modelQuery) use ($search) {
+                            $modelQuery->where('name', 'like', "%{$search}%");
+                        });
                 });
-            }
+            });
 
-            if ($request->filled('condition')) {
-                $query->where('condition_type', $request->condition);
-            }
+            $query->when($request->filled('condition'), function ($q) use ($request) {
+                $q->where('condition_type', $request->condition);
+            });
 
-            if ($request->filled('brand_id')) {
-                $query->where('car_brand_id', $request->brand_id);
-            }
+            $query->when($request->filled('brand_id'), function ($q) use ($request) {
+                $q->where('car_brand_id', $request->brand_id);
+            });
 
-            if ($request->filled('year_from') && $request->filled('year_to')) {
-                $query->byYearRange($request->year_from, $request->year_to);
-            }
+            $query->when($request->filled('year_from') && $request->filled('year_to'), function ($q) use ($request) {
+                $q->byYearRange($request->year_from, $request->year_to);
+            });
 
-            if ($request->filled('price_min') && $request->filled('price_max')) {
-                $query->byPriceRange($request->price_min, $request->price_max);
-            }
+            $query->when($request->filled('price_min') && $request->filled('price_max'), function ($q) use ($request) {
+                $q->byPriceRange($request->price_min, $request->price_max);
+            });
 
-            if ($request->filled('mileage_min') && $request->filled('mileage_max')) {
-                $query->byMileageRange($request->mileage_min, $request->mileage_max);
-            }
+            $query->when($request->filled('mileage_min') && $request->filled('mileage_max'), function ($q) use ($request) {
+                $q->byMileageRange($request->mileage_min, $request->mileage_max);
+            });
 
-            if ($request->filled('import_type')) {
-                $query->where('import_type_id', $request->import_type);
-            }
+            $query->when($request->filled('import_type'), function ($q) use ($request) {
+                $q->where('import_type_id', $request->import_type);
+            });
 
-            if ($request->filled('body_type')) {
-                $query->where('car_body_type_id', $request->body_type);
-            }
+            $query->when($request->filled('body_type'), function ($q) use ($request) {
+                $q->where('car_body_type_id', $request->body_type);
+            });
 
-            if ($request->filled('fuel_type')) {
-                $query->where('fuel_type_id', $request->fuel_type);
-            }
+            $query->when($request->filled('fuel_type'), function ($q) use ($request) {
+                $q->where('fuel_type_id', $request->fuel_type);
+            });
 
-            if ($request->filled('cylinders')) {
-                $query->where('cylinder_id', $request->cylinders);
-            }
+            $query->when($request->filled('cylinders'), function ($q) use ($request) {
+                $q->where('cylinder_id', $request->cylinders);
+            });
 
-            if ($request->filled('transmission')) {
-                $query->where('transmission_id', $request->transmission);
-            }
+            $query->when($request->filled('transmission'), function ($q) use ($request) {
+                $q->where('transmission_id', $request->transmission);
+            });
 
-            if ($request->filled('exterior_color')) {
-                $query->where('exterior_color_id', $request->exterior_color);
-            }
+            $query->when($request->filled('exterior_color'), function ($q) use ($request) {
+                $q->where('exterior_color_id', $request->exterior_color);
+            });
 
-            if ($request->filled('warranty')) {
-                $query->where('has_warranty', $request->warranty === 'yes');
-            }
+            $query->when($request->filled('warranty'), function ($q) use ($request) {
+                $q->where('has_warranty', $request->warranty === 'yes');
+            });
 
-            if ($request->filled('drive_type')) {
-                $query->where('drive_type_id', $request->drive_type);
-            }
+            $query->when($request->filled('drive_type'), function ($q) use ($request) {
+                $q->where('drive_type_id', $request->drive_type);
+            });
 
-            if ($request->filled('city')) {
-                $query->where('city_id', $request->city);
-            }
+            $query->when($request->filled('city'), function ($q) use ($request) {
+                $q->where('city_id', $request->city);
+            });
 
-            // Apply sorting
+            /*
+        |--------------------------------------------------------------------------
+        | Sorting
+        |--------------------------------------------------------------------------
+        */
+
             $sortBy = $request->get('sort', 'latest');
+
             switch ($sortBy) {
                 case 'year_high':
                     $query->orderBy('year', 'desc');
@@ -145,38 +159,51 @@ class CarListingController extends Controller
                     $query->orderBy('created_at', 'desc');
             }
 
+            /*
+        |--------------------------------------------------------------------------
+        | Execute query + format response
+        |--------------------------------------------------------------------------
+        */
+
             $listings = $query->active()->paginate(7);
 
             $data = [
-                'listings' => $listings->items(),
-                'total' => $listings->total(),
-                'per_page' => $listings->perPage(),
-                'current_page' => $listings->currentPage(),
-                'last_page' => $listings->lastPage(),
+                'listings'      => $listings->items(),   // keep same structure you had
+                'total'         => $listings->total(),
+                'per_page'      => $listings->perPage(),
+                'current_page'  => $listings->currentPage(),
+                'last_page'     => $listings->lastPage(),
             ];
 
             // If brand_id is specified and no listings found, still return brand info
-            if ($request->filled('brand_id') && $listings->total() == 0) {
-                $brand = \App\Models\CarBrand::with(['media' => function($query) {
-                    $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info')
-                        ->where('info', 'logo');
+            if ($request->filled('brand_id') && $listings->total() === 0) {
+                $brand = CarBrand::with(['media' => function ($q) {
+                    $q->select(
+                        'id',
+                        'modelable_type',
+                        'modelable_id',
+                        'path_file_name',
+                        'file_type',
+                        'info'
+                    )->where('info', 'logo');
                 }])->find($request->brand_id);
+
                 if ($brand) {
                     $data['brand_info'] = [
-                        'id' => $brand->id,
-                        'name' => $brand->name,
-                        'odoo_id' => $brand->odoo_id,
+                        'id'       => $brand->id,
+                        'name'     => $brand->name,
+                        'odoo_id'  => $brand->odoo_id,
                         'logo_url' => $brand->media ? $brand->media->media_link : null,
                     ];
                 }
             }
 
-            // Cache the result for 5 minutes
-            Cache::put($cacheKey, $data, 300);
-
             return $this->successResponse($data, 'Car listings retrieved successfully');
-        } catch (\Exception $e) {
-            return $this->errorResponse('Failed to retrieve car listings: ' . $e->getMessage(), 500);
+        } catch (\Throwable $e) {
+            return $this->errorResponse(
+                'Failed to retrieve car listings: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
@@ -187,14 +214,26 @@ class CarListingController extends Controller
     {
         try {
             $listing = CarListing::with([
-                'brand', 'carModel', 'carTrim', 'bodyType', 'city', 'studio',
-                'media' => function($mediaQuery) {
+                'brand',
+                'carModel',
+                'carTrim',
+                'bodyType',
+                'city',
+                'studio',
+                'media' => function ($mediaQuery) {
                     $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
                         ->orderBy('order');
                 },
-                'badges', 'carCondition', 'fuelType', 'transmission',
-                'exteriorColor', 'driveType', 'cylinder', 'user',
-                'features', 'specifications'
+                'badges',
+                'carCondition',
+                'fuelType',
+                'transmission',
+                'exteriorColor',
+                'driveType',
+                'cylinder',
+                'user',
+                'features',
+                'specifications'
             ])->findOrFail($id);
 
             // Group features by category
