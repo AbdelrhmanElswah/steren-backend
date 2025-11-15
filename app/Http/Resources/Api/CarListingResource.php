@@ -36,15 +36,13 @@ class CarListingResource extends JsonResource
             'has_insurance' => $this->has_insurance,
             'is_featured' => $this->is_featured,
             'is_new_arrival' => $this->is_new_arrival,
-            'is_promoted' => $this->is_promoted,
             'status' => $this->status,
             'views' => $this->views,
             'formatted_views' => $this->formatted_views,
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
-            'location' => $this->whenLoaded('location', [
-                'id' => $this->location?->id,
-                'name' => $this->location?->name,
+            'city' => $this->whenLoaded('city', [
+                'id' => $this->city?->id,
+                'name' => $this->city?->name,
+                'odoo_id' => $this->city?->odoo_id,
             ]),
             'brand' => $this->whenLoaded('brand', [
                 'id' => $this->brand?->id,
@@ -60,14 +58,6 @@ class CarListingResource extends JsonResource
                 'id' => $this->bodyType?->id,
                 'name' => $this->bodyType?->name,
             ]),
-            // Odoo integration data
-            'odoo_id' => $this->odoo_id,
-            'odoo_listing_id' => $this->odoo_listing_id,
-            'odoo_vehicle_id' => $this->odoo_vehicle_id,
-            'odoo_seller_id' => $this->odoo_seller_id,
-            'odoo_city_id' => $this->odoo_city_id,
-            'odoo_listing_state' => $this->odoo_listing_state,
-            'odoo_response' => $this->when($this->odoo_response, $this->odoo_response),
             // Optimized media handling
             'media' => $this->whenLoaded('media', function() use ($primaryMedia) {
                 if (!$primaryMedia) {

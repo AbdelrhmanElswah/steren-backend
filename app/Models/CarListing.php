@@ -85,6 +85,29 @@ class CarListing extends Model
         'archived_at',
     ];
 
+    protected $hidden = [
+        'odoo_response',
+        'odoo_listing_id',
+        'odoo_vehicle_id',
+        'odoo_seller_id',
+        'odoo_city_id',
+        'odoo_listing_state',
+        'user_id',
+        'promotion_price_paid',
+        'promotion_expires_at',
+        'promotion_started_at',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+        'approved_by',
+        'approved_at',
+        'rejection_reason',
+        'rejected_by',
+        'rejected_at',
+        'paused_at',
+        'archived_at',
+    ];
+
     protected $casts = [
         'price' => 'decimal:2',
         'has_warranty' => 'boolean',

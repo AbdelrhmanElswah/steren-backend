@@ -131,9 +131,19 @@ class AccountController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate(20);
 
+            // Hide internal fields from API response
+            $hiddenFields = [
+                'odoo_response', 'odoo_listing_id', 'odoo_vehicle_id', 'odoo_seller_id', 
+                'odoo_city_id', 'odoo_listing_state', 'user_id', 'promotion_price_paid', 
+                'is_promoted', 'promotion_expires_at', 'promotion_started_at', 
+                'created_at', 'updated_at', 'deleted_at', 'approved_by', 'approved_at', 
+                'rejection_reason', 'rejected_by', 'rejected_at', 'paused_at', 'archived_at'
+            ];
+            
             // Transform listings to include detailed specifications and features
             $transformedListings = $listings->items();
             foreach ($transformedListings as $listing) {
+                $listing->makeHidden($hiddenFields);
                 // Add detailed specifications
                 $listing->detailed_specifications = [
                     'engine_size' => $listing->engine_size,

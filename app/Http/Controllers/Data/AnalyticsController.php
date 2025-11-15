@@ -301,7 +301,17 @@ class AnalyticsController extends Controller
                     break;
             }
             
-            $listings = $query->get()->map(function ($listing) {
+            // Hide internal fields from API response
+            $hiddenFields = [
+                'odoo_response', 'odoo_listing_id', 'odoo_vehicle_id', 'odoo_seller_id', 
+                'odoo_city_id', 'odoo_listing_state', 'user_id', 'promotion_price_paid', 
+                'promotion_expires_at', 'promotion_started_at', 
+                'created_at', 'updated_at', 'deleted_at', 'approved_by', 'approved_at', 
+                'rejection_reason', 'rejected_by', 'rejected_at', 'paused_at', 'archived_at'
+            ];
+            
+            $listings = $query->get()->map(function ($listing) use ($hiddenFields) {
+                $listing->makeHidden($hiddenFields);
                 // Add detailed specifications
                 $detailedSpecifications = [
                     'engine_size' => $listing->engine_size,
@@ -359,15 +369,12 @@ class AnalyticsController extends Controller
                     'price' => $listing->formatted_price,
                     'status' => $listing->status,
                     'status_label' => $listing->getStatusLabelAttribute(),
-                    'is_promoted' => $listing->is_promoted,
                     'promotion_type' => $listing->is_promoted ? $listing->getPromotionTypeAttribute() : null,
                     'image' => $listing->media->first()?->media_link,
                     'views' => $listing->total_views,
                     'days_active' => $listing->days_active,
                     'badges' => $listing->active_badges,
                     'seller_name' => $listing->seller_name,
-                    'created_at' => $listing->created_at->toISOString(),
-                    'updated_at' => $listing->updated_at->toISOString(),
                     // Add comprehensive data like car-listings endpoint
                     'brand' => $listing->brand,
                     'carModel' => $listing->carModel,

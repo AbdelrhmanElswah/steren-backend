@@ -36,7 +36,6 @@ class SearchResultResource extends JsonResource
             'is_sponsored' => $this->is_sponsored,
             'status' => $this->status,
             'status_label' => $this->status_label,
-            'created_at' => $this->created_at?->toISOString(),
             
             // User information - matching /car-listings format
             'user' => $this->when($this->user, [
