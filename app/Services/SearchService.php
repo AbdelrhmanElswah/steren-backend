@@ -429,15 +429,22 @@ class SearchService
             $this->applySearchFilters($baseQuery, $filters);
 
             // Get total count using a simplified query with only ID selection for better performance
+            // Use a subquery to avoid loading all data
             $total = (clone $baseQuery)->select('car_listings.id')->distinct()->count('car_listings.id');
 
             // Now build the query with eager loading for actual results
+            // Optimize media loading to only get primary image
             $query = CarListing::with([
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
                 'bodyType:id,name',
                 'city:id,name,odoo_id',
-                'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order',
+                'media' => function($mediaQuery) {
+                    $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                        ->where('info', 'primary')
+                        ->orderBy('order')
+                        ->limit(1);
+                },
                 'fuelType:id,name',
                 'transmission:id,name',
                 'exteriorColor:id,name',
@@ -450,8 +457,8 @@ class SearchService
             // Apply the same filters to the eager-loaded query
             $this->applySearchFilters($query, $filters);
 
-            // Get paginated results
-            $listings = $query->orderBy('created_at', 'desc')
+            // Get paginated results - use limit/offset for better performance
+            $listings = $query->orderBy('car_listings.created_at', 'desc')
                 ->skip(($page - 1) * $perPage)
                 ->take($perPage)
                 ->get();
@@ -473,20 +480,39 @@ class SearchService
     private function applySearchFilters($query, array $filters): void
     {
         // Base filters - always apply these
-        $query->where('status', 'active')->whereNull('sold_at');
+        // Include active, pending, and boosted listings (exclude sold, archived, suspended, expired)
+        $query->where(function($q) {
+            $q->whereIn('status', ['active', 'pending', 'boosted'])
+              ->orWhereNull('status'); // Include listings without status set
+        })
+        ->whereNull('sold_at')
+        ->whereNull('archived_at');
         
-        // Text search
+        // Text search - optimized to reduce query complexity
         if (isset($filters['search']) && $filters['search'] !== '' && $filters['search'] !== null) {
             $search = trim($filters['search']);
             if (!empty($search)) {
-                $query->where(function($q) use ($search) {
-                    $q->whereRaw('LOWER(title) LIKE ?', ['%' . strtolower($search) . '%'])
-                      ->orWhereHas('brand', function($q) use ($search) {
-                          $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($search) . '%']);
-                      })
-                      ->orWhereHas('carModel', function($q) use ($search) {
-                          $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($search) . '%']);
-                      });
+                $searchLower = strtolower($search);
+                
+                // First, try to find matching brands and models to reduce subquery complexity
+                $matchingBrandIds = \App\Models\CarBrand::whereRaw('LOWER(name) LIKE ?', ['%' . $searchLower . '%'])
+                    ->pluck('id')
+                    ->toArray();
+                
+                $matchingModelIds = \App\Models\CarModel::whereRaw('LOWER(name) LIKE ?', ['%' . $searchLower . '%'])
+                    ->pluck('id')
+                    ->toArray();
+                
+                $query->where(function($q) use ($searchLower, $matchingBrandIds, $matchingModelIds) {
+                    $q->whereRaw('LOWER(title) LIKE ?', ['%' . $searchLower . '%']);
+                    
+                    if (!empty($matchingBrandIds)) {
+                        $q->orWhereIn('car_brand_id', $matchingBrandIds);
+                    }
+                    
+                    if (!empty($matchingModelIds)) {
+                        $q->orWhereIn('car_model_id', $matchingModelIds);
+                    }
                 });
             }
         }
