@@ -295,7 +295,7 @@ class CarListingDetailsController extends Controller
                 'car_model' => $listing->carModel,
                 'car_trim' => $listing->carTrim,
                 'body_type' => $listing->bodyType,
-                'location' => $listing->location,
+                'city' => $listing->city,
                 'studio' => $listing->studio,
                 'car_condition' => $listing->carCondition,
                 'fuel_type' => $listing->fuelType,
@@ -354,7 +354,7 @@ class CarListingDetailsController extends Controller
         try {
             $listing = CarListing::with([
                 // Basic relationships
-                'brand', 'carModel', 'carTrim', 'bodyType', 'location', 'studio',
+                'brand', 'carModel', 'carTrim', 'bodyType', 'city', 'studio',
                 'carCondition', 'fuelType', 'transmission', 'exteriorColor', 
                 'driveType', 'cylinder', 'mileageType', 'importType', 'warrantyStatus',
                 'status',
@@ -545,7 +545,7 @@ class CarListingDetailsController extends Controller
                 'car_model' => $listing->carModel,
                 'car_trim' => $listing->carTrim,
                 'body_type' => $listing->bodyType,
-                'location' => $listing->location,
+                'city' => $listing->city,
                 'studio' => $listing->studio,
                 'car_condition' => $listing->carCondition,
                 'fuel_type' => $listing->fuelType,
@@ -625,7 +625,7 @@ class CarListingDetailsController extends Controller
             }
 
             $query = CarListing::with([
-                'brand', 'carModel', 'carTrim', 'bodyType', 'location', 'studio',
+                'brand', 'carModel', 'carTrim', 'bodyType', 'city', 'studio',
                 'media', 'badges', 'carCondition', 'fuelType', 'transmission',
                 'exteriorColor', 'driveType', 'cylinder', 'status',
                 'listingPromotion', 'analytics'
@@ -773,7 +773,7 @@ class CarListingDetailsController extends Controller
             $excludeId = $request->get('exclude_id');
 
             $query = CarListing::with([
-                'brand', 'carModel', 'bodyType', 'location', 'studio',
+                'brand', 'carModel', 'bodyType', 'city', 'studio',
                 'media', 'badges', 'carCondition', 'fuelType', 'transmission',
                 'exteriorColor', 'driveType', 'cylinder'
             ])
@@ -806,7 +806,7 @@ class CarListingDetailsController extends Controller
             if ($similarCars->count() < $limit) {
                 $additionalLimit = $limit - $similarCars->count();
                 $additionalCars = CarListing::with([
-                    'brand', 'carModel', 'bodyType', 'location', 'studio',
+                    'brand', 'carModel', 'bodyType', 'city', 'studio',
                     'media', 'badges', 'carCondition', 'fuelType', 'transmission',
                     'exteriorColor', 'driveType', 'cylinder'
                 ])
@@ -840,7 +840,7 @@ class CarListingDetailsController extends Controller
                 $originalModel = \App\Models\CarModel::find($request->model_id);
                 if ($originalModel && $originalModel->body_type_id) {
                     $additionalCars = CarListing::with([
-                        'brand', 'carModel', 'bodyType', 'location', 'studio',
+                        'brand', 'carModel', 'bodyType', 'city', 'studio',
                         'media', 'badges', 'carCondition', 'fuelType', 'transmission',
                         'exteriorColor', 'driveType', 'cylinder'
                     ])

@@ -114,9 +114,7 @@ class CarListingController extends Controller
             }
 
             if ($request->filled('city')) {
-                $query->whereHas('location', function($q) use ($request) {
-                    $q->where('city_id', $request->city);
-                });
+                $query->where('city_id', $request->city);
             }
 
             // Apply sorting
@@ -183,7 +181,7 @@ class CarListingController extends Controller
     {
         try {
             $listing = CarListing::with([
-                'brand', 'carModel', 'carTrim', 'bodyType', 'location', 'studio',
+                'brand', 'carModel', 'carTrim', 'bodyType', 'city', 'studio',
                 'media', 'badges', 'carCondition', 'fuelType', 'transmission',
                 'exteriorColor', 'driveType', 'cylinder', 'user',
                 'features', 'specifications'

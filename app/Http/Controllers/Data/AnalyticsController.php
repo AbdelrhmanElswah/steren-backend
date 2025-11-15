@@ -372,7 +372,7 @@ class AnalyticsController extends Controller
                     'brand' => $listing->brand,
                     'carModel' => $listing->carModel,
                     'bodyType' => $listing->bodyType,
-                    'location' => $listing->location,
+                    'city' => $listing->city,
                     'carCondition' => $listing->carCondition,
                     'fuelType' => $listing->fuelType,
                     'transmission' => $listing->transmission,

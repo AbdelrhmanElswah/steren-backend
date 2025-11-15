@@ -144,7 +144,7 @@ class CarListingApiController extends Controller
 
             // Load all necessary relationships for comprehensive response
             $carListing->load([
-                'brand', 'carModel', 'bodyType', 'location', 'studio',
+                'brand', 'carModel', 'bodyType', 'city', 'studio',
                 'media', 'badges', 'carCondition', 'fuelType', 'transmission',
                 'exteriorColor', 'driveType', 'cylinder', 'user', 'mileageType',
                 'features', 'specifications', 'listingPromotion'
@@ -1062,7 +1062,7 @@ class CarListingApiController extends Controller
                                 'Body Type' => 'body type',
                                 'Car Brand' => 'car brand',
                                 'Car Model' => 'car model',
-                                'City' => 'location',
+                                'City' => 'city',
                                 'Fuel Type' => 'fuel type',
                                 'Transmission' => 'transmission',
                             ];
@@ -1151,7 +1151,7 @@ class CarListingApiController extends Controller
 
             // Load all necessary relationships for comprehensive response
             $carListing->load([
-                'brand', 'carModel', 'bodyType', 'location', 'studio',
+                'brand', 'carModel', 'bodyType', 'city', 'studio',
                 'media', 'badges', 'carCondition', 'fuelType', 'transmission',
                 'exteriorColor', 'driveType', 'cylinder', 'user', 'mileageType',
                 'features', 'specifications', 'listingPromotion'
