@@ -93,7 +93,7 @@ class StudioListingService
                 'mileage' => $listing->mileage,
                 'brand' => $listing->brand ? ['id' => $listing->brand->id, 'name' => $listing->brand->name] : null,
                 'car_model' => $listing->carModel ? ['id' => $listing->carModel->id, 'name' => $listing->carModel->name] : null,
-                'location' => $listing->location ? ['id' => $listing->location->id, 'name' => $listing->location->name] : null,
+                'city' => $listing->city ? ['id' => $listing->city->id, 'name' => $listing->city->name] : null,
                 'car_condition' => $listing->carCondition ? ['id' => $listing->carCondition->id, 'name' => $listing->carCondition->name] : null,
                 'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
                 'created_at' => $listing->created_at?->toISOString(),

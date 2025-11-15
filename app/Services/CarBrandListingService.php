@@ -47,7 +47,7 @@ class CarBrandListingService
         return CarListing::with([
             'brand',
             'carModel',
-            'location',
+            'city',
             'carCondition',
             'media' => function ($query) {
                 $query->where('info', 'primary')
