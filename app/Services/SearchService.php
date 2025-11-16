@@ -478,10 +478,9 @@ class SearchService
     private function applySearchFilters($query, array $filters): void
     {
         // Base filters - always apply these
-        // Include active, pending, and boosted listings (exclude sold, archived, suspended, expired)
+        // Only include active listings (exclude pending, sold, archived, suspended, expired)
         $query->where(function($q) {
-            $q->whereIn('status', ['active', 'pending', 'boosted'])
-              ->orWhereNull('status'); // Include listings without status set
+            $q->where('status', 'active');
         })
         ->whereNull('sold_at')
         ->whereNull('archived_at');
@@ -558,23 +557,69 @@ class SearchService
             $query->where('year', '<=', $yearTo);
         }
 
-        // Price range filter - support both individual and range
+        // Price range filter - support both individual and range with currency normalization
         $priceMin = isset($filters['price_min']) && $filters['price_min'] !== '' && $filters['price_min'] !== null ? (float)$filters['price_min'] : null;
         $priceMax = isset($filters['price_max']) && $filters['price_max'] !== '' && $filters['price_max'] !== null ? (float)$filters['price_max'] : null;
+        $requestedCurrency = isset($filters['price_currency']) && $filters['price_currency'] !== '' && $filters['price_currency'] !== null
+            ? strtoupper(trim((string) $filters['price_currency']))
+            : 'USD';
+        $iqdPerUsd = $this->getIqdPerUsdRate();
         
         if ($priceMin !== null && $priceMax !== null) {
-            $query->whereBetween('price', [$priceMin, $priceMax]);
+            // Normalize listing price into requested currency for comparison
+            if ($requestedCurrency === 'USD') {
+                // Convert IQD -> USD by dividing by rate; USD stays the same
+                $query->whereRaw(
+                    "CASE WHEN price_currency = 'IQD' THEN price / ? ELSE price END BETWEEN ? AND ?",
+                    [$iqdPerUsd, $priceMin, $priceMax]
+                );
+            } elseif ($requestedCurrency === 'IQD') {
+                // Convert USD -> IQD by multiplying by rate; IQD stays the same
+                $query->whereRaw(
+                    "CASE WHEN price_currency = 'USD' THEN price * ? ELSE price END BETWEEN ? AND ?",
+                    [$iqdPerUsd, $priceMin, $priceMax]
+                );
+            } else {
+                // Fallback: compare raw price (unknown currency)
+                $query->whereBetween('price', [$priceMin, $priceMax]);
+            }
         } elseif ($priceMin !== null) {
-            $query->where('price', '>=', $priceMin);
+            if ($requestedCurrency === 'USD') {
+                $query->whereRaw(
+                    "CASE WHEN price_currency = 'IQD' THEN price / ? ELSE price END >= ?",
+                    [$iqdPerUsd, $priceMin]
+                );
+            } elseif ($requestedCurrency === 'IQD') {
+                $query->whereRaw(
+                    "CASE WHEN price_currency = 'USD' THEN price * ? ELSE price END >= ?",
+                    [$iqdPerUsd, $priceMin]
+                );
+            } else {
+                $query->where('price', '>=', $priceMin);
+            }
         } elseif ($priceMax !== null) {
-            $query->where('price', '<=', $priceMax);
+            if ($requestedCurrency === 'USD') {
+                $query->whereRaw(
+                    "CASE WHEN price_currency = 'IQD' THEN price / ? ELSE price END <= ?",
+                    [$iqdPerUsd, $priceMax]
+                );
+            } elseif ($requestedCurrency === 'IQD') {
+                $query->whereRaw(
+                    "CASE WHEN price_currency = 'USD' THEN price * ? ELSE price END <= ?",
+                    [$iqdPerUsd, $priceMax]
+                );
+            } else {
+                $query->where('price', '<=', $priceMax);
+            }
         }
 
         // Mileage range filter - support both individual and range (FIXED: properly handle 0 values)
         $mileageMin = isset($filters['mileage_min']) && $filters['mileage_min'] !== '' && $filters['mileage_min'] !== null ? (int)$filters['mileage_min'] : null;
         $mileageMax = isset($filters['mileage_max']) && $filters['mileage_max'] !== '' && $filters['mileage_max'] !== null ? (int)$filters['mileage_max'] : null;
-        
-        $requestedMileageUnit = $this->normalizeMileageUnit($filters['mileage_unit'] ?? $filters['mileage_units'] ?? null);
+        // Default requested mileage unit to 'km' when any mileage filter is provided and no unit specified
+        $requestedMileageUnit = $this->normalizeMileageUnit(
+            $filters['mileage_unit'] ?? $filters['mileage_units'] ?? (($mileageMin !== null || $mileageMax !== null) ? 'km' : null)
+        );
 
         if ($requestedMileageUnit && ($mileageMin !== null || $mileageMax !== null)) {
             $this->applyMileageFilterWithUnit($query, $mileageMin, $mileageMax, $requestedMileageUnit);
@@ -846,5 +891,17 @@ class SearchService
 
             return $cache;
         });
+    }
+
+    /**
+     * Get IQD per 1 USD exchange rate used for normalization.
+     * Falls back to 1300 if not configured.
+     */
+    private function getIqdPerUsdRate(): float
+    {
+        // Prefer config, then env, fallback constant
+        $rate = config('app.iqd_per_usd') ?? env('IQD_PER_USD', 1300);
+        $rate = (float) $rate;
+        return $rate > 0 ? $rate : 1300.0;
     }
 }
