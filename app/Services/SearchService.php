@@ -558,82 +558,44 @@ class SearchService
         }
 
         // Price range filter - support both individual and range with currency normalization
+        // Base/filter currency is always USD:
+        // - Listings with price_currency = 'USD' or NULL: compared directly
+        // - Listings with price_currency = 'IQD': converted to USD using exchange rate
         $priceMin = isset($filters['price_min']) && $filters['price_min'] !== '' && $filters['price_min'] !== null ? (float)$filters['price_min'] : null;
         $priceMax = isset($filters['price_max']) && $filters['price_max'] !== '' && $filters['price_max'] !== null ? (float)$filters['price_max'] : null;
-        $requestedCurrency = isset($filters['price_currency']) && $filters['price_currency'] !== '' && $filters['price_currency'] !== null
-            ? strtoupper(trim((string) $filters['price_currency']))
-            : 'USD';
         $iqdPerUsd = $this->getIqdPerUsdRate();
-        
+
         if ($priceMin !== null || $priceMax !== null) {
-            if ($requestedCurrency === 'USD') {
-                // Filter in USD: handle USD/NULL listings directly, convert IQD listings
-                $query->where(function($q) use ($priceMin, $priceMax, $iqdPerUsd) {
-                    // USD or NULL currency listings: compare directly
-                    $q->where(function($usdQ) use ($priceMin, $priceMax) {
-                        $usdQ->where(function($currencyQ) {
-                            $currencyQ->where('price_currency', 'USD')
-                                      ->orWhereNull('price_currency');
-                        });
-                        if ($priceMin !== null && $priceMax !== null) {
-                            $usdQ->whereBetween('price', [$priceMin, $priceMax]);
-                        } elseif ($priceMin !== null) {
-                            $usdQ->where('price', '>=', $priceMin);
-                        } elseif ($priceMax !== null) {
-                            $usdQ->where('price', '<=', $priceMax);
-                        }
+            $query->where(function($q) use ($priceMin, $priceMax, $iqdPerUsd) {
+                // USD (or NULL) currency listings: compare directly
+                $q->where(function($usdQ) use ($priceMin, $priceMax) {
+                    $usdQ->where(function($currencyQ) {
+                        $currencyQ->where('price_currency', 'USD')
+                                  ->orWhereNull('price_currency');
                     });
-                    // IQD listings: convert to USD for comparison
-                    $q->orWhere(function($iqdQ) use ($priceMin, $priceMax, $iqdPerUsd) {
-                        $iqdQ->where('price_currency', 'IQD');
-                        if ($priceMin !== null && $priceMax !== null) {
-                            $iqdQ->whereRaw('(price / ?) BETWEEN ? AND ?', [$iqdPerUsd, $priceMin, $priceMax]);
-                        } elseif ($priceMin !== null) {
-                            $iqdQ->whereRaw('(price / ?) >= ?', [$iqdPerUsd, $priceMin]);
-                        } elseif ($priceMax !== null) {
-                            $iqdQ->whereRaw('(price / ?) <= ?', [$iqdPerUsd, $priceMax]);
-                        }
-                    });
+
+                    if ($priceMin !== null && $priceMax !== null) {
+                        $usdQ->whereBetween('price', [$priceMin, $priceMax]);
+                    } elseif ($priceMin !== null) {
+                        $usdQ->where('price', '>=', $priceMin);
+                    } elseif ($priceMax !== null) {
+                        $usdQ->where('price', '<=', $priceMax);
+                    }
                 });
-            } elseif ($requestedCurrency === 'IQD') {
-                // Filter in IQD: handle IQD listings directly, convert USD/NULL listings
-                $query->where(function($q) use ($priceMin, $priceMax, $iqdPerUsd) {
-                    // IQD listings: compare directly
-                    $q->where(function($iqdQ) use ($priceMin, $priceMax) {
-                        $iqdQ->where('price_currency', 'IQD');
-                        if ($priceMin !== null && $priceMax !== null) {
-                            $iqdQ->whereBetween('price', [$priceMin, $priceMax]);
-                        } elseif ($priceMin !== null) {
-                            $iqdQ->where('price', '>=', $priceMin);
-                        } elseif ($priceMax !== null) {
-                            $iqdQ->where('price', '<=', $priceMax);
-                        }
-                    });
-                    // USD or NULL currency listings: convert to IQD for comparison
-                    $q->orWhere(function($usdQ) use ($priceMin, $priceMax, $iqdPerUsd) {
-                        $usdQ->where(function($currencyQ) {
-                            $currencyQ->where('price_currency', 'USD')
-                                      ->orWhereNull('price_currency');
-                        });
-                        if ($priceMin !== null && $priceMax !== null) {
-                            $usdQ->whereRaw('(price * ?) BETWEEN ? AND ?', [$iqdPerUsd, $priceMin, $priceMax]);
-                        } elseif ($priceMin !== null) {
-                            $usdQ->whereRaw('(price * ?) >= ?', [$iqdPerUsd, $priceMin]);
-                        } elseif ($priceMax !== null) {
-                            $usdQ->whereRaw('(price * ?) <= ?', [$iqdPerUsd, $priceMax]);
-                        }
-                    });
+
+                // IQD listings: convert to USD for comparison
+                $q->orWhere(function($iqdQ) use ($priceMin, $priceMax, $iqdPerUsd) {
+                    $iqdQ->where('price_currency', 'IQD');
+
+                    if ($priceMin !== null && $priceMax !== null) {
+                        $iqdQ->whereRaw('(price / ?) BETWEEN ? AND ?', [$iqdPerUsd, $priceMin, $priceMax]);
+                    } elseif ($priceMin !== null) {
+                        $iqdQ->whereRaw('(price / ?) >= ?', [$iqdPerUsd, $priceMin]);
+                    } elseif ($priceMax !== null) {
+                        $iqdQ->whereRaw('(price / ?) <= ?', [$iqdPerUsd, $priceMax]);
+                    }
                 });
-            } else {
-                // Unknown currency: fallback to raw price comparison
-                if ($priceMin !== null && $priceMax !== null) {
-                    $query->whereBetween('price', [$priceMin, $priceMax]);
-                } elseif ($priceMin !== null) {
-                    $query->where('price', '>=', $priceMin);
-                } elseif ($priceMax !== null) {
-                    $query->where('price', '<=', $priceMax);
-                }
-            }
+            });
         }
 
         // Mileage range filter - support both individual and range (FIXED: properly handle 0 values)
