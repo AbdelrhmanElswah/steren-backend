@@ -509,6 +509,8 @@ class CarListingController extends Controller
                 ] : null,
                 'user' => $formattedUser,
                 'mileage_unit' => $listing->mileageType?->name,
+                'total_views' => $listing->total_views ?? 0,
+                'formatted_views' => $listing->formatted_views ?? '0 Views',
                 'inspection' => $listing->inspection ? [
                     'inspection_number' => $listing->inspection->inspection_number,
                     'inspection_date' => $listing->inspection->inspection_date,
