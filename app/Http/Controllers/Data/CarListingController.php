@@ -346,9 +346,22 @@ class CarListingController extends Controller
                         ->orderBy('order');
                 },
                 'badges', 'carCondition', 'fuelType', 'transmission',
-                'exteriorColor', 'driveType', 'cylinder', 'user',
-                'features', 'specifications'
+                'exteriorColor', 'driveType', 'cylinder', 
+                'user' => function($userQuery) {
+                    $userQuery->select('id', 'full_name', 'phone');
+                },
+                'features', 'specifications', 'inspection'
             ])->findOrFail($id);
+
+            // Load all user media separately since User model uses morphOne
+            if ($listing->user) {
+                $userMedia = \App\Models\Media::where('modelable_type', 'App\Models\User')
+                    ->where('modelable_id', $listing->user->id)
+                    ->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                    ->orderBy('order')
+                    ->get();
+                $listing->user->setRelation('media', $userMedia);
+            }
 
             // Group features by category
             $featuresByCategory = collect();
@@ -395,8 +408,124 @@ class CarListingController extends Controller
                 Log::warning('Specifications relationship issue for listing ' . $listing->id . ': ' . $e->getMessage());
             }
 
+            // Format media to return only media_link
+            $formattedMedia = $listing->media->map(function ($media) {
+                return [
+                    'media_link' => $media->media_link ?? $media->getS3TemporaryUrl($media->path_file_name)
+                ];
+            })->values();
+
+            // Format user to return only full_name, phone, and media
+            $formattedUser = null;
+            if ($listing->user) {
+                $userMediaArray = [];
+                if ($listing->user->relationLoaded('media') && $listing->user->media) {
+                    $userMediaCollection = $listing->user->media instanceof \Illuminate\Database\Eloquent\Collection 
+                        ? $listing->user->media 
+                        : collect([$listing->user->media]);
+                    
+                    $userMediaArray = $userMediaCollection->map(function ($media) {
+                        return [
+                            'media_link' => $media->media_link ?? $media->getS3TemporaryUrl($media->path_file_name)
+                        ];
+                    })->values()->toArray();
+                }
+                
+                $formattedUser = [
+                    'full_name' => $listing->user->full_name,
+                    'phone' => $listing->user->phone,
+                    'media' => $userMediaArray
+                ];
+            }
+
+            // Format listing object - exclude specified fields
+            $formattedListing = [
+                'id' => $listing->id,
+                'title' => $listing->title,
+                'price' => $listing->price,
+                'price_currency' => $listing->price_currency,
+                'year' => $listing->year,
+                'trim' => $listing->trim,
+                'doors' => $listing->doors,
+                'mileage' => $listing->mileage,
+                'origin_country' => $listing->origin_country,
+                'gcc_import' => $listing->gcc_import,
+                'plate_status' => $listing->plate_status,
+                'condition_type' => $listing->condition_type,
+                'has_warranty' => $listing->has_warranty,
+                'is_inspected' => $listing->is_inspected,
+                'is_verified' => $listing->is_verified,
+                'has_insurance' => $listing->has_insurance,
+                'promotion_currency' => $listing->promotion_currency,
+                'is_promoted' => $listing->is_promoted,
+                'engine_size' => $listing->engine_size,
+                'engine_type' => $listing->engine_type,
+                'horsepower' => $listing->horsepower,
+                'torque' => $listing->torque,
+                'acceleration_0_100' => $listing->acceleration_0_100,
+                'top_speed' => $listing->top_speed,
+                'seating_capacity' => $listing->seating_capacity,
+                'mileage_efficiency' => $listing->mileage_efficiency,
+                'length' => $listing->length,
+                'width' => $listing->width,
+                'height' => $listing->height,
+                'status' => $listing->status,
+                'status_id' => $listing->status_id,
+                'operator_decision' => $listing->operator_decision,
+                'is_featured' => $listing->is_featured,
+                'is_new_arrival' => $listing->is_new_arrival,
+                'description' => $listing->description,
+                'features' => $listing->features ?? [],
+                'specifications' => $listing->specifications ?? [],
+                'sold_at' => $listing->sold_at,
+                'featured_at' => $listing->featured_at,
+                'body_type' => $listing->bodyType ? [
+                    'id' => $listing->bodyType->id,
+                    'name' => $listing->bodyType->name,
+                ] : null,
+                'city' => $listing->city ? [
+                    'id' => $listing->city->id,
+                    'name' => $listing->city->name,
+                ] : null,
+                'media' => $formattedMedia,
+                'badges' => $listing->badges ?? [],
+                'car_condition' => $listing->carCondition ? [
+                    'name' => $listing->carCondition->name,
+                ] : null,
+                'fuel_type' => $listing->fuelType ? [
+                    'name' => $listing->fuelType->name,
+                ] : null,
+                'transmission' => $listing->transmission ? [
+                    'name' => $listing->transmission->name,
+                ] : null,
+                'exterior_color' => $listing->exteriorColor ? [
+                    'name' => $listing->exteriorColor->name,
+                ] : null,
+                'drive_type' => $listing->driveType ? [
+                    'name' => $listing->driveType->name,
+                ] : null,
+                'cylinder' => $listing->cylinder ? [
+                    'name' => $listing->cylinder->name,
+                ] : null,
+                'user' => $formattedUser,
+                'inspection' => $listing->inspection ? [
+                    'id' => $listing->inspection->id,
+                    'odoo_id' => $listing->inspection->odoo_id,
+                    'car_listing_id' => $listing->inspection->car_listing_id,
+                    'inspection_number' => $listing->inspection->inspection_number,
+                    'inspection_date' => $listing->inspection->inspection_date,
+                    'status' => $listing->inspection->status,
+                    'notes' => $listing->inspection->notes,
+                    'is_verified' => $listing->inspection->is_verified,
+                    'verified_at' => $listing->inspection->verified_at,
+                    'created_at' => $listing->inspection->created_at,
+                    'updated_at' => $listing->inspection->updated_at,
+                    'deleted_at' => $listing->inspection->deleted_at,
+                ] : null,
+            ];
+
             $data = [
-                'listing' => $listing,
+                'listing' => $formattedListing,
                 'specifications' => [
                     'engine_size' => $listing->engine_size,
                     'engine_type' => $listing->engine_type,
