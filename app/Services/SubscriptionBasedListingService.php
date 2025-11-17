@@ -392,11 +392,11 @@ class SubscriptionBasedListingService
                     $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info');
                 }
             ])
-            ->where('status', 'active')
-            ->whereIn('studio_id', $studioIds)
+            ->where('car_listings.status', 'active')
+            ->whereIn('car_listings.studio_id', $studioIds)
             ->where(function ($query) {
-                $query->where('is_featured', true)
-                      ->orWhere('is_sponsored', true);
+                $query->where('car_listings.is_featured', true)
+                      ->orWhere('car_listings.is_sponsored', true);
             });
 
         if (!empty($filters['city_id'])) {
@@ -412,8 +412,8 @@ class SubscriptionBasedListingService
             ->selectRaw('COALESCE(SUM(car_listing_analytics.metric_value), 0) as views')
             ->groupBy('car_listings.id')
             ->orderBy('views', 'desc')
-            ->orderBy('featured_at', 'desc')
-            ->orderBy('created_at', 'desc')
+            ->orderBy('car_listings.featured_at', 'desc')
+            ->orderBy('car_listings.created_at', 'desc')
             ->limit($limit)
             ->get();
     }
@@ -440,8 +440,8 @@ class SubscriptionBasedListingService
                     $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info');
                 }
             ])
-            ->where('status', 'active')
-            ->where('is_featured', true);
+            ->where('car_listings.status', 'active')
+            ->where('car_listings.is_featured', true);
 
         if (!empty($filters['city_id'])) {
             $this->applyCityFilter($query, (int) $filters['city_id']);
@@ -456,8 +456,8 @@ class SubscriptionBasedListingService
             ->selectRaw('COALESCE(SUM(car_listing_analytics.metric_value), 0) as views')
             ->groupBy('car_listings.id')
             ->orderBy('views', 'desc')
-            ->orderBy('featured_at', 'desc')
-            ->orderBy('created_at', 'desc')
+            ->orderBy('car_listings.featured_at', 'desc')
+            ->orderBy('car_listings.created_at', 'desc')
             ->limit($limit)
             ->get();
     }
@@ -583,6 +583,7 @@ class SubscriptionBasedListingService
     /**
      * Apply a standardized city filter to car listing queries using Laravel city ID only.
      * Filters listings by city_id directly.
+     * Uses fully qualified column name to avoid ambiguity when joins are present.
      */
     protected function applyCityFilter($query, int $cityId)
     {
@@ -599,6 +600,7 @@ class SubscriptionBasedListingService
         }
 
         // Filter by city_id directly on car_listings table
-        $query->where('city_id', $cityId);
+        // Use fully qualified column name to avoid ambiguity when joins are present
+        $query->where('car_listings.city_id', $cityId);
     }
 }

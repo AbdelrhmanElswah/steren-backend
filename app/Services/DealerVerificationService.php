@@ -571,6 +571,8 @@ class DealerVerificationService
                 case 'approved':
                     $dealerApplication->approve();
                     $dealerApplication->user->update(['is_dealer' => 1]);
+                    // Create default studio for newly approved dealer
+                    $this->createDefaultStudioForDealer($dealerApplication->user);
                     break;
 
                 case 'rejected':
@@ -640,6 +642,9 @@ class DealerVerificationService
             $application->user->update([
                 'is_dealer' => true,
             ]);
+
+            // Create default studio for newly approved dealer
+            $this->createDefaultStudioForDealer($application->user);
 
             DB::commit();
 
@@ -945,5 +950,74 @@ class DealerVerificationService
         }
 
         return $vehicles;
+    }
+
+    /**
+     * Create default studio for dealer
+     */
+    protected function createDefaultStudioForDealer(User $user): void
+    {
+        // Check if dealer already has any studio
+        $existingStudio = \App\Models\DealerStudio::where('dealer_id', $user->id)
+            ->where('is_active', true)
+            ->first();
+
+        if ($existingStudio) {
+            return;
+        }
+
+        // Get dealer application to get company name
+        $dealerApplication = $user->latestDealerApplication;
+        
+        // Use dealership company name if available, otherwise use dealer's full name
+        $studioName = $dealerApplication && $dealerApplication->dealership_company_name
+            ? $dealerApplication->dealership_company_name
+            : ($user->full_name ?? 'Dealer Studio');
+
+        // Create default studio
+        $studio = \App\Models\DealerStudio::create([
+            'dealer_id' => $user->id,
+            'name' => $studioName,
+            'description' => 'Studio for ' . ($dealerApplication && $dealerApplication->dealership_company_name 
+                ? $dealerApplication->dealership_company_name 
+                : $user->full_name),
+            'address' => $user->address ?? 'Address not provided',
+            'city_id' => $user->city_id ?? 1, // Default city or first city
+            'phone' => $user->phone,
+            'email' => $user->email,
+            'is_active' => true,
+            'is_verified' => true, // Auto-verify default studio
+            'verification_status' => 'verified',
+            'verified_at' => now(),
+            'settings' => [
+                'auto_assign_listings' => true,
+                'auto_featured' => true,
+                'is_default' => true,
+            ],
+            'business_hours' => [
+                'monday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                'tuesday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                'wednesday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                'thursday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                'friday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                'saturday' => ['is_open' => true, 'open' => '09:00', 'close' => '17:00'],
+                'sunday' => ['is_open' => false, 'open' => '09:00', 'close' => '17:00'],
+            ],
+            'amenities' => ['Showroom', 'Parking', 'Customer Service'],
+            'specialties' => ['All Vehicle Types'],
+        ]);
+
+        // Auto-associate existing car listings with default studio
+        \App\Models\CarListing::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->whereNull('studio_id')
+            ->update(['studio_id' => $studio->id]);
+
+        Log::info('Default studio created for dealer', [
+            'dealer_id' => $user->id,
+            'studio_id' => $studio->id,
+            'studio_name' => $studio->name,
+            'city_id' => $studio->city_id,
+        ]);
     }
 }
