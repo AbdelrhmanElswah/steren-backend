@@ -49,12 +49,10 @@ class CarListingController extends Controller
                 'carModel:id,name,car_brand_id',
                 'bodyType:id,name',
                 'city:id,name,odoo_id',
-                // Only primary image for listing card (optimized)
+                // Load all media for car listing
                 'media' => function($mediaQuery) {
                     $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
-                        ->where('info', 'primary')
-                        ->orderBy('order')
-                        ->limit(1);
+                        ->orderBy('order');
                 },
                 // Load inspection sides only (minimal data)
                 'inspection' => function($inspectionQuery) {
@@ -66,8 +64,12 @@ class CarListingController extends Controller
                 'exteriorColor:id,name',
                 'driveType:id,name',
                 'cylinder:id,name',
-                // User without profile picture (optimized)
-                'user:id,full_name'
+                // User with profile picture
+                'user:id,full_name',
+                'user.profilePictureMedia' => function($profileQuery) {
+                    $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info')
+                        ->where('info', 'profile_picture');
+                }
             ]);
 
             // Apply filters
@@ -136,7 +138,12 @@ class CarListingController extends Controller
                 $query->where('drive_type_id', $request->drive_type);
             }
 
-            if ($request->filled('city')) {
+            // Filter by city_id if provided (city parameter also supported for backward compatibility)
+            // If no city_id provided, returns all listings
+            if ($request->filled('city_id')) {
+                $query->where('city_id', $request->city_id);
+            } elseif ($request->filled('city')) {
+                // Support 'city' parameter for backward compatibility
                 $query->where('city_id', $request->city);
             }
 
@@ -165,7 +172,14 @@ class CarListingController extends Controller
                     $query->orderBy('created_at', 'desc');
             }
 
-            $listings = $query->paginate(7);
+            // Get pagination parameters from request
+            $perPage = (int) $request->input('per_page', 7);
+            $page = (int) $request->input('page', 1);
+            
+            // Limit per_page to reasonable range (1-100)
+            $perPage = max(1, min(100, $perPage));
+            
+            $listings = $query->paginate($perPage, ['*'], 'page', $page);
 
             // Get media counts for all listings in one query (for UI gallery indicator)
             $listingIds = $listings->pluck('id');
@@ -177,15 +191,27 @@ class CarListingController extends Controller
 
             // Format listings to return only essential data for UI card
             $formattedListings = $listings->map(function ($listing) use ($mediaCounts) {
-                // Get primary media
-                $primaryMedia = $listing->media->first();
-                $mediaLink = null;
-                if ($primaryMedia && $primaryMedia->path_file_name) {
-                    $mediaLink = $primaryMedia->getS3PublicUrl($primaryMedia->path_file_name);
-                }
+                // Get all media with only media_link
+                $mediaList = $listing->media->map(function ($media) {
+                    if ($media && $media->path_file_name) {
+                        return [
+                            'media_link' => $media->getS3PublicUrl($media->path_file_name)
+                        ];
+                    }
+                    return null;
+                })->filter()->values();
 
                 // Get media count for gallery indicator
                 $mediaCount = $mediaCounts->get($listing->id, 0);
+
+                // Get user profile picture
+                $profilePictureLink = null;
+                if ($listing->user && $listing->user->relationLoaded('profilePictureMedia') && $listing->user->profilePictureMedia) {
+                    $profileMedia = $listing->user->profilePictureMedia;
+                    if ($profileMedia && $profileMedia->path_file_name) {
+                        $profilePictureLink = $profileMedia->getS3PublicUrl($profileMedia->path_file_name);
+                    }
+                }
 
                 // Build inspection_sides from loaded inspection relationship
                 $inspectionSides = null;
@@ -263,18 +289,13 @@ class CarListingController extends Controller
                         'id' => $listing->cylinder->id,
                         'name' => $listing->cylinder->name,
                     ] : null,
-                    'media' => $primaryMedia ? [
-                        'id' => $primaryMedia->id,
-                        'path_file_name' => $primaryMedia->path_file_name,
-                        'media_link' => $mediaLink,
-                        'info' => $primaryMedia->info,
-                        'order' => $primaryMedia->order,
-                    ] : null,
+                    'media' => $mediaList->toArray(), // All media with only media_link
                     'media_count' => $mediaCount, // For UI gallery indicator (e.g., "1/12")
                     'inspection_sides' => $inspectionSides,
                     'user' => $listing->user ? [
                         'id' => $listing->user->id,
                         'full_name' => $listing->user->full_name,
+                        'profile_picture' => $profilePictureLink, // User profile picture
                     ] : null,
                 ];
             });
