@@ -395,21 +395,19 @@ Route::prefix('verification')->group(function () {
     Route::get('/subscription-plans', [App\Http\Controllers\Data\AccountController::class, 'getSubscriptionPlans']);
 });
 
-// Dealer Application Management Routes (Admin/Staff)
-Route::prefix('dealer-applications')->middleware('auth:sanctum')->group(function () {
-    // Routes by application ID
+// Dealer Application Management Routes
+// Routes by application ID (for Odoo integration - no auth required)
+Route::prefix('dealer-applications')->middleware('odoo.tracking')->group(function () {
     Route::post('/{applicationId}/approve', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'approve']);
     Route::post('/{applicationId}/reject', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'reject']);
     Route::post('/{applicationId}/process', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'processApplication']);
-
 });
-Route::prefix('dealer-applications')->group(function () {
 
-
-    // Routes by Odoo ID (for Odoo integration)
+// Routes by Odoo ID (for Odoo integration - no auth required)
+Route::prefix('dealer-applications')->middleware('odoo.tracking')->group(function () {
     Route::post('/odoo/{odooId}/approve', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'approveByOdooId']);
     Route::post('/odoo/{odooId}/reject', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'rejectByOdooId']);
-    Route::post('/odoo/{odooId}/process',[App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'processByOdooId']);
+    Route::post('/odoo/{odooId}/process', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'processByOdooId']);
 });
 
 // Singular listing routes (for Odoo compatibility) - No auth required
