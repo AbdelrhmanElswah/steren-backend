@@ -346,7 +346,7 @@ class CarListingController extends Controller
                         ->orderBy('order');
                 },
                 'badges', 'carCondition', 'fuelType', 'transmission',
-                'exteriorColor', 'driveType', 'cylinder', 
+                'exteriorColor', 'driveType', 'cylinder', 'mileageType',
                 'user' => function($userQuery) {
                     $userQuery->select('id', 'full_name', 'phone');
                 },
@@ -434,7 +434,7 @@ class CarListingController extends Controller
                 $formattedUser = [
                     'full_name' => $listing->user->full_name,
                     'phone' => $listing->user->phone,
-                    'media' => $userMediaArray
+                    'profile_picture' => $userMediaArray
                 ];
             }
 
@@ -508,19 +508,11 @@ class CarListingController extends Controller
                     'name' => $listing->cylinder->name,
                 ] : null,
                 'user' => $formattedUser,
+                'mileage_unit' => $listing->mileageType?->name,
                 'inspection' => $listing->inspection ? [
-                    'id' => $listing->inspection->id,
-                    'odoo_id' => $listing->inspection->odoo_id,
-                    'car_listing_id' => $listing->inspection->car_listing_id,
                     'inspection_number' => $listing->inspection->inspection_number,
                     'inspection_date' => $listing->inspection->inspection_date,
                     'status' => $listing->inspection->status,
-                    'notes' => $listing->inspection->notes,
-                    'is_verified' => $listing->inspection->is_verified,
-                    'verified_at' => $listing->inspection->verified_at,
-                    'created_at' => $listing->inspection->created_at,
-                    'updated_at' => $listing->inspection->updated_at,
-                    'deleted_at' => $listing->inspection->deleted_at,
                 ] : null,
             ];
 
