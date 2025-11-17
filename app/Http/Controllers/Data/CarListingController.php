@@ -562,7 +562,15 @@ class CarListingController extends Controller
             }
 
             if ($request->filled('city_id')) {
-                $query->where('city_id', $request->city_id);
+                $cityId = (int) $request->city_id;
+                // Validate city exists and filter by city_id
+                $city = \App\Models\City::find($cityId);
+                if ($city) {
+                    $query->where('car_listings.city_id', $cityId);
+                } else {
+                    // If city doesn't exist, return no results
+                    $query->whereRaw('1 = 0');
+                }
             }
 
             if ($request->filled('year_from') && $request->filled('year_to')) {
