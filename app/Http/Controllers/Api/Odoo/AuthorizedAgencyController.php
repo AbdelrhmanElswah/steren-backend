@@ -26,9 +26,8 @@ class AuthorizedAgencyController extends Controller
         try {
             $data = $request->validated();
 
-            if (empty($data['odoo_id'])) {
-                $data['odoo_id'] = 'temp_' . uniqid();
-            }
+            // Remove odoo_id from data if present
+            unset($data['odoo_id']);
 
             $agency = $this->authorizedAgencyService->create($data);
             $agency->load('media');
@@ -48,23 +47,15 @@ class AuthorizedAgencyController extends Controller
         }
     }
 
-    public function updateByOdooId(UpdateAuthorizedAgencyRequest $request, string $odooId): JsonResponse
+    public function updateByPartnerId(UpdateAuthorizedAgencyRequest $request, string $partnerId): JsonResponse
     {
         try {
             $data = $request->validated();
 
-            if (!empty($data['odoo_id']) && $data['odoo_id'] !== $odooId) {
-                $agency = AuthorizedAgency::where('odoo_id', $odooId)->firstOrFail();
-                $agency->update(['odoo_id' => $data['odoo_id']]);
-                unset($data['odoo_id']);
+            // Remove odoo_id from data if present
+            unset($data['odoo_id']);
 
-                if (!empty($data)) {
-                    $agency = $this->authorizedAgencyService->update($agency->id, $data);
-                }
-            } else {
-                $agency = $this->authorizedAgencyService->updateByOdooId($odooId, $data);
-            }
-
+            $agency = $this->authorizedAgencyService->updateByPartnerId($partnerId, $data);
             $agency->load('media');
 
             return $this->successResponse(
@@ -72,10 +63,10 @@ class AuthorizedAgencyController extends Controller
                 'Authorized agency updated successfully'
             );
         } catch (\Throwable $e) {
-            Log::error('AuthorizedAgencyController@updateByOdooId error', [
+            Log::error('AuthorizedAgencyController@updateByPartnerId error', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'odoo_id' => $odooId,
+                'partner_id' => $partnerId,
                 'payload' => $request->validated(),
             ]);
 
@@ -83,27 +74,27 @@ class AuthorizedAgencyController extends Controller
         }
     }
 
-    public function deleteByOdooId(string $odooId): JsonResponse
+    public function deleteByPartnerId(string $partnerId): JsonResponse
     {
         try {
-            $this->authorizedAgencyService->deleteByOdooId($odooId);
+            $this->authorizedAgencyService->deleteByPartnerId($partnerId);
 
             return $this->noContentResponse('Authorized agency deleted successfully');
         } catch (\Throwable $e) {
-            Log::error('AuthorizedAgencyController@deleteByOdooId error', [
+            Log::error('AuthorizedAgencyController@deleteByPartnerId error', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'odoo_id' => $odooId,
+                'partner_id' => $partnerId,
             ]);
 
             return $this->errorResponse('Failed to delete authorized agency: ' . $e->getMessage(), 500);
         }
     }
 
-    public function restoreByOdooId(string $odooId): JsonResponse
+    public function restoreByPartnerId(string $partnerId): JsonResponse
     {
         try {
-            $agency = $this->authorizedAgencyService->restoreByOdooId($odooId);
+            $agency = $this->authorizedAgencyService->restoreByPartnerId($partnerId);
             $agency->load('media');
 
             return $this->successResponse(
@@ -111,10 +102,10 @@ class AuthorizedAgencyController extends Controller
                 'Authorized agency restored successfully'
             );
         } catch (\Throwable $e) {
-            Log::error('AuthorizedAgencyController@restoreByOdooId error', [
+            Log::error('AuthorizedAgencyController@restoreByPartnerId error', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'odoo_id' => $odooId,
+                'partner_id' => $partnerId,
             ]);
 
             return $this->errorResponse('Failed to restore authorized agency: ' . $e->getMessage(), 500);

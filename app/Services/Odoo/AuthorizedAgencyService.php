@@ -25,9 +25,10 @@ class AuthorizedAgencyService extends OdooCrudService
         return $agency;
     }
 
-    public function updateByOdooId(string $odooId, array $data): AuthorizedAgency
+    public function updateByPartnerId(string $partnerId, array $data): AuthorizedAgency
     {
-        $agency = parent::updateByOdooId($odooId, $data);
+        $agency = AuthorizedAgency::where('partner_id', $partnerId)->firstOrFail();
+        $agency->update($data);
 
         if (array_key_exists('media', $data)) {
             $agency->media()?->delete();
@@ -37,7 +38,20 @@ class AuthorizedAgencyService extends OdooCrudService
             }
         }
 
-        return $agency;
+        return $agency->fresh();
+    }
+
+    public function deleteByPartnerId(string $partnerId): bool
+    {
+        $agency = AuthorizedAgency::where('partner_id', $partnerId)->firstOrFail();
+        return $agency->delete();
+    }
+
+    public function restoreByPartnerId(string $partnerId): AuthorizedAgency
+    {
+        $agency = AuthorizedAgency::withTrashed()->where('partner_id', $partnerId)->firstOrFail();
+        $agency->restore();
+        return $agency->fresh();
     }
 
     private function handleMedia(AuthorizedAgency $agency, $media): void

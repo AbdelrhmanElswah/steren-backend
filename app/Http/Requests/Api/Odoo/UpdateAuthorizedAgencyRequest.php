@@ -14,7 +14,6 @@ class UpdateAuthorizedAgencyRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'odoo_id' => 'sometimes|required|string|max:255|unique:authorized_agencies,odoo_id,' . $this->route('odooId') . ',odoo_id',
             'name' => 'sometimes|required|string|max:255',
             'partner_id' => 'sometimes|required|string|max:255',
             'media' => 'nullable',

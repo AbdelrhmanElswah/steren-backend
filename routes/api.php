@@ -88,9 +88,9 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('subscription-plans/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'restoreByOdooId']);
 
     Route::post('authorized-agencies', [App\Http\Controllers\Api\Odoo\AuthorizedAgencyController::class, 'store']);
-    Route::post('authorized-agencies/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\AuthorizedAgencyController::class, 'updateByOdooId']);
-    Route::post('authorized-agencies/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\AuthorizedAgencyController::class, 'deleteByOdooId']);
-    Route::post('authorized-agencies/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\AuthorizedAgencyController::class, 'restoreByOdooId']);
+    Route::post('authorized-agencies/partner/{partnerId}/update', [App\Http\Controllers\Api\Odoo\AuthorizedAgencyController::class, 'updateByPartnerId']);
+    Route::post('authorized-agencies/partner/{partnerId}/delete', [App\Http\Controllers\Api\Odoo\AuthorizedAgencyController::class, 'deleteByPartnerId']);
+    Route::post('authorized-agencies/partner/{partnerId}/restore', [App\Http\Controllers\Api\Odoo\AuthorizedAgencyController::class, 'restoreByPartnerId']);
 
     Route::post('budgets', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'store']);
     Route::post('budgets/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'updateByOdooId']);

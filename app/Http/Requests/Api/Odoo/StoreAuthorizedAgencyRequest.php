@@ -14,7 +14,6 @@ class StoreAuthorizedAgencyRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'odoo_id' => 'nullable|string|max:255|unique:authorized_agencies,odoo_id',
             'name' => 'required|string|max:255',
             'partner_id' => 'required|string|max:255',
             'media' => 'nullable',
