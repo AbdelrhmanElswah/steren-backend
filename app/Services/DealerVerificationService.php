@@ -1013,6 +1013,15 @@ class DealerVerificationService
             ->whereNull('studio_id')
             ->update(['studio_id' => $studio->id]);
 
+        // Auto-promote existing listings to top picks (featured) so they appear in dealer's top picks
+        \App\Models\CarListing::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where('is_featured', false)
+            ->update([
+                'is_featured' => true,
+                'featured_at' => now(),
+            ]);
+
         Log::info('Default studio created for dealer', [
             'dealer_id' => $user->id,
             'studio_id' => $studio->id,

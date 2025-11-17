@@ -190,6 +190,8 @@ class SubscriptionBasedListingService
 
     /**
      * Get all studios (public endpoint) with their car listings
+     * If city_id is provided, filters studios and listings by that city
+     * If city_id is not provided, returns all verified studios with all their listings
      */
     public function getAllStudios(array $filters = [])
     {
@@ -208,6 +210,7 @@ class SubscriptionBasedListingService
                             'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order',
                             'studio:id,city_id'
                         ])
+                        // Only filter car listings by city if city_id is provided
                         ->when(isset($filters['city_id']), function ($carQuery) use ($filters) {
                             $this->applyCityFilter($carQuery, (int) $filters['city_id']);
                         })
@@ -216,7 +219,7 @@ class SubscriptionBasedListingService
                 }
             ]);
 
-        // Filter by city if provided
+        // Only filter studios by city if city_id is provided (otherwise return all verified studios)
         if (isset($filters['city_id'])) {
             $query->where('city_id', $filters['city_id']);
         }
@@ -420,6 +423,8 @@ class SubscriptionBasedListingService
 
     /**
      * Get general top picks (public method for public endpoint)
+     * If city_id is provided, filters featured listings by that city
+     * If city_id is not provided, returns all featured listings (from all cities)
      */
     public function getGeneralTopPicks(int $limit, array $filters = [])
     {
@@ -443,6 +448,7 @@ class SubscriptionBasedListingService
             ->where('car_listings.status', 'active')
             ->where('car_listings.is_featured', true);
 
+        // Only filter by city if city_id is provided (otherwise return all featured listings)
         if (!empty($filters['city_id'])) {
             $this->applyCityFilter($query, (int) $filters['city_id']);
         }
