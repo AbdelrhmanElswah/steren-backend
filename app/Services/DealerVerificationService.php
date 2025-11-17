@@ -643,7 +643,6 @@ class DealerVerificationService
                 'is_dealer' => true,
             ]);
 
-            // Create default studio for newly approved dealer
             $this->createDefaultStudioForDealer($application->user);
 
             DB::commit();

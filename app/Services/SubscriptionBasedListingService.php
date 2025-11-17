@@ -75,9 +75,9 @@ class SubscriptionBasedListingService
         // return $this->getGeneralTopPicks($limit);
 
         // SIMPLIFIED: Dealers get dealer top picks, others get general
-        if ($this->isDealer($user)) {
-            return $this->getDealerTopPicks($user, $limit, $filters);
-        }
+        // if ($this->isDealer($user)) {
+        //     return $this->getDealerTopPicks($user, $limit, $filters);
+        // }
 
         return $this->getGeneralTopPicks($limit, $filters);
     }
@@ -207,8 +207,7 @@ class SubscriptionBasedListingService
                             'carModel:id,name,car_brand_id',
                             'bodyType:id,name',
                             'city:id,name',
-                            'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order',
-                            'studio:id,city_id'
+                            'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order'
                         ])
                         // Only filter car listings by city if city_id is provided
                         ->when(isset($filters['city_id']), function ($carQuery) use ($filters) {
@@ -428,8 +427,16 @@ class SubscriptionBasedListingService
      */
     public function getGeneralTopPicks(int $limit, array $filters = [])
     {
+        // Use subquery to calculate views to avoid GROUP BY issues
+        $viewsSubquery = \App\Models\CarListingAnalytics::selectRaw('car_listing_id, COALESCE(SUM(metric_value), 0) as views')
+            ->where('metric_type', 'views')
+            ->groupBy('car_listing_id');
+
         // Optimize query with limited column selection and specific media loading
         $query = CarListing::select('car_listings.*')
+            ->leftJoinSub($viewsSubquery, 'analytics_views', function($join) {
+                $join->on('car_listings.id', '=', 'analytics_views.car_listing_id');
+            })
             ->with([
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
@@ -453,19 +460,17 @@ class SubscriptionBasedListingService
             $this->applyCityFilter($query, (int) $filters['city_id']);
         }
 
-        // Order by total views from analytics (subquery), then featured_at, then created_at
-        // Map calculated views to 'views' attribute so the resource can access it
-        return $query->leftJoin('car_listing_analytics', function($join) {
-                $join->on('car_listings.id', '=', 'car_listing_analytics.car_listing_id')
-                     ->where('car_listing_analytics.metric_type', '=', 'views');
-            })
-            ->selectRaw('COALESCE(SUM(car_listing_analytics.metric_value), 0) as views')
-            ->groupBy('car_listings.id')
-            ->orderBy('views', 'desc')
+        // Order by total views from analytics, then featured_at, then created_at
+        return $query->orderByRaw('COALESCE(analytics_views.views, 0) DESC')
             ->orderBy('car_listings.featured_at', 'desc')
             ->orderBy('car_listings.created_at', 'desc')
             ->limit($limit)
-            ->get();
+            ->get()
+            ->map(function($listing) {
+                // Add views attribute from the join
+                $listing->views = $listing->views ?? 0;
+                return $listing;
+            });
     }
 
     /**

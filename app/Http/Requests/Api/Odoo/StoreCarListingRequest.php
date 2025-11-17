@@ -40,7 +40,7 @@ class StoreCarListingRequest extends FormRequest
             'is_inspected' => 'nullable|boolean',
             'is_verified' => 'nullable|boolean',
             'has_insurance' => 'nullable|boolean',
-            'studio_id' => 'nullable|exists:studios,id',
+            'studio_id' => 'nullable|exists:dealer_studios,id',
             'car_model_id' => 'nullable|exists:car_models,id',
             'car_condition_id' => 'nullable|exists:car_conditions,id',
             'mileage_type_id' => 'nullable|exists:mileage_types,id',

@@ -65,7 +65,7 @@ class DealerStudio extends Model
      */
     public function carListings()
     {
-        return $this->hasMany(CarListing::class, 'studio_id');
+        return $this->hasMany(CarListing::class, 'user_id', 'dealer_id');
     }
 
     /**
