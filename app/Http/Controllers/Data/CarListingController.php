@@ -32,14 +32,33 @@ class CarListingController extends Controller
                 return $this->successResponse($cachedResult, 'Car listings retrieved from cache');
             }
 
-            $query = CarListing::with([
+            // Select only essential fields for listing card UI
+            $query = CarListing::select([
+                'id', 'odoo_id', 'title', 'price', 'price_currency', 'year', 'trim', 'doors',
+                'mileage', 'city_id', 'car_brand_id', 'car_body_type_id', 'car_model_id',
+                'car_condition_id', 'fuel_type_id', 'transmission_id', 'exterior_color_id',
+                'drive_type_id', 'cylinder_id', 'studio_id', 'is_sponsored', 'is_featured',
+                'status', 'status_id', 'operator_decision', 'is_new_arrival', 'description',
+                'has_warranty', 'is_inspected', 'is_verified', 'has_insurance',
+                'origin_country', 'gcc_import', 'plate_status', 'condition_type',
+                'featured_at', 'created_at', 'user_id'
+            ])
+            ->where('status', 'active') // Filter active only
+            ->with([
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
                 'bodyType:id,name',
                 'city:id,name,odoo_id',
+                // Only primary image for listing card (optimized)
                 'media' => function($mediaQuery) {
                     $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
-                        ->orderBy('order');
+                        ->where('info', 'primary')
+                        ->orderBy('order')
+                        ->limit(1);
+                },
+                // Load inspection sides only (minimal data)
+                'inspection' => function($inspectionQuery) {
+                    $inspectionQuery->select('id', 'car_listing_id', 'right_side', 'left_side', 'roof', 'front', 'back');
                 },
                 'carCondition:id,name',
                 'fuelType:id,name',
@@ -47,7 +66,8 @@ class CarListingController extends Controller
                 'exteriorColor:id,name',
                 'driveType:id,name',
                 'cylinder:id,name',
-                'user:id,full_name,email,phone'
+                // User without profile picture (optimized)
+                'user:id,full_name'
             ]);
 
             // Apply filters
@@ -145,10 +165,122 @@ class CarListingController extends Controller
                     $query->orderBy('created_at', 'desc');
             }
 
-            $listings = $query->active()->paginate(7);
+            $listings = $query->paginate(7);
+
+            // Get media counts for all listings in one query (for UI gallery indicator)
+            $listingIds = $listings->pluck('id');
+            $mediaCounts = \App\Models\Media::where('modelable_type', 'App\Models\CarListing')
+                ->whereIn('modelable_id', $listingIds)
+                ->selectRaw('modelable_id, COUNT(*) as count')
+                ->groupBy('modelable_id')
+                ->pluck('count', 'modelable_id');
+
+            // Format listings to return only essential data for UI card
+            $formattedListings = $listings->map(function ($listing) use ($mediaCounts) {
+                // Get primary media
+                $primaryMedia = $listing->media->first();
+                $mediaLink = null;
+                if ($primaryMedia && $primaryMedia->path_file_name) {
+                    $mediaLink = $primaryMedia->getS3PublicUrl($primaryMedia->path_file_name);
+                }
+
+                // Get media count for gallery indicator
+                $mediaCount = $mediaCounts->get($listing->id, 0);
+
+                // Build inspection_sides from loaded inspection relationship
+                $inspectionSides = null;
+                if ($listing->relationLoaded('inspection') && $listing->inspection) {
+                    $inspectionSides = [
+                        'right_side' => $listing->inspection->right_side ?? false,
+                        'left_side' => $listing->inspection->left_side ?? false,
+                        'roof' => $listing->inspection->roof ?? false,
+                        'front' => $listing->inspection->front ?? false,
+                        'back' => $listing->inspection->back ?? false,
+                    ];
+                }
+
+                return [
+                    'id' => $listing->id,
+                    'odoo_id' => $listing->odoo_id,
+                    'title' => $listing->title,
+                    'price' => $listing->price,
+                    'price_currency' => $listing->price_currency,
+                    'year' => $listing->year,
+                    'trim' => $listing->trim,
+                    'doors' => $listing->doors,
+                    'mileage' => $listing->mileage,
+                    'origin_country' => $listing->origin_country,
+                    'gcc_import' => $listing->gcc_import,
+                    'plate_status' => $listing->plate_status,
+                    'condition_type' => $listing->condition_type,
+                    'has_warranty' => $listing->has_warranty,
+                    'is_inspected' => $listing->is_inspected,
+                    'is_verified' => $listing->is_verified,
+                    'has_insurance' => $listing->has_insurance,
+                    'is_sponsored' => $listing->is_sponsored,
+                    'is_featured' => $listing->is_featured,
+                    'is_new_arrival' => $listing->is_new_arrival,
+                    'city_id' => $listing->city_id,
+                    'brand' => $listing->brand ? [
+                        'id' => $listing->brand->id,
+                        'name' => $listing->brand->name,
+                        'odoo_id' => $listing->brand->odoo_id,
+                    ] : null,
+                    'car_model' => $listing->carModel ? [
+                        'id' => $listing->carModel->id,
+                        'name' => $listing->carModel->name,
+                    ] : null,
+                    'body_type' => $listing->bodyType ? [
+                        'id' => $listing->bodyType->id,
+                        'name' => $listing->bodyType->name,
+                    ] : null,
+                    'city' => $listing->city ? [
+                        'id' => $listing->city->id,
+                        'name' => $listing->city->name,
+                        'odoo_id' => $listing->city->odoo_id,
+                    ] : null,
+                    'car_condition' => $listing->carCondition ? [
+                        'id' => $listing->carCondition->id,
+                        'name' => $listing->carCondition->name,
+                    ] : null,
+                    'fuel_type' => $listing->fuelType ? [
+                        'id' => $listing->fuelType->id,
+                        'name' => $listing->fuelType->name,
+                    ] : null,
+                    'transmission' => $listing->transmission ? [
+                        'id' => $listing->transmission->id,
+                        'name' => $listing->transmission->name,
+                    ] : null,
+                    'exterior_color' => $listing->exteriorColor ? [
+                        'id' => $listing->exteriorColor->id,
+                        'name' => $listing->exteriorColor->name,
+                    ] : null,
+                    'drive_type' => $listing->driveType ? [
+                        'id' => $listing->driveType->id,
+                        'name' => $listing->driveType->name,
+                    ] : null,
+                    'cylinder' => $listing->cylinder ? [
+                        'id' => $listing->cylinder->id,
+                        'name' => $listing->cylinder->name,
+                    ] : null,
+                    'media' => $primaryMedia ? [
+                        'id' => $primaryMedia->id,
+                        'path_file_name' => $primaryMedia->path_file_name,
+                        'media_link' => $mediaLink,
+                        'info' => $primaryMedia->info,
+                        'order' => $primaryMedia->order,
+                    ] : null,
+                    'media_count' => $mediaCount, // For UI gallery indicator (e.g., "1/12")
+                    'inspection_sides' => $inspectionSides,
+                    'user' => $listing->user ? [
+                        'id' => $listing->user->id,
+                        'full_name' => $listing->user->full_name,
+                    ] : null,
+                ];
+            });
 
             $data = [
-                'listings' => $listings->items(),
+                'listings' => $formattedListings,
                 'total' => $listings->total(),
                 'per_page' => $listings->perPage(),
                 'current_page' => $listings->currentPage(),
