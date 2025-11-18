@@ -19,15 +19,11 @@ class ModelListingsByConditionResource extends JsonResource
             'studio' => $this['studio'] ?? [],
             'new' => [
                 'count' => $this['new']['count'] ?? 0,
-                'listings' => CarListingResource::collection(
-                    collect($this['new']['listings'] ?? [])
-                )->toArray($request),
+                'listings' => $this['new']['listings'] ?? [],
             ],
             'used' => [
                 'count' => $this['used']['count'] ?? 0,
-                'listings' => CarListingResource::collection(
-                    collect($this['used']['listings'] ?? [])
-                )->toArray($request),
+                'listings' => $this['used']['listings'] ?? [],
             ],
         ];
     }
