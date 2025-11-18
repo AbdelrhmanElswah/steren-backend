@@ -221,13 +221,6 @@ class SubscriptionBasedListingController extends Controller
                         'views' => $listing->views,
                         'formatted_views' => $listing->formatted_views,
                         'media' => $mediaLink,
-                        'seller' => $listing->user ? [
-                            'id' => $listing->user->id,
-                            'name' => $listing->user->display_name ?? $listing->user->full_name,
-                            'profile_picture' => $listing->user->profilePictureMedia ? $listing->user->profilePictureMedia->getS3PublicUrl($listing->user->profilePictureMedia->path_file_name) : null,
-                            'is_verified' => $listing->user->isVerified(),
-                            'is_dealer' => (bool) $listing->user->is_dealer,
-                        ] : null,
                     ];
                 });
                 
