@@ -205,7 +205,7 @@ class SubscriptionBasedListingService
                         ->with([
                             'mileageType:id,name',
                             'media:id,path_file_name,file_type,info,order',
-                            'user:id,full_name,profile_picture,is_verified,is_dealer',
+                            'user:id,full_name,is_verified,is_dealer',
                             'user.profilePictureMedia' => function($profileQuery) {
                                 $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name');
                             }

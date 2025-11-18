@@ -224,7 +224,7 @@ class SubscriptionBasedListingController extends Controller
                         'seller' => $listing->user ? [
                             'id' => $listing->user->id,
                             'name' => $listing->user->display_name ?? $listing->user->full_name,
-                            'profile_picture' => $listing->user->profilePictureMedia?->public_url ?? $listing->user->profilePictureMedia?->path_file_name ?? $listing->user->profile_picture ?? null,
+                            'profile_picture' => $listing->user->profilePictureMedia ? $listing->user->profilePictureMedia->getS3PublicUrl($listing->user->profilePictureMedia->path_file_name) : null,
                             'is_verified' => (bool) $listing->user->is_verified,
                             'is_dealer' => (bool) $listing->user->is_dealer,
                         ] : null,
