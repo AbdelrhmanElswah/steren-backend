@@ -194,7 +194,12 @@ class CarListingController extends Controller
             // Limit per_page to reasonable range (1-100)
             $perPage = max(1, min(100, $perPage));
             
-            $listings = $query->paginate($perPage, ['*'], 'page', $page);
+            // Clone query for pagination to ensure active filter is applied
+            $listings = (clone $query)->paginate($perPage, ['*'], 'page', $page);
+            
+            // Explicitly count only active listings to ensure accurate total
+            // The query already has ->where('status', 'active') filter applied
+            $totalActive = (clone $query)->count();
 
             // Get media counts for all listings in one query (for UI gallery indicator)
             $listingIds = $listings->pluck('id');
@@ -317,10 +322,10 @@ class CarListingController extends Controller
 
             $data = [
                 'listings' => $formattedListings,
-                'total' => $listings->total(),
+                'total' => $totalActive, // Use explicit count of active listings only
                 'per_page' => $listings->perPage(),
                 'current_page' => $listings->currentPage(),
-                'last_page' => $listings->lastPage(),
+                'last_page' => (int) ceil($totalActive / $perPage), // Recalculate last page based on active count
             ];
 
             // If brand_id is specified and no listings found, still return brand info
