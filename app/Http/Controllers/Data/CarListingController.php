@@ -138,6 +138,21 @@ class CarListingController extends Controller
                 $query->where('drive_type_id', $request->drive_type);
             }
 
+            // Filter by studio_id if provided
+            if ($request->filled('studio_id')) {
+                $studioId = (int) $request->studio_id;
+                // Verify studio exists and is active
+                $studio = \App\Models\DealerStudio::where('id', $studioId)
+                    ->where('is_active', true)
+                    ->first();
+                
+                if (!$studio) {
+                    return $this->errorResponse('Studio not found or inactive', 404);
+                }
+                
+                $query->where('studio_id', $studioId);
+            }
+
             // Filter by city_id if provided (city parameter also supported for backward compatibility)
             // If no city_id provided, returns all listings
             if ($request->filled('city_id')) {
