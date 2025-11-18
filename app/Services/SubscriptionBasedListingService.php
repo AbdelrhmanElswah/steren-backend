@@ -214,7 +214,8 @@ class SubscriptionBasedListingService
                             $this->applyCityFilter($carQuery, (int) $filters['city_id']);
                         })
                         ->orderBy('is_featured', 'desc')
-                        ->orderBy('created_at', 'desc');
+                        ->orderBy('created_at', 'desc')
+                        ->limit(4);
                 }
             ]);
 
