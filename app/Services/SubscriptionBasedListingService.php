@@ -203,11 +203,12 @@ class SubscriptionBasedListingService
                 'carListings' => function ($query) use ($filters) {
                     $query->where('status', 'active')
                         ->with([
-                            'brand:id,name,odoo_id',
-                            'carModel:id,name,car_brand_id',
-                            'bodyType:id,name',
-                            'city:id,name',
-                            'media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order'
+                            'mileageType:id,name',
+                            'media:id,path_file_name,file_type,info,order',
+                            'user:id,full_name,profile_picture,is_verified,is_dealer',
+                            'user.profilePictureMedia' => function($profileQuery) {
+                                $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name');
+                            }
                         ])
                         // Only filter car listings by city if city_id is provided
                         ->when(isset($filters['city_id']), function ($carQuery) use ($filters) {

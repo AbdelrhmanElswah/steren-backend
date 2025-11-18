@@ -197,6 +197,40 @@ class SubscriptionBasedListingController extends Controller
 
             // Format studios with their listings
             $formattedStudios = $studios->map(function ($studio) {
+                // Format car listings with only required fields
+                $formattedListings = $studio->carListings->map(function ($listing) {
+                    $media = $listing->relationLoaded('media') ? $listing->media : null;
+                    $primaryMedia = $media && $media instanceof \Illuminate\Database\Eloquent\Collection 
+                        ? $media->sortBy('order')->first() 
+                        : null;
+                    
+                    $mediaLink = null;
+                    if ($primaryMedia && $primaryMedia->path_file_name) {
+                        $mediaLink = $primaryMedia->getS3PublicUrl($primaryMedia->path_file_name);
+                    }
+                    
+                    return [
+                        'id' => $listing->id,
+                        'title' => $listing->title,
+                        'price' => $listing->price,
+                        'price_currency' => $listing->price_currency,
+                        'formatted_price' => $listing->formatted_price,
+                        'mileage' => $listing->mileage,
+                        'mileage_type' => $listing->mileageType?->name,
+                        'formatted_mileage' => $listing->formatted_mileage,
+                        'views' => $listing->views,
+                        'formatted_views' => $listing->formatted_views,
+                        'media' => $mediaLink,
+                        'seller' => $listing->user ? [
+                            'id' => $listing->user->id,
+                            'name' => $listing->user->display_name ?? $listing->user->full_name,
+                            'profile_picture' => $listing->user->profilePictureMedia?->public_url ?? $listing->user->profilePictureMedia?->path_file_name ?? $listing->user->profile_picture ?? null,
+                            'is_verified' => (bool) $listing->user->is_verified,
+                            'is_dealer' => (bool) $listing->user->is_dealer,
+                        ] : null,
+                    ];
+                });
+                
                 return [
                     'id' => $studio->id,
                     'name' => $studio->name,
@@ -211,7 +245,7 @@ class SubscriptionBasedListingController extends Controller
                         'id' => $studio->city->id,
                         'name' => $studio->city->name,
                     ] : null,
-                    'car_listings' => CarListingResource::collection($studio->carListings),
+                    'car_listings' => $formattedListings,
                     'listings_count' => $studio->carListings->count(),
                 ];
             });
