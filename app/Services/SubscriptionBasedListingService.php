@@ -438,15 +438,12 @@ class SubscriptionBasedListingService
                 $join->on('car_listings.id', '=', 'analytics_views.car_listing_id');
             })
             ->with([
-                'brand:id,name,odoo_id',
-                'carModel:id,name,car_brand_id',
-                'bodyType:id,name',
                 'city:id,name',
+                'mileageType:id,name',
                 'media' => function($mediaQuery) {
                     $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
                         ->orderBy('order');
                 },
-                'studio:id,name,city_id',
                 'user:id,full_name,email',
                 'user.profilePictureMedia' => function($profileQuery) {
                     $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info');

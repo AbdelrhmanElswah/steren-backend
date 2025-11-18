@@ -111,19 +111,18 @@ class SubscriptionBasedListingController extends Controller
                         'mileage' => $listing->mileage,
                         'views' => $listing->views ?? $listing->total_views ?? 0,
                         'formatted_views' => $listing->formatted_views ?? '0 Views',
-                        'brand' => $listing->brand ? ['id' => $listing->brand->id, 'name' => $listing->brand->name] : null,
-                        'car_model' => $listing->carModel ? ['id' => $listing->carModel->id, 'name' => $listing->carModel->name] : null,
-                        'body_type' => $listing->bodyType ? ['id' => $listing->bodyType->id, 'name' => $listing->bodyType->name] : null,
+                        'currency' => $listing->price_currency,
+                        'mileage_unit' => $listing->mileageType?->name,
+                        'is_warranty' => $listing->has_warranty ?? false,
+                        'is_inspected' => $listing->is_inspected ?? false,
+                        'is_verified' => $listing->is_verified ?? false,
                         'city' => $city ? ['id' => $city->id, 'name' => $city->name] : null,
-                        'studio' => $listing->studio ? ['id' => $listing->studio->id, 'name' => $listing->studio->name] : null,
-                        'is_featured' => $listing->is_featured,
                         'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
                         'user' => $listing->user ? [
                             'id' => $listing->user->id,
                             'name' => $listing->user->full_name,
                             'profile_picture' => $profilePictureLink ? ['media_link' => $profilePictureLink] : null,
                         ] : null,
-                        'created_at' => $listing->created_at?->toISOString(),
                     ];
                 })->toArray();
 
