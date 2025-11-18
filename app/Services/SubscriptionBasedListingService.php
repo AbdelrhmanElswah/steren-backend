@@ -204,7 +204,10 @@ class SubscriptionBasedListingService
                     $query->where('status', 'active')
                         ->with([
                             'mileageType:id,name',
-                            'media:id,path_file_name,file_type,info,order'
+                            'media' => function($mediaQuery) {
+                                $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                                    ->orderBy('order');
+                            }
                         ])
                         // Only filter car listings by city if city_id is provided
                         ->when(isset($filters['city_id']), function ($carQuery) use ($filters) {
