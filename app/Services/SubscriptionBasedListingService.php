@@ -198,8 +198,8 @@ class SubscriptionBasedListingService
         $query = DealerStudio::where('is_active', true)
             ->where('is_verified', true)
             ->with([
-                'dealer',
-                'city',
+                'dealer:id,full_name,email',
+                'city:id,name',
                 'carListings' => function ($query) use ($filters) {
                     $query->where('status', 'active')
                         ->with([
