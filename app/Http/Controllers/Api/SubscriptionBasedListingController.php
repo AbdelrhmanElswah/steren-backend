@@ -76,12 +76,15 @@ class SubscriptionBasedListingController extends Controller
                 
                 // Build response directly without using resource (faster, avoids temporary URL generation)
                 $topPicksCollection = $topPicks->map(function ($listing) {
-                    // Get primary media
-                    $mediaLink = null;
-                    $media = $listing->media?->firstWhere('info', 'primary') ?? $listing->media?->first();
-                    if ($media && $media->path_file_name) {
-                        // Use public URL (already optimized, no S3 API calls)
-                        $mediaLink = $media->getS3PublicUrl($media->path_file_name);
+                    // Get all media
+                    $mediaLinks = [];
+                    if ($listing->relationLoaded('media') && $listing->media) {
+                        $mediaLinks = $listing->media->map(function ($media) {
+                            if ($media && $media->path_file_name) {
+                                return $media->getS3PublicUrl($media->path_file_name);
+                            }
+                            return null;
+                        })->filter()->values()->toArray();
                     }
                     
                     // Get user profile picture
@@ -104,7 +107,6 @@ class SubscriptionBasedListingController extends Controller
 
                     return [
                         'id' => $listing->id,
-                        'odoo_id' => $listing->odoo_id,
                         'title' => $listing->title,
                         'price' => $listing->price,
                         'year' => $listing->year,
@@ -117,7 +119,7 @@ class SubscriptionBasedListingController extends Controller
                         'is_inspected' => $listing->is_inspected ?? false,
                         'is_verified' => $listing->is_verified ?? false,
                         'city' => $city ? ['id' => $city->id, 'name' => $city->name] : null,
-                        'media' => $mediaLink,
+                        'media' => $mediaLinks,
                         'user' => $listing->user ? [
                             'id' => $listing->user->id,
                             'name' => $listing->user->full_name,
