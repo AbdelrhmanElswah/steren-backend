@@ -128,11 +128,10 @@ class CarListingRecommendationService
     }
 
     /**
-     * Fetch fallback sponsored listings.
+     * Fetch fallback featured listings (top picks).
      */
     private function getSponsoredFallbackListings(array $excludeIds, int $limit): EloquentCollection
     {
-        // Optimize query with limited column selection and specific media loading
         return CarListing::select('car_listings.*')
             ->with([
                 'brand:id,name,odoo_id',
@@ -153,13 +152,13 @@ class CarListingRecommendationService
                 'cylinder:id,name',
                 'user:id,full_name'
             ])
-            ->where('is_promoted', true)
+            ->where('is_featured', true)
             ->active()
             ->whereNull('sold_at')
             ->when(!empty($excludeIds), function ($query) use ($excludeIds) {
                 $query->whereNotIn('id', $excludeIds);
             })
-            ->orderByDesc('promotion_started_at')
+            ->orderByDesc('featured_at')
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get();
