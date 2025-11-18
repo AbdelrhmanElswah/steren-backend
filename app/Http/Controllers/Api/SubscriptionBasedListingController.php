@@ -117,11 +117,11 @@ class SubscriptionBasedListingController extends Controller
                         'is_inspected' => $listing->is_inspected ?? false,
                         'is_verified' => $listing->is_verified ?? false,
                         'city' => $city ? ['id' => $city->id, 'name' => $city->name] : null,
-                        'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
+                        'media' => $mediaLink,
                         'user' => $listing->user ? [
                             'id' => $listing->user->id,
                             'name' => $listing->user->full_name,
-                            'profile_picture' => $profilePictureLink ? ['media_link' => $profilePictureLink] : null,
+                            'profile_picture' => $profilePictureLink,
                         ] : null,
                     ];
                 })->toArray();
