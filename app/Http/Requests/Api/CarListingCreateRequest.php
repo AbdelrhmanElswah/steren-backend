@@ -39,6 +39,8 @@ class CarListingCreateRequest extends FormRequest
             'car_info.mileage_type' => 'nullable|string|in:KM,Miles',
             'car_info.mileage' => 'required|integer|min:0',
             'car_info.plate_status' => 'nullable|string|max:50',
+            'car_info.damaged_areas' => 'nullable|array',
+            'car_info.damaged_areas.*' => 'nullable',
             'price_currency' => 'required|string|size:3',
             'price' => 'required|numeric|min:0',
             'seller_info' => 'required|array',

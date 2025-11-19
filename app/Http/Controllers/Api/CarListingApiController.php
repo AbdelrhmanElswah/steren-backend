@@ -219,6 +219,7 @@ class CarListingApiController extends Controller
             'mileage_type_id' => $this->getMileageTypeId($carInfo['mileage_type'] ?? 'KM'),
             'mileage' => $carInfo['mileage'],
             'plate_status' => $carInfo['plate_status'] ?? null,
+            'damaged_areas' => $carInfo['damaged_areas'] ?? [],
             'status' => 'pending', // All new listings start as pending until approved by Odoo
             'views' => 0,
             'is_verified' => ($validatedData['seller_info']['type'] ?? '') === 'verified_seller',
@@ -510,6 +511,7 @@ class CarListingApiController extends Controller
                 'mileage' => $carInfo['mileage'],
                 'plate_status' => $carInfo['plate_status'] ?? '',
                 'trim' => $carInfo['trim'] ?? '',
+                'damaged_areas' => $carInfo['damaged_areas'] ?? [],
             ],
             'price_currency' => $validatedData['price_currency'],
             'price' => $validatedData['price'],
@@ -1253,6 +1255,7 @@ class CarListingApiController extends Controller
             'mileage_type_id' => $data['mileage_type_id'] ?? null,
             'mileage' => $data['mileage'],
             'plate_status' => $data['plate_status'] ?? null,
+            'damaged_areas' => $data['damaged_areas'] ?? [],
             'doors' => $data['doors'] ?? null,
             'trim' => $data['trim'] ?? null,
             'origin_country' => $data['origin_country'] ?? $normalizedGccImport ?? null,

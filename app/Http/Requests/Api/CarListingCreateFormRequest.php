@@ -41,6 +41,8 @@ class CarListingCreateFormRequest extends FormRequest
             'mileage_type_id' => 'nullable|integer|exists:mileage_types,id',
             'mileage' => 'required|integer|min:0',
             'plate_status' => 'nullable|string|max:50',
+            'damaged_areas' => 'nullable|array',
+            'damaged_areas.*' => 'nullable',
             'doors' => 'nullable|integer|min:2|max:6',
             'trim' => 'nullable|string|max:100',
             'origin_country' => 'nullable|string|max:100',

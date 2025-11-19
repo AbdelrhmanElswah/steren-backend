@@ -499,6 +499,7 @@ class CarListingController extends Controller
                 'is_featured' => $listing->is_featured,
                 'is_new_arrival' => $listing->is_new_arrival,
                 'description' => $listing->description,
+                'damaged_areas' => $listing->damaged_areas ?? [],
                 'features' => $listing->features ?? [],
                 'specifications' => $listing->specifications ?? [],
                 'sold_at' => $listing->sold_at,
