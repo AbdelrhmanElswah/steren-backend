@@ -422,12 +422,18 @@ class CarListingController extends Controller
                 // Specifications relationship not properly loaded or is not a collection
             }
 
-            // Format media to return only media_link
-            $formattedMedia = $listing->media->map(function ($media) {
-                return [
-                    'media_link' => $media->media_link ?? $media->getS3TemporaryUrl($media->path_file_name)
-                ];
-            })->values();
+            // Format media to return only media_link (use public URL for performance - no S3 API calls)
+            $formattedMedia = [];
+            if ($listing->relationLoaded('media') && $listing->media) {
+                $formattedMedia = $listing->media->map(function ($media) {
+                    if ($media && $media->path_file_name) {
+                        return [
+                            'media_link' => $media->getS3PublicUrl($media->path_file_name)
+                        ];
+                    }
+                    return null;
+                })->filter()->values()->toArray();
+            }
 
             // Format user to return only full_name, phone, and media
             $formattedUser = null;
@@ -439,10 +445,13 @@ class CarListingController extends Controller
                         : collect([$listing->user->media]);
                     
                     $userMediaArray = $userMediaCollection->map(function ($media) {
-                        return [
-                            'media_link' => $media->media_link ?? $media->getS3TemporaryUrl($media->path_file_name)
-                        ];
-                    })->values()->toArray();
+                        if ($media && $media->path_file_name) {
+                            return [
+                                'media_link' => $media->getS3PublicUrl($media->path_file_name)
+                            ];
+                        }
+                        return null;
+                    })->filter()->values()->toArray();
                 }
                 
                 $formattedUser = [

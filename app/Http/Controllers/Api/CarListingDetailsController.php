@@ -307,8 +307,21 @@ class CarListingDetailsController extends Controller
                 'warranty_status' => $listing->warrantyStatus,
                 'user' => $listing->user,
                 
-                // Media
-                'media' => $listing->media,
+                // Media (formatted for performance - use public URLs to avoid S3 API calls)
+                'media' => $listing->relationLoaded('media') && $listing->media 
+                    ? $listing->media->map(function ($media) {
+                        if ($media && $media->path_file_name) {
+                            return [
+                                'id' => $media->id,
+                                'media_link' => $media->getS3PublicUrl($media->path_file_name),
+                                'file_type' => $media->file_type,
+                                'info' => $media->info,
+                                'order' => $media->order,
+                            ];
+                        }
+                        return null;
+                    })->filter()->values()
+                    : [],
                 
                 // Features and specifications
                 'features_by_category' => $featuresByCategory,
@@ -400,45 +413,103 @@ class CarListingDetailsController extends Controller
                 'activeBoosts'
             ])->findOrFail($id);
 
-            // Group media by type
-            $mediaByType = $listing->media->groupBy('media_type')->map(function ($media) {
-                return $media->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-                        'file_name' => $item->file_name,
-                        'file_path' => $item->file_path,
-                        'file_url' => $item->file_url,
-                        'file_type' => $item->file_type,
-                        'media_type' => $item->media_type,
-                        'file_size' => $item->file_size,
-                        'mime_type' => $item->mime_type,
-                        'is_primary' => $item->is_primary,
-                        'order' => $item->order,
-                        'alt_text' => $item->alt_text,
-                        'caption' => $item->caption,
-                        'created_at' => $item->created_at,
-                        'updated_at' => $item->updated_at,
-                    ];
+            // Group media by type (optimized - use public URLs to avoid S3 API calls)
+            $mediaByType = collect();
+            if ($listing->relationLoaded('media') && $listing->media) {
+                $mediaByType = $listing->media->groupBy('info')->map(function ($media) {
+                    return $media->map(function ($item) {
+                        if ($item && $item->path_file_name) {
+                            return [
+                                'id' => $item->id,
+                                'path_file_name' => $item->path_file_name,
+                                'file_url' => $item->getS3PublicUrl($item->path_file_name),
+                                'file_type' => $item->file_type,
+                                'info' => $item->info,
+                                'order' => $item->order ?? 0,
+                                'created_at' => $item->created_at,
+                                'updated_at' => $item->updated_at,
+                            ];
+                        }
+                        return null;
+                    })->filter();
                 });
-            });
+            }
 
-            // Get primary media
-            $primaryMedia = $listing->media->where('is_primary', true)->first();
+            // Get primary media (first media item ordered by order)
+            $primaryMedia = null;
+            if ($listing->relationLoaded('media') && $listing->media) {
+                $primaryMediaItem = $listing->media->sortBy('order')->first();
+                if ($primaryMediaItem && $primaryMediaItem->path_file_name) {
+                    $primaryMedia = [
+                        'id' => $primaryMediaItem->id,
+                        'path_file_name' => $primaryMediaItem->path_file_name,
+                        'file_url' => $primaryMediaItem->getS3PublicUrl($primaryMediaItem->path_file_name),
+                        'file_type' => $primaryMediaItem->file_type,
+                        'info' => $primaryMediaItem->info,
+                        'order' => $primaryMediaItem->order ?? 0,
+                    ];
+                }
+            }
             
-            // Get all images
-            $images = $listing->media->filter(function ($media) {
-                return str_starts_with($media->file_type, 'image/');
-            });
+            // Get all images (optimized - format manually to avoid S3 API calls)
+            $images = collect();
+            if ($listing->relationLoaded('media') && $listing->media) {
+                $images = $listing->media->filter(function ($media) {
+                    return $media && $media->file_type && str_starts_with($media->file_type, 'image/');
+                })->map(function ($media) {
+                    if ($media && $media->path_file_name) {
+                        return [
+                            'id' => $media->id,
+                            'path_file_name' => $media->path_file_name,
+                            'file_url' => $media->getS3PublicUrl($media->path_file_name),
+                            'file_type' => $media->file_type,
+                            'info' => $media->info,
+                            'order' => $media->order ?? 0,
+                        ];
+                    }
+                    return null;
+                })->filter()->values();
+            }
             
-            // Get all videos
-            $videos = $listing->media->filter(function ($media) {
-                return str_starts_with($media->file_type, 'video/');
-            });
+            // Get all videos (optimized - format manually to avoid S3 API calls)
+            $videos = collect();
+            if ($listing->relationLoaded('media') && $listing->media) {
+                $videos = $listing->media->filter(function ($media) {
+                    return $media && $media->file_type && str_starts_with($media->file_type, 'video/');
+                })->map(function ($media) {
+                    if ($media && $media->path_file_name) {
+                        return [
+                            'id' => $media->id,
+                            'path_file_name' => $media->path_file_name,
+                            'file_url' => $media->getS3PublicUrl($media->path_file_name),
+                            'file_type' => $media->file_type,
+                            'info' => $media->info,
+                            'order' => $media->order ?? 0,
+                        ];
+                    }
+                    return null;
+                })->filter()->values();
+            }
             
-            // Get all documents
-            $documents = $listing->media->filter(function ($media) {
-                return str_starts_with($media->file_type, 'application/');
-            });
+            // Get all documents (optimized - format manually to avoid S3 API calls)
+            $documents = collect();
+            if ($listing->relationLoaded('media') && $listing->media) {
+                $documents = $listing->media->filter(function ($media) {
+                    return $media && $media->file_type && str_starts_with($media->file_type, 'application/');
+                })->map(function ($media) {
+                    if ($media && $media->path_file_name) {
+                        return [
+                            'id' => $media->id,
+                            'path_file_name' => $media->path_file_name,
+                            'file_url' => $media->getS3PublicUrl($media->path_file_name),
+                            'file_type' => $media->file_type,
+                            'info' => $media->info,
+                            'order' => $media->order ?? 0,
+                        ];
+                    }
+                    return null;
+                })->filter()->values();
+            }
 
             // Group features by category
             $featuresByCategory = $listing->features->groupBy('category')->map(function ($features) {
@@ -560,15 +631,29 @@ class CarListingDetailsController extends Controller
                 'user' => $listing->user,
                 'status' => $listing->status,
                 
-                // Media information
+                // Media information (formatted for performance - use public URLs to avoid S3 API calls)
                 'media' => [
-                    'all_media' => $listing->media,
+                    'all_media' => $listing->relationLoaded('media') && $listing->media 
+                        ? $listing->media->map(function ($media) {
+                            if ($media && $media->path_file_name) {
+                                return [
+                                    'id' => $media->id,
+                                    'path_file_name' => $media->path_file_name,
+                                    'file_url' => $media->getS3PublicUrl($media->path_file_name),
+                                    'file_type' => $media->file_type,
+                                    'info' => $media->info,
+                                    'order' => $media->order ?? 0,
+                                ];
+                            }
+                            return null;
+                        })->filter()->values()
+                        : [],
                     'media_by_type' => $mediaByType,
                     'primary_media' => $primaryMedia,
                     'images' => $images,
                     'videos' => $videos,
                     'documents' => $documents,
-                    'total_media_count' => $listing->media->count(),
+                    'total_media_count' => $listing->relationLoaded('media') ? $listing->media->count() : 0,
                     'image_count' => $images->count(),
                     'video_count' => $videos->count(),
                     'document_count' => $documents->count(),
