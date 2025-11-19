@@ -118,6 +118,7 @@ class SubscriptionBasedListingController extends Controller
                         'is_warranty' => $listing->has_warranty ?? false,
                         'is_inspected' => $listing->is_inspected ?? false,
                         'is_verified' => $listing->is_verified ?? false,
+                        'gcc_import' => $listing->gcc_import,
                         'city' => $city ? ['id' => $city->id, 'name' => $city->name] : null,
                         'media' => $mediaLinks,
                         'user' => $listing->user ? [
@@ -198,7 +199,10 @@ class SubscriptionBasedListingController extends Controller
             $studios = $this->listingService->getAllStudios($filters);
 
             // Format studios with their listings
-            $formattedStudios = $studios->map(function ($studio) {
+            // Filter out studios with no car listings (safety check)
+            $formattedStudios = $studios->filter(function ($studio) {
+                return $studio->carListings && $studio->carListings->count() > 0;
+            })->map(function ($studio) {
                 // Format car listings with only required fields
                 $formattedListings = $studio->carListings->map(function ($listing) {
                     $media = $listing->relationLoaded('media') ? $listing->media : null;
@@ -222,6 +226,7 @@ class SubscriptionBasedListingController extends Controller
                         'formatted_mileage' => $listing->formatted_mileage,
                         'views' => $listing->views,
                         'formatted_views' => $listing->formatted_views,
+                        'gcc_import' => $listing->gcc_import,
                         'media' => $mediaLink,
                     ];
                 });

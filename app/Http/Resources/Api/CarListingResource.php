@@ -30,6 +30,7 @@ class CarListingResource extends JsonResource
             'mileage_type' => $this->whenLoaded('mileageType', fn() => $this->mileageType?->name),
             'formatted_mileage' => $this->formatted_mileage,
             'origin_country' => $this->origin_country,
+            'gcc_import' => $this->gcc_import,
             'has_warranty' => $this->has_warranty,
             'is_inspected' => $this->is_inspected,
             'is_verified' => $this->is_verified,

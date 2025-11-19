@@ -89,6 +89,7 @@ class StudioListingService
                 'price' => $listing->price,
                 'year' => $listing->year,
                 'mileage' => $listing->mileage,
+                'gcc_import' => $listing->gcc_import,
                 'brand' => $listing->brand ? ['id' => $listing->brand->id, 'name' => $listing->brand->name] : null,
                 'car_model' => $listing->carModel ? ['id' => $listing->carModel->id, 'name' => $listing->carModel->name] : null,
                 'city' => $listing->city ? ['id' => $listing->city->id, 'name' => $listing->city->name] : null,

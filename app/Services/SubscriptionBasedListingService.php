@@ -229,6 +229,17 @@ class SubscriptionBasedListingService
             $query->where('is_verified', $filters['verified_only']);
         }
 
+        // Only return studios that have at least one active car listing matching the filters
+        // This prevents returning studios with empty car_listings
+        $query->whereHas('carListings', function ($carQuery) use ($filters) {
+            $carQuery->where('status', 'active');
+            
+            // Apply city filter to the whereHas query if city_id is provided
+            if (isset($filters['city_id'])) {
+                $this->applyCityFilter($carQuery, (int) $filters['city_id']);
+            }
+        });
+
         // Sort options
         if (isset($filters['sort_by'])) {
             switch ($filters['sort_by']) {

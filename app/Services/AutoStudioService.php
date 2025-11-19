@@ -68,19 +68,20 @@ class AutoStudioService
 
     /**
      * Get or create default studio for dealer
+     * Checks for any active studio first, then creates "Default Studio" if none exists
      */
     protected function getOrCreateDefaultStudio(User $user): ?DealerStudio
     {
-        // Check if dealer already has a default studio
-        $defaultStudio = DealerStudio::where('dealer_id', $user->id)
-            ->where('name', 'Default Studio')
+        // Check if dealer already has any active studio (not just "Default Studio")
+        $existingStudio = DealerStudio::where('dealer_id', $user->id)
+            ->where('is_active', true)
             ->first();
 
-        if ($defaultStudio) {
-            return $defaultStudio;
+        if ($existingStudio) {
+            return $existingStudio;
         }
 
-        // Create default studio
+        // Create default studio only if no active studio exists
         return DealerStudio::create([
             'dealer_id' => $user->id,
             'name' => 'Default Studio',

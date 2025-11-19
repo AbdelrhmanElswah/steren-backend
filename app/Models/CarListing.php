@@ -389,17 +389,28 @@ class CarListing extends Model
 
     /**
      * Get full title for this car listing
+     * Checks if title already contains year and brand to avoid duplication
      */
     public function getFullTitleAttribute()
     {
         $title = $this->title;
+        $brandName = $this->brand?->name;
+        $year = $this->year;
         
-        if ($this->brand) {
-            $title = $this->brand->name . ' ' . $title;
+        // Check if title already starts with the year
+        $titleStartsWithYear = $year && str_starts_with(trim($title), (string) $year);
+        
+        // Check if title already contains the brand name
+        $titleContainsBrand = $brandName && stripos($title, $brandName) !== false;
+        
+        // Only prepend year if it's not already at the start
+        if ($year && !$titleStartsWithYear) {
+            $title = $year . ' ' . $title;
         }
         
-        if ($this->year) {
-            $title = $this->year . ' ' . $title;
+        // Only prepend brand if it's not already in the title
+        if ($brandName && !$titleContainsBrand) {
+            $title = $brandName . ' ' . $title;
         }
         
         return $title;
