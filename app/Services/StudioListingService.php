@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Http\Resources\Api\CarListingResource;
 use App\Models\CarListing;
 use App\Models\DealerStudio;
 use Illuminate\Database\Eloquent\Collection;
@@ -45,11 +44,11 @@ class StudioListingService
                 ],
                 'new' => [
                     'count' => $newListings->count(),
-                    'listings' => CarListingResource::collection($newListings)->collection, // Keep old format for new cars
+                    'listings' => $this->formatListings($newListings), // Use standardized format for consistency
                 ],
                 'used' => [
                     'count' => $usedListings->count(),
-                    'listings' => $this->formatListings($usedListings), // Use new standardized format for used cars
+                    'listings' => $this->formatListings($usedListings), // Use standardized format for used cars
                 ],
             ];
         });

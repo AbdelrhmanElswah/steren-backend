@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Http\Resources\Api\CarListingResource;
 use App\Models\CarBrand;
 use App\Models\CarListing;
 use Illuminate\Database\Eloquent\Collection;
@@ -40,11 +39,11 @@ class CarBrandListingService
             ],
             'new' => [
                 'count' => $newListings->count(),
-                'listings' => CarListingResource::collection($newListings)->collection, // Keep old format for new cars
+                'listings' => $this->formatter->formatListings($newListings), // Use standardized format for consistency
             ],
             'used' => [
                 'count' => $usedListings->count(),
-                'listings' => $this->formatter->formatListings($usedListings), // Use new standardized format for used cars
+                'listings' => $this->formatter->formatListings($usedListings), // Use standardized format for used cars
             ],
         ];
     }
