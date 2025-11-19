@@ -103,10 +103,10 @@ class AnalyticsTrackingController extends Controller
             // Track the metric for the car listing
             CarListingAnalytics::incrementMetric($carListingId, $metricType, $additionalData);
 
-            // If user is authenticated, also track in user analytics
-            if (auth()->check()) {
-                $user = auth()->user();
-                UserAnalytics::incrementMetric($user->id, $metricType, $additionalData);
+            // Track in user analytics for the listing owner (not the viewer)
+            // This ensures the listing owner sees analytics for their listings
+            if ($carListing->user_id) {
+                UserAnalytics::incrementMetric($carListing->user_id, $metricType, $additionalData);
             }
 
             // Get updated analytics summary
@@ -168,8 +168,9 @@ class AnalyticsTrackingController extends Controller
                 for ($i = 0; $i < $count; $i++) {
                     CarListingAnalytics::incrementMetric($carListingId, $metricType, $additionalData);
                     
-                    if (auth()->check()) {
-                        UserAnalytics::incrementMetric(auth()->id(), $metricType, $additionalData);
+                    // Track in user analytics for the listing owner (not the viewer)
+                    if ($carListing->user_id) {
+                        UserAnalytics::incrementMetric($carListing->user_id, $metricType, $additionalData);
                     }
                 }
 

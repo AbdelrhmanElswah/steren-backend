@@ -35,26 +35,31 @@ class AnalyticsController extends Controller
             $startDate = $this->getStartDate($period);
             $endDate = now()->toDateString();
             
-            // Get analytics data
-            $analytics = UserAnalytics::where('user_id', $user->id)
+            // Get user's car listing IDs
+            $userListingIds = $user->carListings()->pluck('id');
+            
+            // Aggregate analytics from car_listing_analytics for user's listings
+            // This uses the existing data in car_listing_analytics table
+            $analyticsQuery = \App\Models\CarListingAnalytics::whereIn('car_listing_id', $userListingIds)
                 ->when($startDate, function ($query) use ($startDate) {
                     return $query->where('date', '>=', $startDate);
-                })
-                ->get()
-                ->groupBy('metric_type');
-
-            // Calculate totals
+                });
+            
+            // Calculate totals by aggregating from car_listing_analytics
             $summary = [
-                'total_listed_cars' => $user->total_listings,
+                'total_listed_cars' => $user->carListings()->count(),
                 'total_active_cars' => $user->carListings()->where('status', 'active')->count(),
-                'total_views' => $analytics->get('views', collect())->sum('metric_value'),
-                'total_shares' => $analytics->get('shares', collect())->sum('metric_value'),
-                'total_call_taps' => $analytics->get('call_taps', collect())->sum('metric_value'),
-                'total_whatsapp_clicks' => $analytics->get('whatsapp_clicks', collect())->sum('metric_value'),
-                'total_sms' => $analytics->get('sms', collect())->sum('metric_value'),
-                'total_email' => $analytics->get('email', collect())->sum('metric_value'),
-                'total_watchlist_saved' => $analytics->get('watchlist_saved', collect())->sum('metric_value'),
+                'total_views' => (clone $analyticsQuery)->where('metric_type', 'views')->sum('metric_value') ?? 0,
+                'total_shares' => (clone $analyticsQuery)->where('metric_type', 'shares')->sum('metric_value') ?? 0,
+                'total_call_taps' => (clone $analyticsQuery)->where('metric_type', 'call_taps')->sum('metric_value') ?? 0,
+                'total_whatsapp_clicks' => (clone $analyticsQuery)->where('metric_type', 'whatsapp_clicks')->sum('metric_value') ?? 0,
+                'total_sms' => (clone $analyticsQuery)->where('metric_type', 'sms')->sum('metric_value') ?? 0,
+                'total_email' => (clone $analyticsQuery)->where('metric_type', 'email')->sum('metric_value') ?? 0,
+                'total_watchlist_saved' => (clone $analyticsQuery)->where('metric_type', 'watchlist_saves')->sum('metric_value') ?? 0,
             ];
+            
+            // Get analytics data grouped by metric_type for daily_data
+            $analytics = (clone $analyticsQuery)->get()->groupBy('metric_type');
 
             // Get recently added cars
             $recentlyAdded = $user->carListings()
