@@ -9,6 +9,13 @@ use Illuminate\Database\Eloquent\Collection;
 
 class CarBrandListingService
 {
+    protected CarListingFormatterService $formatter;
+
+    public function __construct(CarListingFormatterService $formatter)
+    {
+        $this->formatter = $formatter;
+    }
+
     /**
      * Get listings for a brand grouped by condition.
      *
@@ -33,27 +40,41 @@ class CarBrandListingService
             ],
             'new' => [
                 'count' => $newListings->count(),
-                'listings' => CarListingResource::collection($newListings)->collection,
+                'listings' => CarListingResource::collection($newListings)->collection, // Keep old format for new cars
             ],
             'used' => [
                 'count' => $usedListings->count(),
-                'listings' => CarListingResource::collection($usedListings)->collection,
+                'listings' => $this->formatter->formatListings($usedListings), // Use new standardized format for used cars
             ],
         ];
     }
 
     private function buildBaseQuery(int $brandId)
     {
+        // Load all relationships needed for standardized format
         return CarListing::with([
-            'brand',
-            'carModel',
-            'city',
-            'carCondition',
+            'brand:id,name,odoo_id',
+            'carModel:id,name,car_brand_id',
+            'bodyType:id,name',
+            'city:id,name,odoo_id',
+            'carCondition:id,name',
+            'fuelType:id,name',
+            'transmission:id,name',
+            'exteriorColor:id,name',
+            'driveType:id,name',
+            'cylinder:id,name',
             'media' => function ($query) {
-                $query->orderBy('order')
-                    ->orderBy('created_at');
+                $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                    ->orderBy('order');
+            },
+            'inspection' => function($inspectionQuery) {
+                $inspectionQuery->select('id', 'car_listing_id', 'right_side', 'left_side', 'roof', 'front', 'back');
             },
             'user:id,full_name',
+            'user.profilePictureMedia' => function($profileQuery) {
+                $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info')
+                    ->where('info', 'profile_picture');
+            }
         ])
         ->where('car_brand_id', $brandId)
         ->where('status', 'active')

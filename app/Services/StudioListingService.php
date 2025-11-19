@@ -9,6 +9,12 @@ use Illuminate\Database\Eloquent\Collection;
 
 class StudioListingService
 {
+    protected CarListingFormatterService $formatter;
+
+    public function __construct(CarListingFormatterService $formatter)
+    {
+        $this->formatter = $formatter;
+    }
     /**
      * Get listings for a studio grouped by condition.
      *
@@ -39,11 +45,11 @@ class StudioListingService
                 ],
                 'new' => [
                     'count' => $newListings->count(),
-                    'listings' => $this->formatListings($newListings),
+                    'listings' => CarListingResource::collection($newListings)->collection, // Keep old format for new cars
                 ],
                 'used' => [
                     'count' => $usedListings->count(),
-                    'listings' => $this->formatListings($usedListings),
+                    'listings' => $this->formatListings($usedListings), // Use new standardized format for used cars
                 ],
             ];
         });
@@ -52,17 +58,31 @@ class StudioListingService
     private function buildBaseQuery(int $studioId)
     {
         // Optimize query with limited column selection and specific media loading
+        // Load all relationships needed for standardized format
         return CarListing::select('car_listings.*')
             ->with([
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
-                'city:id,name',
+                'bodyType:id,name',
+                'city:id,name,odoo_id',
                 'carCondition:id,name',
+                'fuelType:id,name',
+                'transmission:id,name',
+                'exteriorColor:id,name',
+                'driveType:id,name',
+                'cylinder:id,name',
                 'media' => function ($query) {
                     $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
                         ->orderBy('order');
                 },
+                'inspection' => function($inspectionQuery) {
+                    $inspectionQuery->select('id', 'car_listing_id', 'right_side', 'left_side', 'roof', 'front', 'back');
+                },
                 'user:id,full_name',
+                'user.profilePictureMedia' => function($profileQuery) {
+                    $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info')
+                        ->where('info', 'profile_picture');
+                }
             ])
             ->where('studio_id', $studioId)
             ->where('status', 'active')
@@ -70,34 +90,11 @@ class StudioListingService
     }
     
     /**
-     * Format listings directly without using resources
+     * Format listings using shared formatter to match /api/car-listings format
      */
     private function formatListings($listings): array
     {
-        return $listings->map(function ($listing) {
-            $mediaLink = null;
-            $media = $listing->media?->first();
-            if ($media && $media->path_file_name) {
-                // Use public URL (already optimized, no S3 API calls)
-                $mediaLink = $media->getS3PublicUrl($media->path_file_name);
-            }
-
-            return [
-                'id' => $listing->id,
-                'odoo_id' => $listing->odoo_id,
-                'title' => $listing->title,
-                'price' => $listing->price,
-                'year' => $listing->year,
-                'mileage' => $listing->mileage,
-                'gcc_import' => $listing->gcc_import,
-                'brand' => $listing->brand ? ['id' => $listing->brand->id, 'name' => $listing->brand->name] : null,
-                'car_model' => $listing->carModel ? ['id' => $listing->carModel->id, 'name' => $listing->carModel->name] : null,
-                'city' => $listing->city ? ['id' => $listing->city->id, 'name' => $listing->city->name] : null,
-                'car_condition' => $listing->carCondition ? ['id' => $listing->carCondition->id, 'name' => $listing->carCondition->name] : null,
-                'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
-                'created_at' => $listing->created_at?->toISOString(),
-            ];
-        })->toArray();
+        return $this->formatter->formatListings($listings);
     }
 
     private function getNewListings($query): Collection

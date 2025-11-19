@@ -74,64 +74,13 @@ class SubscriptionBasedListingController extends Controller
                 // Always get general top picks (not user-specific)
                 $topPicks = $this->listingService->getGeneralTopPicks($limit, $filters);
                 
-                // Build response directly without using resource (faster, avoids temporary URL generation)
-                $topPicksCollection = $topPicks->map(function ($listing) {
-                    // Get all media
-                    $mediaLinks = [];
-                    if ($listing->relationLoaded('media') && $listing->media) {
-                        $mediaLinks = $listing->media->map(function ($media) {
-                            if ($media && $media->path_file_name) {
-                                return $media->getS3PublicUrl($media->path_file_name);
-                            }
-                            return null;
-                        })->filter()->values()->toArray();
-                    }
-                    
-                    // Get user profile picture
-                    $profilePictureLink = null;
-                    if ($listing->user && $listing->user->relationLoaded('profilePictureMedia')) {
-                        $profileMedia = $listing->user->profilePictureMedia;
-                        if ($profileMedia && $profileMedia->path_file_name) {
-                            $profilePictureLink = $profileMedia->getS3PublicUrl($profileMedia->path_file_name);
-                        }
-                    }
-
-                    // Get city directly from car listing relationship
-                    $city = null;
-                    if ($listing->relationLoaded('city')) {
-                        $city = $listing->city;
-                    } elseif ($listing->city_id) {
-                        // Load city if not already loaded
-                        $city = $listing->city;
-                    }
-
-                    return [
-                        'id' => $listing->id,
-                        'title' => $listing->title,
-                        'price' => $listing->price,
-                        'year' => $listing->year,
-                        'mileage' => $listing->mileage,
-                        'views' => $listing->views ?? $listing->total_views ?? 0,
-                        'formatted_views' => $listing->formatted_views ?? '0 Views',
-                        'currency' => $listing->price_currency,
-                        'mileage_unit' => $listing->mileageType?->name,
-                        'is_warranty' => $listing->has_warranty ?? false,
-                        'is_inspected' => $listing->is_inspected ?? false,
-                        'is_verified' => $listing->is_verified ?? false,
-                        'gcc_import' => $listing->gcc_import,
-                        'city' => $city ? ['id' => $city->id, 'name' => $city->name] : null,
-                        'media' => $mediaLinks,
-                        'user' => $listing->user ? [
-                            'id' => $listing->user->id,
-                            'name' => $listing->user->full_name,
-                            'profile_picture' => $profilePictureLink,
-                        ] : null,
-                    ];
-                })->toArray();
+                // Format listings using shared formatter (matches /api/car-listings format)
+                $formatter = app(\App\Services\CarListingFormatterService::class);
+                $formattedListings = $formatter->formatListings($topPicks);
 
                 return [
-                    'top_picks' => $topPicksCollection,
-                    'count' => count($topPicksCollection),
+                    'top_picks' => $formattedListings,
+                    'count' => count($formattedListings),
                 ];
             });
 

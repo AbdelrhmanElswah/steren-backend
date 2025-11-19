@@ -104,7 +104,7 @@ class SearchController extends Controller
             $results = $this->searchService->searchListings($validated, $page, $perPage);
 
             $data = [
-                'listings' => SearchResultResource::collection($results['listings']),
+                'listings' => $results['listings'], // Already formatted by SearchService
                 'pagination' => [
                     'current_page' => $results['current_page'],
                     'per_page' => $results['per_page'],

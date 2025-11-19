@@ -433,7 +433,7 @@ class SearchService
             $total = (clone $baseQuery)->select('car_listings.id')->distinct()->count('car_listings.id');
 
             // Now build the query with eager loading for actual results
-            // Optimize media loading to only get primary image
+            // Load all relationships needed for standardized format
             $query = CarListing::with([
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
@@ -443,13 +443,20 @@ class SearchService
                     $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
                         ->orderBy('order');
                 },
+                'inspection' => function($inspectionQuery) {
+                    $inspectionQuery->select('id', 'car_listing_id', 'right_side', 'left_side', 'roof', 'front', 'back');
+                },
                 'fuelType:id,name',
                 'transmission:id,name',
                 'exteriorColor:id,name',
                 'driveType:id,name',
                 'cylinder:id,name',
                 'carCondition:id,name',
-                'user:id,full_name'
+                'user:id,full_name',
+                'user.profilePictureMedia' => function($profileQuery) {
+                    $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info')
+                        ->where('info', 'profile_picture');
+                }
             ]);
 
             // Apply the same filters to the eager-loaded query
@@ -461,8 +468,12 @@ class SearchService
                 ->take($perPage)
                 ->get();
 
+            // Format listings using shared formatter (matches /api/car-listings format)
+            $formatter = app(\App\Services\CarListingFormatterService::class);
+            $formattedListings = $formatter->formatListings($listings);
+
             return [
-                'listings' => $listings,
+                'listings' => $formattedListings,
                 'total' => $total,
                 'current_page' => $page,
                 'per_page' => $perPage,

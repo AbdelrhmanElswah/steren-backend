@@ -923,10 +923,8 @@ class CarListingDetailsController extends Controller
                 return $this->carListingRecommendationService->getRecommendations($user, $limit);
             });
 
-            return $this->resourceResponse(
-                new CarListingRecommendationsResource($result),
-                'You may also like listings retrieved successfully'
-            );
+            // Return formatted listings directly (already formatted by service)
+            return $this->successResponse($result, 'You may also like listings retrieved successfully');
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('CarListingDetailsController: Error fetching you may also like', [
                 'message' => $e->getMessage(),

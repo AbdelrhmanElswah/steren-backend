@@ -445,20 +445,33 @@ class SubscriptionBasedListingService
             ->groupBy('car_listing_id');
 
         // Optimize query with limited column selection and specific media loading
+        // Load all relationships needed for standardized format
         $query = CarListing::select('car_listings.*')
             ->leftJoinSub($viewsSubquery, 'analytics_views', function($join) {
                 $join->on('car_listings.id', '=', 'analytics_views.car_listing_id');
             })
             ->with([
-                'city:id,name',
-                'mileageType:id,name',
+                'brand:id,name,odoo_id',
+                'carModel:id,name,car_brand_id',
+                'bodyType:id,name',
+                'city:id,name,odoo_id',
+                'carCondition:id,name',
+                'fuelType:id,name',
+                'transmission:id,name',
+                'exteriorColor:id,name',
+                'driveType:id,name',
+                'cylinder:id,name',
                 'media' => function($mediaQuery) {
                     $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
                         ->orderBy('order');
                 },
-                'user:id,full_name,email',
+                'inspection' => function($inspectionQuery) {
+                    $inspectionQuery->select('id', 'car_listing_id', 'right_side', 'left_side', 'roof', 'front', 'back');
+                },
+                'user:id,full_name',
                 'user.profilePictureMedia' => function($profileQuery) {
-                    $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info');
+                    $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info')
+                        ->where('info', 'profile_picture');
                 }
             ])
             ->where('car_listings.status', 'active')

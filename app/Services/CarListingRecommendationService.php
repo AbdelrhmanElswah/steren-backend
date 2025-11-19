@@ -53,8 +53,22 @@ class CarListingRecommendationService
 
         $recommendations = $this->mergeWithFallbackListings($recommendations, $limit, $primarySource);
 
+        // Format listings using shared formatter
+        // Handle both arrays (from search) and models (from fallback)
+        $formatter = app(\App\Services\CarListingFormatterService::class);
+        $formattedListings = $recommendations->unique(function ($item) {
+            return is_array($item) ? ($item['id'] ?? null) : $item->id;
+        })->take($limit)->map(function ($listing) use ($formatter) {
+            // If it's already an array (from search), return as is
+            if (is_array($listing)) {
+                return $listing;
+            }
+            // If it's a model, format it
+            return $formatter->formatListing($listing);
+        })->values();
+
         return [
-            'listings' => $recommendations->unique('id')->take($limit)->values(),
+            'listings' => $formattedListings,
             'meta' => [
                 'limit' => $limit,
                 'source' => $recommendations->isEmpty() ? 'top_picks' : $primarySource,
@@ -132,25 +146,31 @@ class CarListingRecommendationService
      */
     private function getSponsoredFallbackListings(array $excludeIds, int $limit): EloquentCollection
     {
+        // Load all relationships needed for standardized format
         return CarListing::select('car_listings.*')
             ->with([
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
                 'bodyType:id,name',
                 'city:id,name,odoo_id',
-                'studio:id,name,city_id',
-                'media' => function ($query) {
-                    $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
-                        ->orderBy('order');
-                },
-                'badges:id,name',
                 'carCondition:id,name',
                 'fuelType:id,name',
                 'transmission:id,name',
                 'exteriorColor:id,name',
                 'driveType:id,name',
                 'cylinder:id,name',
-                'user:id,full_name'
+                'media' => function ($query) {
+                    $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                        ->orderBy('order');
+                },
+                'inspection' => function($inspectionQuery) {
+                    $inspectionQuery->select('id', 'car_listing_id', 'right_side', 'left_side', 'roof', 'front', 'back');
+                },
+                'user:id,full_name',
+                'user.profilePictureMedia' => function($profileQuery) {
+                    $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info')
+                        ->where('info', 'profile_picture');
+                }
             ])
             ->where('is_featured', true)
             ->active()
