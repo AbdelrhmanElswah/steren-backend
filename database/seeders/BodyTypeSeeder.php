@@ -39,13 +39,17 @@ class BodyTypeSeeder extends Seeder
                 if (isset($data['result'])) {
                     $this->command->info('Result structure: ' . json_encode(array_keys($data['result'])));
                     
-                    // If there's an error, log it and use fallback
+                    // If there's an error, throw exception
                     if (isset($data['result']['error'])) {
-                        $this->command->error('API Error: ' . $data['result']['error']);
-                        $this->command->info('Error code: ' . ($data['result']['error_code'] ?? 'N/A'));
-                        $this->command->info('Using fallback body types...');
-                        $this->seedDefaultBodyTypes();
-                        return;
+                        $errorMessage = $data['result']['error'];
+                        $errorCode = $data['result']['error_code'] ?? 'N/A';
+                        $this->command->error('API Error: ' . $errorMessage);
+                        $this->command->error('Error code: ' . $errorCode);
+                        Log::error('BodyTypeSeeder: Odoo API returned error', [
+                            'error' => $errorMessage,
+                            'error_code' => $errorCode
+                        ]);
+                        throw new \Exception('Odoo API error: ' . $errorMessage . ' (Code: ' . $errorCode . ')');
                     }
                 }
                 
@@ -88,6 +92,7 @@ class BodyTypeSeeder extends Seeder
                     $this->command->error('Invalid response format from Odoo API');
                     $this->command->info('Full response: ' . json_encode($data));
                     Log::error('BodyTypeSeeder: Invalid response format', ['response' => $data]);
+                    throw new \Exception('Invalid response format from Odoo API. Expected data array but got: ' . json_encode($data));
                 }
             } else {
                 $this->command->error('Failed to fetch body types from Odoo API. Status: ' . $response->status());
@@ -95,6 +100,7 @@ class BodyTypeSeeder extends Seeder
                     'status' => $response->status(),
                     'response' => $response->body()
                 ]);
+                throw new \Exception('Failed to fetch body types from Odoo API. Status: ' . $response->status());
             }
         } catch (\Exception $e) {
             $this->command->error('Error fetching body types: ' . $e->getMessage());
@@ -102,38 +108,8 @@ class BodyTypeSeeder extends Seeder
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
-            $this->command->info('Using fallback body types...');
-            $this->seedDefaultBodyTypes();
+            throw $e;
         }
-    }
-    
-    /**
-     * Seed default body types as fallback when API fails
-     */
-    private function seedDefaultBodyTypes(): void
-    {
-        $defaultBodyTypes = [
-            ['odoo_id' => '1', 'name' => 'Sedan'],
-            ['odoo_id' => '2', 'name' => 'SUV'],
-            ['odoo_id' => '3', 'name' => 'Hatchback'],
-            ['odoo_id' => '4', 'name' => 'Coupe'],
-            ['odoo_id' => '5', 'name' => 'Convertible'],
-            ['odoo_id' => '6', 'name' => 'Wagon'],
-            ['odoo_id' => '7', 'name' => 'Truck'],
-            ['odoo_id' => '8', 'name' => 'Van'],
-            ['odoo_id' => '9', 'name' => 'Minivan'],
-        ];
-        
-        foreach ($defaultBodyTypes as $bodyTypeData) {
-            BodyType::updateOrCreate(
-                ['odoo_id' => $bodyTypeData['odoo_id']],
-                $bodyTypeData
-            );
-            $this->command->info('✓ Seeded default: ' . $bodyTypeData['name']);
-        }
-        
-        $this->command->info('Successfully seeded ' . count($defaultBodyTypes) . ' default body types!');
     }
     
     /**

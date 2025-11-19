@@ -20,18 +20,15 @@ class CarouselSeeder extends Seeder
         $this->command->info('Fetching carousels from Odoo API...');
         
         try {
+            // Use POST request with JSON body (matching CarBrandSeeder pattern)
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-            ])->withBody(
-                json_encode([
-                    'jsonrpc' => '2.0',
-                    'id' => null,
-                    'method' => 'call',
-                    'params' => []
-                ]),
-                'application/json'
-            )->get(config('services.odoo.base_url') . '/api/carousel');
+                'User-Agent' => 'PostmanRuntime/7.48.0',
+            ])->post(config('services.odoo.base_url') . '/api/carousel', [
+                'limit' => 0,
+                'offset' => 0
+            ]);
             
             if ($response->successful()) {
                 $data = $response->json();

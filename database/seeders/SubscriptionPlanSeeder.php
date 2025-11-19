@@ -17,18 +17,15 @@ class SubscriptionPlanSeeder extends Seeder
         $this->command->info('Fetching subscription plans from Odoo API...');
         
         try {
+            // Use POST request with JSON body (matching CarBrandSeeder pattern)
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-            ])->withBody(
-                json_encode([
-                    'jsonrpc' => '2.0',
-                    'id' => null,
-                    'method' => 'call',
-                    'params' => []
-                ]),
-                'application/json'
-            )->get(config('services.odoo.base_url') . '/api/steren/subscription-plans');
+                'User-Agent' => 'PostmanRuntime/7.48.0',
+            ])->post(config('services.odoo.base_url') . '/api/steren/subscription-plans', [
+                'limit' => 0,
+                'offset' => 0
+            ]);
             
             if ($response->successful()) {
                 $data = $response->json();

@@ -18,11 +18,15 @@ class BudgetSeeder extends Seeder
         $this->command->info('Fetching budgets from Odoo API...');
         
         try {
-            // Try simple GET request first (as shown in your example)
+            // Use POST request with JSON body (matching CarBrandSeeder pattern)
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-            ])->get(config('services.odoo.base_url') . '/api/budgets');
+                'User-Agent' => 'PostmanRuntime/7.48.0',
+            ])->post(config('services.odoo.base_url') . '/api/budgets', [
+                'limit' => 0,
+                'offset' => 0
+            ]);
             
             if ($response->successful()) {
                 $data = $response->json();
@@ -72,56 +76,25 @@ class BudgetSeeder extends Seeder
                     $this->command->info("Budgets seeded successfully! (Success: {$successCount}, Skipped: {$skippedCount})");
                 } else {
                     $this->command->error('Invalid response format from Odoo API');
-                    $this->command->warn('Using fallback budgets...');
-                    $this->seedDefaultBudgets();
                     Log::error('BudgetSeeder: Invalid response format', ['response' => $data]);
+                    throw new \Exception('Invalid response format from Odoo API. Expected data array but got: ' . json_encode($data));
                 }
             } else {
                 $this->command->error('Failed to fetch budgets from Odoo API. Status: ' . $response->status());
-                $this->command->warn('Using fallback budgets...');
-                $this->seedDefaultBudgets();
                 Log::error('BudgetSeeder: API request failed', [
                     'status' => $response->status(),
                     'response' => $response->body()
                 ]);
+                throw new \Exception('Failed to fetch budgets from Odoo API. Status: ' . $response->status());
             }
         } catch (\Exception $e) {
             $this->command->error('Error fetching budgets: ' . $e->getMessage());
-            $this->command->warn('Using fallback budgets...');
-            $this->seedDefaultBudgets();
             Log::error('BudgetSeeder: Exception occurred', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+            throw $e;
         }
-    }
-
-    /**
-     * Seed default budgets as fallback
-     */
-    private function seedDefaultBudgets(): void
-    {
-        $budgets = [
-            ['odoo_id' => '1', 'name' => 'Under 10K', 'value' => 10000.00, 'sequence' => 1],
-            ['odoo_id' => '2', 'name' => '10K - 20K', 'value' => 20000.00, 'sequence' => 2],
-            ['odoo_id' => '3', 'name' => '20K - 30K', 'value' => 30000.00, 'sequence' => 3],
-            ['odoo_id' => '4', 'name' => '30K - 50K', 'value' => 50000.00, 'sequence' => 4],
-            ['odoo_id' => '5', 'name' => '50K - 75K', 'value' => 75000.00, 'sequence' => 5],
-            ['odoo_id' => '6', 'name' => '75K - 100K', 'value' => 100000.00, 'sequence' => 6],
-            ['odoo_id' => '7', 'name' => 'Over 100K', 'value' => 999999999.00, 'sequence' => 7],
-        ];
-
-        $count = 0;
-        foreach ($budgets as $budget) {
-            Budget::updateOrCreate(
-                ['odoo_id' => $budget['odoo_id']],
-                array_merge($budget, ['is_active' => true])
-            );
-            $this->command->line("✓ Seeded default: {$budget['name']}");
-            $count++;
-        }
-
-        $this->command->info("Successfully seeded {$count} default budgets!");
     }
 }
 

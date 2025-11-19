@@ -31,18 +31,32 @@ class SyncBudgetsFromOdoo extends Command
         $this->info('Starting budget sync from Odoo...');
 
         try {
-            // Try simple GET request
+            // Use POST request with JSON body (matching CarBrandSeeder pattern)
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-            ])->get(config('services.odoo.base_url') . '/api/budgets');
+                'User-Agent' => 'PostmanRuntime/7.48.0',
+            ])->post(config('services.odoo.base_url') . '/api/budgets', [
+                'limit' => 0,
+                'offset' => 0
+            ]);
 
             if (!$response->successful()) {
                 $this->error('Failed to fetch budgets from Odoo API');
                 $this->error("Status: {$response->status()}");
+                $this->error("Response: {$response->body()}");
+                
+                // Try to parse error response
+                $errorData = $response->json();
+                if ($errorData) {
+                    $this->error("Error details: " . json_encode($errorData, JSON_PRETTY_PRINT));
+                }
+                
                 Log::error('SyncBudgetsFromOdoo: API request failed', [
                     'status' => $response->status(),
-                    'response' => $response->body()
+                    'response' => $response->body(),
+                    'url' => config('services.odoo.base_url') . '/api/budgets',
+                    'headers' => $response->headers()
                 ]);
                 return Command::FAILURE;
             }
