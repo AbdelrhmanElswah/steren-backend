@@ -8,6 +8,8 @@ use App\Models\CarBrand;
 use App\Models\CarModel;
 use App\Models\CarTrim;
 use App\Models\NewsArticle;
+use App\Services\CarBrandListingService;
+use App\Services\StudioListingService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +19,11 @@ use Illuminate\Support\Facades\Cache;
 class CarListingController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(
+        private CarBrandListingService $carBrandListingService,
+        private StudioListingService $studioListingService
+    ) {}
 
     /**
      * Get car listings with filters and sorting
@@ -1390,6 +1397,101 @@ class CarListingController extends Controller
             return $this->successResponse($data, 'Used cars retrieved successfully');
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to retrieve used cars: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get new cars for a specific brand
+     * Returns same structure as /api/car-listings/brand/{id}/condition-groups "new" key
+     */
+    public function getNewCarsByBrand(Request $request, int $brandId): JsonResponse
+    {
+        try {
+            // Verify brand exists
+            $brand = CarBrand::find($brandId);
+            if (!$brand) {
+                return $this->errorResponse('Brand not found', 404);
+            }
+
+            $cacheKey = 'new_cars_brand_' . $brandId . '_' . md5(serialize($request->all()));
+
+            $cachedResult = Cache::get($cacheKey);
+            if ($cachedResult) {
+                return $this->successResponse($cachedResult, 'New cars retrieved from cache');
+            }
+
+            // Get the grouped listings and extract the "new" part
+            $groupedData = $this->carBrandListingService->getListingsGroupedByCondition($brandId);
+            
+            $newData = $groupedData['new'] ?? [
+                'count' => 0,
+                'listings' => []
+            ];
+
+            // Build response matching condition-groups structure
+            $data = [
+                'count' => $newData['count'],
+                'listings' => $newData['listings'],
+                'brand' => $groupedData['brand'] ?? [
+                    'id' => $brand->id,
+                    'name' => $brand->name,
+                ],
+            ];
+
+            Cache::put($cacheKey, $data, 300);
+
+            return $this->successResponse($data, 'New cars retrieved successfully');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve new cars: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get new cars for a specific studio
+     * Returns same structure as /api/car-listings/studio/{id}/condition-groups "new" key
+     */
+    public function getNewCarsByStudio(Request $request, int $studioId): JsonResponse
+    {
+        try {
+            // Verify studio exists and is active
+            $studio = \App\Models\DealerStudio::where('id', $studioId)
+                ->where('is_active', true)
+                ->first();
+
+            if (!$studio) {
+                return $this->errorResponse('Studio not found or inactive', 404);
+            }
+
+            $cacheKey = 'new_cars_studio_' . $studioId . '_' . md5(serialize($request->all()));
+
+            $cachedResult = Cache::get($cacheKey);
+            if ($cachedResult) {
+                return $this->successResponse($cachedResult, 'New cars retrieved from cache');
+            }
+
+            // Get the grouped listings and extract the "new" part
+            $groupedData = $this->studioListingService->getListingsGroupedByCondition($studioId);
+            
+            $newData = $groupedData['new'] ?? [
+                'count' => 0,
+                'listings' => []
+            ];
+
+            // Build response matching condition-groups structure
+            $data = [
+                'count' => $newData['count'],
+                'listings' => $newData['listings'],
+                'studio' => $groupedData['studio'] ?? [
+                    'id' => $studio->id,
+                    'name' => $studio->name,
+                ],
+            ];
+
+            Cache::put($cacheKey, $data, 300);
+
+            return $this->successResponse($data, 'New cars retrieved successfully');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve new cars: ' . $e->getMessage(), 500);
         }
     }
 

@@ -217,6 +217,10 @@ Route::prefix('car-listings')->group(function () {
     Route::get('/brand/{brandId}/used', [App\Http\Controllers\Data\CarListingController::class, 'getUsedCarsByBrand']);
     Route::get('/studio/{studioId}/used', [App\Http\Controllers\Data\CarListingController::class, 'getUsedCarsByStudio']);
 
+    // New cars endpoints (matching condition-groups structure)
+    Route::get('/brand/{brandId}/new', [App\Http\Controllers\Data\CarListingController::class, 'getNewCarsByBrand']);
+    Route::get('/studio/{studioId}/new', [App\Http\Controllers\Data\CarListingController::class, 'getNewCarsByStudio']);
+
     Route::get('/filter-options', [App\Http\Controllers\Data\CarListingController::class, 'getFilterOptions']);
     Route::get('/trims/{modelId}', [App\Http\Controllers\Data\CarListingController::class, 'getCarTrims']);
     Route::get('/news', [App\Http\Controllers\Data\CarListingController::class, 'getNewsArticles']);
