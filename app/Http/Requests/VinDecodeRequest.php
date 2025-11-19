@@ -31,6 +31,7 @@ class VinDecodeRequest extends FormRequest
             ],
             'cache' => 'sometimes|boolean',
             'save_to_database' => 'sometimes|boolean',
+            'debug' => 'sometimes|boolean',
         ];
     }
 

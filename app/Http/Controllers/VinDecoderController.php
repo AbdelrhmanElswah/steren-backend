@@ -148,6 +148,7 @@ class VinDecoderController extends Controller
         try {
             $vin = $request->validated()['vin'];
             $cache = $request->validated()['cache'] ?? true;
+            $debug = $request->validated()['debug'] ?? false;
 
             // Get the full VIN decode data
             $result = $this->vehicleDatabasesService->decodeVin($vin, $cache);
@@ -194,6 +195,51 @@ class VinDecoderController extends Controller
                 'api_version' => 'v2',
                 'endpoint' => 'advanced-vin-decode/v2'
             ]);
+
+            // Add debug data if requested - shows raw API response for verification
+            if ($debug && $rawResult) {
+                $rawData = $rawResult['data'] ?? $rawResult;
+                $responseData['_debug'] = [
+                    'raw_api_response' => $rawResult,
+                    'extracted_values' => [
+                        'horsepower' => [
+                            'extracted' => $filteredData['horsepower'] ?? null,
+                            'source_path' => 'dimensions[0].engine[0].horsepower[] (unit: hp)',
+                            'raw_value' => $rawData['dimensions'][0]['engine'][0]['horsepower'] ?? null,
+                        ],
+                        'torque' => [
+                            'extracted' => $filteredData['torque'] ?? null,
+                            'source_path' => 'dimensions[0].engine[0].torque[] (unit: lb.ft)',
+                            'raw_value' => $rawData['dimensions'][0]['engine'][0]['torque'] ?? null,
+                        ],
+                        'transmission_gears' => [
+                            'extracted' => $filteredData['engine']['transmission_gears'] ?? null,
+                            'source_path' => 'transmission.number_of_speeds',
+                            'raw_value' => $rawData['transmission']['number_of_speeds'] ?? null,
+                        ],
+                        'engine_size' => [
+                            'extracted' => $filteredData['engine']['engine_size'] ?? null,
+                            'source_path' => 'dimensions[0].engine[0].engine_size[] or specifications[0].engine.displacement',
+                            'raw_value' => $rawData['dimensions'][0]['engine'][0]['engine_size'] ?? null,
+                        ],
+                        'length' => [
+                            'extracted' => $filteredData['length'] ?? null,
+                            'source_path' => 'dimensions[0].exterior[0].overall_length[0].value (mm)',
+                            'raw_value' => $rawData['dimensions'][0]['exterior'][0]['overall_length'] ?? null,
+                        ],
+                        'width' => [
+                            'extracted' => $filteredData['width'] ?? null,
+                            'source_path' => 'dimensions[0].exterior[0].overall_width[0].value (mm)',
+                            'raw_value' => $rawData['dimensions'][0]['exterior'][0]['overall_width'] ?? null,
+                        ],
+                        'height' => [
+                            'extracted' => $filteredData['height'] ?? null,
+                            'source_path' => 'dimensions[0].exterior[0].overall_height[0].value (mm)',
+                            'raw_value' => $rawData['dimensions'][0]['exterior'][0]['overall_height'] ?? null,
+                        ],
+                    ],
+                ];
+            }
 
             return $this->successResponse($responseData, 'VIN decoded and filtered for listing creation (using v2 endpoint)');
 
@@ -484,6 +530,52 @@ class VinDecoderController extends Controller
                 'api_version' => 'v2',
                 'endpoint' => 'advanced-vin-decode/v2'
             ]);
+
+            // Add debug data if requested - shows raw API response for verification
+            $debug = $request->input('debug', false);
+            if ($debug && $rawResult) {
+                $rawData = $rawResult['data'] ?? $rawResult;
+                $responseData['_debug'] = [
+                    'raw_api_response' => $rawResult,
+                    'extracted_values' => [
+                        'horsepower' => [
+                            'extracted' => $filteredData['horsepower'] ?? null,
+                            'source_path' => 'dimensions[0].engine[0].horsepower[] (unit: hp)',
+                            'raw_value' => $rawData['dimensions'][0]['engine'][0]['horsepower'] ?? null,
+                        ],
+                        'torque' => [
+                            'extracted' => $filteredData['torque'] ?? null,
+                            'source_path' => 'dimensions[0].engine[0].torque[] (unit: lb.ft)',
+                            'raw_value' => $rawData['dimensions'][0]['engine'][0]['torque'] ?? null,
+                        ],
+                        'transmission_gears' => [
+                            'extracted' => $filteredData['engine']['transmission_gears'] ?? null,
+                            'source_path' => 'transmission.number_of_speeds',
+                            'raw_value' => $rawData['transmission']['number_of_speeds'] ?? null,
+                        ],
+                        'engine_size' => [
+                            'extracted' => $filteredData['engine']['engine_size'] ?? null,
+                            'source_path' => 'dimensions[0].engine[0].engine_size[] or specifications[0].engine.displacement',
+                            'raw_value' => $rawData['dimensions'][0]['engine'][0]['engine_size'] ?? null,
+                        ],
+                        'length' => [
+                            'extracted' => $filteredData['length'] ?? null,
+                            'source_path' => 'dimensions[0].exterior[0].overall_length[0].value (mm)',
+                            'raw_value' => $rawData['dimensions'][0]['exterior'][0]['overall_length'] ?? null,
+                        ],
+                        'width' => [
+                            'extracted' => $filteredData['width'] ?? null,
+                            'source_path' => 'dimensions[0].exterior[0].overall_width[0].value (mm)',
+                            'raw_value' => $rawData['dimensions'][0]['exterior'][0]['overall_width'] ?? null,
+                        ],
+                        'height' => [
+                            'extracted' => $filteredData['height'] ?? null,
+                            'source_path' => 'dimensions[0].exterior[0].overall_height[0].value (mm)',
+                            'raw_value' => $rawData['dimensions'][0]['exterior'][0]['overall_height'] ?? null,
+                        ],
+                    ],
+                ];
+            }
 
             return $this->successResponse($responseData, 'VIN extracted from image and decoded successfully (using v2 endpoint)');
 
