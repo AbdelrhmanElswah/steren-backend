@@ -72,6 +72,7 @@ class CarListing extends Model
         'is_featured',
         'is_new_arrival',
         'description',
+        'damaged_areas',
         'sold_at',
         'featured_at',
         // Promotion fields
@@ -119,6 +120,7 @@ class CarListing extends Model
         'acceleration_0_100' => 'decimal:1',
         'top_speed' => 'integer',
         'seating_capacity' => 'integer',
+        'damaged_areas' => 'array',
         'mileage_efficiency' => 'decimal:2',
         'length' => 'decimal:2',
         'width' => 'decimal:2',

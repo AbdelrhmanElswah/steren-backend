@@ -124,6 +124,7 @@ class CarListingFormatterService
             'media' => $mediaList, // All media with only media_link
             'media_count' => $mediaCount, // For UI gallery indicator (e.g., "1/12")
             'inspection_sides' => $inspectionSides,
+            'damaged_areas' => $listing->damaged_areas ?? [],
             'user' => $listing->user ? [
                 'id' => $listing->user->id,
                 'full_name' => $listing->user->full_name,

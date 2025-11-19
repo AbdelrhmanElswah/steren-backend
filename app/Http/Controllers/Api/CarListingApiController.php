@@ -762,6 +762,7 @@ class CarListingApiController extends Controller
             'plate_status' => $validatedData['plate_status'] ?? '',
             'inspection' => $inspectionData,
             'trim' => $validatedData['trim'] ?? $carListing?->trim ?? '',
+            'damaged_areas' => $validatedData['damaged_areas'] ?? $carListing?->damaged_areas ?? [],
         ];
 
         // Add inspection file name if available

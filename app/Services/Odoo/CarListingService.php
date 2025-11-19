@@ -138,7 +138,8 @@ class CarListingService extends OdooCrudService
                     'front' => false,
                     'back' => false
                 ],
-                'inspection_file_name' => null
+                'inspection_file_name' => null,
+                'damaged_areas' => $carListing->damaged_areas ?? []
             ],
             'price_currency' => $carListing->price_currency ?? 'USD',
             'price' => $carListing->price,
