@@ -159,6 +159,7 @@ class CarListingRecommendationService
                 'exteriorColor:id,name',
                 'driveType:id,name',
                 'cylinder:id,name',
+                'mileageType:id,name',
                 'media' => function ($query) {
                     $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
                         ->orderBy('order');

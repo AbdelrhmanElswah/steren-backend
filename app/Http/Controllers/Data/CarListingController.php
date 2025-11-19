@@ -63,6 +63,7 @@ class CarListingController extends Controller
                 'exteriorColor:id,name',
                 'driveType:id,name',
                 'cylinder:id,name',
+                'mileageType:id,name',
                 // User with profile picture
                 'user:id,full_name',
                 'user.profilePictureMedia' => function($profileQuery) {
@@ -669,6 +670,7 @@ class CarListingController extends Controller
                 'exteriorColor:id,name',
                 'driveType:id,name',
                 'cylinder:id,name',
+                'mileageType:id,name',
                 // User with profile picture
                 'user:id,full_name',
                 'user.profilePictureMedia' => function($profileQuery) {

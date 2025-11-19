@@ -67,6 +67,7 @@ class CarListingFormatterService
             'trim' => $listing->trim,
             'doors' => $listing->doors,
             'mileage' => $listing->mileage,
+            'mileage_type' => $listing->relationLoaded('mileageType') && $listing->mileageType ? $listing->mileageType->name : null,
             'origin_country' => $listing->origin_country,
             'gcc_import' => $listing->gcc_import,
             'plate_status' => $listing->plate_status,

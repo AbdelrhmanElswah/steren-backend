@@ -452,6 +452,7 @@ class SearchService
                 'driveType:id,name',
                 'cylinder:id,name',
                 'carCondition:id,name',
+                'mileageType:id,name',
                 'user:id,full_name',
                 'user.profilePictureMedia' => function($profileQuery) {
                     $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info')
