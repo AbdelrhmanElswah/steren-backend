@@ -41,8 +41,8 @@ class AnalyticsController extends Controller
             // Aggregate analytics from car_listing_analytics for user's listings
             // This uses the existing data in car_listing_analytics table
             $analyticsQuery = \App\Models\CarListingAnalytics::whereIn('car_listing_id', $userListingIds)
-                ->when($startDate, function ($query) use ($startDate) {
-                    return $query->where('date', '>=', $startDate);
+                ->when($startDate, function ($query) use ($startDate, $endDate) {
+                    return $query->whereBetween('date', [$startDate, $endDate]);
                 });
             
             // Calculate totals by aggregating from car_listing_analytics
