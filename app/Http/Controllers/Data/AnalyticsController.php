@@ -7,6 +7,7 @@ use App\Models\UserAnalytics;
 use App\Models\CarListingAnalytics;
 use App\Models\CarListing;
 use App\Models\AdBoost;
+use App\Services\CarListingFormatterService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -14,6 +15,13 @@ use Illuminate\Http\JsonResponse;
 class AnalyticsController extends Controller
 {
     use ApiResponse;
+
+    protected $formatter;
+
+    public function __construct(CarListingFormatterService $formatter)
+    {
+        $this->formatter = $formatter;
+    }
 
     /**
      * Get user analytics with time filtering
@@ -252,15 +260,31 @@ class AnalyticsController extends Controller
             $filter = $request->get('filter', 'all'); // all, posts, boosted, sold
             $sort = $request->get('sort', 'latest'); // latest, oldest, views, price
             
+            // Select only essential fields for listing card UI (matching /api/car-listings)
             $query = $user->carListings()
+                ->select([
+                    'id', 'odoo_id', 'title', 'price', 'price_currency', 'year', 'trim', 'doors',
+                    'mileage', 'mileage_type_id', 'city_id', 'car_brand_id', 'car_body_type_id', 'car_model_id',
+                    'car_condition_id', 'fuel_type_id', 'transmission_id', 'exterior_color_id',
+                    'drive_type_id', 'cylinder_id', 'studio_id', 'is_sponsored', 'is_featured',
+                    'status', 'status_id', 'operator_decision', 'is_new_arrival', 'description',
+                    'has_warranty', 'is_inspected', 'is_verified', 'has_insurance',
+                    'origin_country', 'gcc_import', 'plate_status', 'condition_type',
+                    'featured_at', 'created_at', 'user_id', 'is_promoted', 'seller_name',
+                    'engine_size', 'engine_type', 'horsepower', 'torque', 'acceleration_0_100',
+                    'top_speed', 'seating_capacity', 'mileage_efficiency', 'length', 'width', 'height'
+                ])
                 ->with([
-                    'brand:id,name,odoo_id',
+                    'brand:id,name',
                     'carModel:id,name,car_brand_id', 
                     'bodyType:id,name',
-                    'city:id,name,odoo_id',
+                    'city:id,name',
                     'media' => function($mediaQuery) {
                         $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
                             ->orderBy('order');
+                    },
+                    'inspection' => function($inspectionQuery) {
+                        $inspectionQuery->select('id', 'car_listing_id', 'right_side', 'left_side', 'roof', 'front', 'back');
                     },
                     'carCondition:id,name',
                     'fuelType:id,name',
@@ -268,12 +292,18 @@ class AnalyticsController extends Controller
                     'exteriorColor:id,name',
                     'driveType:id,name',
                     'cylinder:id,name',
+                    'mileageType:id,name',
                     'carTrim:id,name,car_model_id',
                     'features:id,name,category,description,icon',
                     'specifications:id,name,value,unit,specification_type,description,is_highlighted',
                     'badges:id,name',
                     'status', 
-                    'listingPromotion'
+                    'listingPromotion',
+                    'user:id,full_name',
+                    'user.profilePictureMedia' => function($profileQuery) {
+                        $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info')
+                            ->where('info', 'profile_picture');
+                    }
                 ])
                 ->withCount('favorites');
             
@@ -311,18 +341,22 @@ class AnalyticsController extends Controller
                     break;
             }
             
-            // Hide internal fields from API response
-            $hiddenFields = [
-                'odoo_response', 'odoo_listing_id', 'odoo_vehicle_id', 'odoo_seller_id', 
-                'odoo_city_id', 'odoo_listing_state', 'user_id', 'promotion_price_paid', 
-                'promotion_expires_at', 'promotion_started_at', 
-                'created_at', 'updated_at', 'deleted_at', 'approved_by', 'approved_at', 
-                'rejection_reason', 'rejected_by', 'rejected_at', 'paused_at', 'archived_at'
-            ];
+            // Get media counts for all listings in one query (for UI gallery indicator)
+            $listings = $query->get();
+            $listingIds = $listings->pluck('id');
+            $mediaCounts = \App\Models\Media::where('modelable_type', 'App\Models\CarListing')
+                ->whereIn('modelable_id', $listingIds)
+                ->selectRaw('modelable_id, COUNT(*) as count')
+                ->groupBy('modelable_id')
+                ->pluck('count', 'modelable_id');
             
-            $listings = $query->get()->map(function ($listing) use ($hiddenFields) {
-                $listing->makeHidden($hiddenFields);
-                // Add detailed specifications
+            // Format listings using CarListingFormatterService to match /api/car-listings structure
+            // Then add analytics-specific fields
+            $formattedListings = $listings->map(function ($listing) use ($mediaCounts) {
+                // Get base structure from formatter (matches /api/car-listings)
+                $baseData = $this->formatter->formatListing($listing, $mediaCounts->get($listing->id, null));
+                
+                // Add detailed specifications (analytics-specific)
                 $detailedSpecifications = [
                     'engine_size' => $listing->engine_size,
                     'engine_type' => $listing->engine_type,
@@ -338,7 +372,7 @@ class AnalyticsController extends Controller
                     'dimensions' => $listing->formatted_dimensions,
                 ];
 
-                // Group features by category
+                // Group features by category (analytics-specific)
                 $featuresByCategory = collect();
                 if ($listing->relationLoaded('features') && $listing->features instanceof \Illuminate\Database\Eloquent\Collection && $listing->features->isNotEmpty()) {
                     $featuresByCategory = $listing->features->groupBy('category')->map(function ($features) {
@@ -355,7 +389,7 @@ class AnalyticsController extends Controller
                     });
                 }
 
-                // Group specifications by type
+                // Group specifications by type (analytics-specific)
                 $specificationsByType = collect();
                 if ($listing->relationLoaded('specifications') && $listing->specifications instanceof \Illuminate\Database\Eloquent\Collection && $listing->specifications->isNotEmpty()) {
                     $specificationsByType = $listing->specifications->groupBy('specification_type')->map(function ($specs) {
@@ -373,36 +407,28 @@ class AnalyticsController extends Controller
                     });
                 }
 
-                return [
-                    'id' => $listing->id,
-                    'title' => $listing->full_title,
-                    'price' => $listing->formatted_price,
+                // Merge base data with analytics-specific fields
+                return array_merge($baseData, [
+                    // Analytics-specific fields (keep these)
                     'status' => $listing->status,
                     'status_label' => $listing->getStatusLabelAttribute(),
                     'promotion_type' => $listing->is_promoted ? $listing->getPromotionTypeAttribute() : null,
-                    'image' => $listing->media->first()?->media_link,
-                    'views' => $listing->total_views,
+                    'views' => (string) $listing->total_views,
                     'days_active' => $listing->days_active,
                     'badges' => $listing->active_badges,
                     'seller_name' => $listing->seller_name,
-                    // Add comprehensive data like car-listings endpoint
-                    'brand' => $listing->brand,
-                    'carModel' => $listing->carModel,
-                    'bodyType' => $listing->bodyType,
-                    'city' => $listing->city,
-                    'carCondition' => $listing->carCondition,
-                    'fuelType' => $listing->fuelType,
-                    'transmission' => $listing->transmission,
-                    'exteriorColor' => $listing->exteriorColor,
-                    'driveType' => $listing->driveType,
-                    'cylinder' => $listing->cylinder,
-                    'carTrim' => $listing->carTrim,
                     'detailed_specifications' => $detailedSpecifications,
                     'features_by_category' => $featuresByCategory,
                     'specifications_by_type' => $specificationsByType,
                     'status_badge' => $listing->getStatusBadgeAttribute(),
                     'active_badges' => $listing->getActiveBadgesAttribute(),
-                ];
+                    // Add carTrim (analytics-specific, not in base formatter)
+                    'car_trim' => $listing->carTrim ? [
+                        'id' => $listing->carTrim->id,
+                        'name' => $listing->carTrim->name,
+                        'car_model_id' => $listing->carTrim->car_model_id,
+                    ] : null,
+                ]);
             });
             
             // Get summary counts
@@ -414,7 +440,7 @@ class AnalyticsController extends Controller
             ];
             
             $data = [
-                'listings' => $listings,
+                'listings' => $formattedListings,
                 'summary' => $summary,
                 'filter' => $filter,
                 'sort' => $sort,
