@@ -78,6 +78,13 @@ class SubscriptionBasedListingController extends Controller
                 $formatter = app(\App\Services\CarListingFormatterService::class);
                 $formattedListings = $formatter->formatListings($topPicks);
 
+                // If city_id was provided but no results found, fall back to no city filter
+                if (empty($formattedListings) && isset($filters['city_id'])) {
+                    $fallbackFilters = [];
+                    $topPicks = $this->listingService->getGeneralTopPicks($limit, $fallbackFilters);
+                    $formattedListings = $formatter->formatListings($topPicks);
+                }
+
                 return [
                     'top_picks' => $formattedListings,
                     'count' => count($formattedListings),
