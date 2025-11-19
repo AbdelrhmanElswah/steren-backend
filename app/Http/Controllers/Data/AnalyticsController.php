@@ -270,7 +270,7 @@ class AnalyticsController extends Controller
                     'status', 'status_id', 'operator_decision', 'is_new_arrival', 'description',
                     'has_warranty', 'is_inspected', 'is_verified', 'has_insurance',
                     'origin_country', 'gcc_import', 'plate_status', 'condition_type',
-                    'featured_at', 'created_at', 'user_id', 'is_promoted', 'seller_name',
+                    'featured_at', 'created_at', 'user_id', 'is_promoted',
                     'engine_size', 'engine_type', 'horsepower', 'torque', 'acceleration_0_100',
                     'top_speed', 'seating_capacity', 'mileage_efficiency', 'length', 'width', 'height'
                 ])
@@ -416,7 +416,6 @@ class AnalyticsController extends Controller
                     'views' => (string) $listing->total_views,
                     'days_active' => $listing->days_active,
                     'badges' => $listing->active_badges,
-                    'seller_name' => $listing->seller_name,
                     'detailed_specifications' => $detailedSpecifications,
                     'features_by_category' => $featuresByCategory,
                     'specifications_by_type' => $specificationsByType,
