@@ -14,7 +14,6 @@ use App\Services\SearchService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class SearchController extends Controller
 {
@@ -51,12 +50,6 @@ class SearchController extends Controller
 
             return $this->successResponse($data, 'Search results retrieved successfully');
         } catch (\Exception $e) {
-            Log::error('SearchController: Error searching brands and models', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->validated()
-            ]);
-
             return $this->errorResponse('Failed to search brands and models: ' . $e->getMessage(), 500);
         }
     }
@@ -81,12 +74,6 @@ class SearchController extends Controller
 
             return $this->successResponse($data, 'Brand suggestions retrieved successfully');
         } catch (\Exception $e) {
-            Log::error('SearchController: Error getting brand suggestions', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
-            ]);
-
             return $this->errorResponse('Failed to get brand suggestions: ' . $e->getMessage(), 500);
         }
     }
@@ -119,12 +106,6 @@ class SearchController extends Controller
 
             return $this->successResponse($data, 'Car listings retrieved successfully');
         } catch (\Exception $e) {
-            Log::error('SearchController: Error searching listings', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->validated()
-            ]);
-
             return $this->errorResponse('Failed to search listings: ' . $e->getMessage(), 500);
         }
     }
@@ -144,12 +125,6 @@ class SearchController extends Controller
 
             return $this->successResponse($data, 'Sponsored listings retrieved successfully');
         } catch (\Exception $e) {
-            Log::error('SearchController: Error getting sponsored listings', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
-            ]);
-
             return $this->errorResponse('Failed to get sponsored listings: ' . $e->getMessage(), 500);
         }
     }
@@ -165,11 +140,6 @@ class SearchController extends Controller
 
             return $this->successResponse($data, 'Car brands retrieved successfully');
         } catch (\Exception $e) {
-            Log::error('SearchController: Error getting all brands', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
             return $this->errorResponse('Failed to get car brands: ' . $e->getMessage(), 500);
         }
     }
@@ -184,11 +154,6 @@ class SearchController extends Controller
 
             return $this->successResponse($options, 'Filter options retrieved successfully');
         } catch (\Exception $e) {
-            Log::error('SearchController: Error getting filter options', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
             return $this->errorResponse('Failed to get filter options: ' . $e->getMessage(), 500);
         }
     }
@@ -215,12 +180,6 @@ class SearchController extends Controller
                 'recent_searches' => $searches
             ], 'Recent searches retrieved successfully');
         } catch (\Exception $e) {
-            Log::error('SearchController: Error getting recent searches', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $request->user()?->id
-            ]);
-
             return $this->errorResponse('Failed to get recent searches: ' . $e->getMessage(), 500);
         }
     }
@@ -242,13 +201,6 @@ class SearchController extends Controller
 
             return $this->successResponse([], 'Search term saved successfully');
         } catch (\Exception $e) {
-            Log::error('SearchController: Error saving search history', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $request->user()?->id,
-                'request_data' => $request->validated()
-            ]);
-
             return $this->errorResponse('Failed to save search term: ' . $e->getMessage(), 500);
         }
     }
@@ -273,13 +225,6 @@ class SearchController extends Controller
 
             return $this->successResponse([], 'Search history entry deleted successfully');
         } catch (\Exception $e) {
-            Log::error('SearchController: Error deleting recent search', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $request->user()?->id,
-                'search_id' => $searchId,
-            ]);
-
             return $this->errorResponse('Failed to delete search history entry: ' . $e->getMessage(), 500);
         }
     }
@@ -295,12 +240,6 @@ class SearchController extends Controller
 
             return $this->successResponse([], 'Search cache cleared successfully');
         } catch (\Exception $e) {
-            Log::error('SearchController: Error clearing search cache', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $request->user()?->id
-            ]);
-
             return $this->errorResponse('Failed to clear search cache: ' . $e->getMessage(), 500);
         }
     }

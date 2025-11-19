@@ -60,7 +60,6 @@ class CarListingFormatterService
 
         return [
             'id' => $listing->id,
-            'odoo_id' => $listing->odoo_id,
             'title' => $listing->title,
             'price' => $listing->price,
             'price_currency' => $listing->price_currency,
@@ -83,7 +82,6 @@ class CarListingFormatterService
             'brand' => $listing->brand ? [
                 'id' => $listing->brand->id,
                 'name' => $listing->brand->name,
-                'odoo_id' => $listing->brand->odoo_id,
             ] : null,
             'car_model' => $listing->carModel ? [
                 'id' => $listing->carModel->id,
@@ -96,7 +94,6 @@ class CarListingFormatterService
             'city' => $listing->city ? [
                 'id' => $listing->city->id,
                 'name' => $listing->city->name,
-                'odoo_id' => $listing->city->odoo_id,
             ] : null,
             'car_condition' => $listing->carCondition ? [
                 'id' => $listing->carCondition->id,

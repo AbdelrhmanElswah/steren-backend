@@ -12,7 +12,6 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 
 class CarListingController extends Controller
@@ -247,7 +246,6 @@ class CarListingController extends Controller
 
                 return [
                     'id' => $listing->id,
-                    'odoo_id' => $listing->odoo_id,
                     'title' => $listing->title,
                     'price' => $listing->price,
                     'price_currency' => $listing->price_currency,
@@ -270,7 +268,6 @@ class CarListingController extends Controller
                     'brand' => $listing->brand ? [
                         'id' => $listing->brand->id,
                         'name' => $listing->brand->name,
-                        'odoo_id' => $listing->brand->odoo_id,
                     ] : null,
                     'car_model' => $listing->carModel ? [
                         'id' => $listing->carModel->id,
@@ -283,7 +280,6 @@ class CarListingController extends Controller
                     'city' => $listing->city ? [
                         'id' => $listing->city->id,
                         'name' => $listing->city->name,
-                        'odoo_id' => $listing->city->odoo_id,
                     ] : null,
                     'car_condition' => $listing->carCondition ? [
                         'id' => $listing->carCondition->id,
@@ -338,7 +334,6 @@ class CarListingController extends Controller
                     $data['brand_info'] = [
                         'id' => $brand->id,
                         'name' => $brand->name,
-                        'odoo_id' => $brand->odoo_id,
                         'logo_url' => $brand->media ? $brand->media->media_link : null,
                     ];
                 }
@@ -402,7 +397,6 @@ class CarListingController extends Controller
                 }
             } catch (\Exception $e) {
                 // Features relationship not properly loaded or is not a collection
-                Log::warning('Features relationship issue for listing ' . $listing->id . ': ' . $e->getMessage());
             }
 
             // Group specifications by type
@@ -425,7 +419,6 @@ class CarListingController extends Controller
                 }
             } catch (\Exception $e) {
                 // Specifications relationship not properly loaded or is not a collection
-                Log::warning('Specifications relationship issue for listing ' . $listing->id . ': ' . $e->getMessage());
             }
 
             // Format media to return only media_link
@@ -802,7 +795,6 @@ class CarListingController extends Controller
 
                 return [
                     'id' => $listing->id,
-                    'odoo_id' => $listing->odoo_id,
                     'title' => $listing->title,
                     'price' => $listing->price,
                     'price_currency' => $listing->price_currency,
@@ -826,7 +818,6 @@ class CarListingController extends Controller
                     'brand' => $listing->brand ? [
                         'id' => $listing->brand->id,
                         'name' => $listing->brand->name,
-                        'odoo_id' => $listing->brand->odoo_id,
                     ] : null,
                     'car_model' => $listing->carModel ? [
                         'id' => $listing->carModel->id,
@@ -839,7 +830,6 @@ class CarListingController extends Controller
                     'city' => $listing->city ? [
                         'id' => $listing->city->id,
                         'name' => $listing->city->name,
-                        'odoo_id' => $listing->city->odoo_id,
                     ] : null,
                     'car_condition' => $listing->carCondition ? [
                         'id' => $listing->carCondition->id,

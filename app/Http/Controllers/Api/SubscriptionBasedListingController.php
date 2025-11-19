@@ -91,11 +91,6 @@ class SubscriptionBasedListingController extends Controller
             ], 'Top picks retrieved successfully');
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('SubscriptionBasedListingController: Error fetching top picks', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'filters' => $filters ?? []
-            ]);
             return $this->errorResponse(
                 'Failed to retrieve top picks: ' . $e->getMessage(),
                 500

@@ -926,11 +926,6 @@ class CarListingDetailsController extends Controller
             // Return formatted listings directly (already formatted by service)
             return $this->successResponse($result, 'You may also like listings retrieved successfully');
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('CarListingDetailsController: Error fetching you may also like', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $request->user()?->id
-            ]);
             return $this->errorResponse('Failed to retrieve recommended listings: ' . $e->getMessage(), 500);
         }
     }

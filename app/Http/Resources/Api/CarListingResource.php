@@ -43,12 +43,10 @@ class CarListingResource extends JsonResource
             'city' => $this->whenLoaded('city', [
                 'id' => $this->city?->id,
                 'name' => $this->city?->name,
-                'odoo_id' => $this->city?->odoo_id,
             ]),
             'brand' => $this->whenLoaded('brand', [
                 'id' => $this->brand?->id,
                 'name' => $this->brand?->name,
-                'odoo_id' => $this->brand?->odoo_id,
             ]),
             'carModel' => $this->whenLoaded('carModel', [
                 'id' => $this->carModel?->id,

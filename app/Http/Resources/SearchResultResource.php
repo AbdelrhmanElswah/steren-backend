@@ -47,14 +47,12 @@ class SearchResultResource extends JsonResource
             'city' => $this->whenLoaded('city', [
                 'id' => $this->city?->id,
                 'name' => $this->city?->name,
-                'odoo_id' => $this->city?->odoo_id,
             ]),
             
             // Relationships - matching /car-listings format
             'brand' => $this->when($this->brand, [
                 'id' => $this->brand?->id,
                 'name' => $this->brand?->name,
-                'odoo_id' => $this->brand?->odoo_id,
             ]),
             
             'carModel' => $this->when($this->carModel, [
