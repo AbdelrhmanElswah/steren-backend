@@ -40,7 +40,7 @@ class CarListingController extends Controller
                 'status', 'status_id', 'operator_decision', 'is_new_arrival', 'description',
                 'has_warranty', 'is_inspected', 'is_verified', 'has_insurance',
                 'origin_country', 'gcc_import', 'plate_status', 'condition_type',
-                'featured_at', 'created_at', 'user_id'
+                'featured_at', 'created_at', 'user_id', 'damaged_areas'
             ])
             ->where('status', 'active') // Filter active only
             ->with([
@@ -268,6 +268,7 @@ class CarListingController extends Controller
                     'is_featured' => $listing->is_featured,
                     'is_new_arrival' => $listing->is_new_arrival,
                     'city_id' => $listing->city_id,
+                    'damaged_areas' => $listing->damaged_areas ?? [],
                     'brand' => $listing->brand ? [
                         'id' => $listing->brand->id,
                         'name' => $listing->brand->name,
@@ -658,7 +659,7 @@ class CarListingController extends Controller
                 'status', 'status_id', 'operator_decision', 'is_new_arrival', 'description',
                 'has_warranty', 'is_inspected', 'is_verified', 'has_insurance',
                 'origin_country', 'gcc_import', 'plate_status', 'condition_type',
-                'featured_at', 'created_at', 'user_id'
+                'featured_at', 'created_at', 'user_id', 'damaged_areas'
             ])
             ->where('status', 'active') // Filter active only
             ->where('studio_id', $studioId) // Filter by studio ID
@@ -831,6 +832,7 @@ class CarListingController extends Controller
                     'is_new_arrival' => $listing->is_new_arrival,
                     'city_id' => $listing->city_id,
                     'studio_id' => $listing->studio_id,
+                    'damaged_areas' => $listing->damaged_areas ?? [],
                     'brand' => $listing->brand ? [
                         'id' => $listing->brand->id,
                         'name' => $listing->brand->name,
@@ -902,6 +904,492 @@ class CarListingController extends Controller
             return $this->successResponse($data, 'Car listings retrieved successfully');
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to retrieve car listings: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get used cars for a specific brand
+     */
+    public function getUsedCarsByBrand(Request $request, int $brandId): JsonResponse
+    {
+        try {
+            // Verify brand exists
+            $brand = CarBrand::find($brandId);
+            if (!$brand) {
+                return $this->errorResponse('Brand not found', 404);
+            }
+
+            $cacheKey = 'used_cars_brand_' . $brandId . '_' . md5(serialize($request->all()));
+
+            $cachedResult = Cache::get($cacheKey);
+            if ($cachedResult) {
+                return $this->successResponse($cachedResult, 'Used cars retrieved from cache');
+            }
+
+            // Select only essential fields for listing card UI
+            $query = CarListing::select([
+                'id', 'odoo_id', 'title', 'price', 'price_currency', 'year', 'trim', 'doors',
+                'mileage', 'mileage_type_id', 'city_id', 'car_brand_id', 'car_body_type_id', 'car_model_id',
+                'car_condition_id', 'fuel_type_id', 'transmission_id', 'exterior_color_id',
+                'drive_type_id', 'cylinder_id', 'studio_id', 'is_sponsored', 'is_featured',
+                'status', 'status_id', 'operator_decision', 'is_new_arrival', 'description',
+                'has_warranty', 'is_inspected', 'is_verified', 'has_insurance',
+                'origin_country', 'gcc_import', 'plate_status', 'condition_type',
+                'featured_at', 'created_at', 'user_id', 'damaged_areas'
+            ])
+            ->where('status', 'active')
+            ->where('car_brand_id', $brandId)
+            ->where('condition_type', 'used')
+            ->with([
+                'brand:id,name,odoo_id',
+                'carModel:id,name,car_brand_id',
+                'bodyType:id,name',
+                'city:id,name,odoo_id',
+                'media' => function($mediaQuery) {
+                    $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                        ->orderBy('order');
+                },
+                'inspection' => function($inspectionQuery) {
+                    $inspectionQuery->select('id', 'car_listing_id', 'right_side', 'left_side', 'roof', 'front', 'back');
+                },
+                'carCondition:id,name',
+                'fuelType:id,name',
+                'transmission:id,name',
+                'exteriorColor:id,name',
+                'driveType:id,name',
+                'cylinder:id,name',
+                'mileageType:id,name',
+                'user:id,full_name',
+                'user.profilePictureMedia' => function($profileQuery) {
+                    $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info')
+                        ->where('info', 'profile_picture');
+                }
+            ]);
+
+            // Apply additional filters if provided
+            if ($request->filled('city_id')) {
+                $query->where('city_id', $request->city_id);
+            }
+
+            if ($request->filled('year_from') && $request->filled('year_to')) {
+                $query->byYearRange($request->year_from, $request->year_to);
+            }
+
+            if ($request->filled('price_min') && $request->filled('price_max')) {
+                $query->byPriceRange($request->price_min, $request->price_max);
+            }
+
+            // Apply sorting
+            $sortBy = $request->get('sort', 'latest');
+            switch ($sortBy) {
+                case 'year_high':
+                    $query->orderBy('year', 'desc');
+                    break;
+                case 'year_low':
+                    $query->orderBy('year', 'asc');
+                    break;
+                case 'price_high':
+                    $query->orderBy('price', 'desc');
+                    break;
+                case 'price_low':
+                    $query->orderBy('price', 'asc');
+                    break;
+                case 'mileage_high':
+                    $query->orderBy('mileage', 'desc');
+                    break;
+                case 'mileage_low':
+                    $query->orderBy('mileage', 'asc');
+                    break;
+                default:
+                    $query->orderBy('created_at', 'desc');
+            }
+
+            // Get pagination parameters
+            $perPage = (int) $request->input('per_page', 7);
+            $page = (int) $request->input('page', 1);
+            $perPage = max(1, min(100, $perPage));
+
+            $listings = $query->paginate($perPage, ['*'], 'page', $page);
+            $totalActive = (clone $query)->count();
+
+            // Get media counts
+            $listingIds = $listings->pluck('id');
+            $mediaCounts = \App\Models\Media::where('modelable_type', 'App\Models\CarListing')
+                ->whereIn('modelable_id', $listingIds)
+                ->selectRaw('modelable_id, COUNT(*) as count')
+                ->groupBy('modelable_id')
+                ->pluck('count', 'modelable_id');
+
+            // Format listings
+            $formattedListings = $listings->map(function ($listing) use ($mediaCounts) {
+                $mediaList = $listing->media->map(function ($media) {
+                    if ($media && $media->path_file_name) {
+                        return [
+                            'media_link' => $media->getS3PublicUrl($media->path_file_name)
+                        ];
+                    }
+                    return null;
+                })->filter()->values();
+
+                $mediaCount = $mediaCounts->get($listing->id, 0);
+
+                $profilePictureLink = null;
+                if ($listing->user && $listing->user->relationLoaded('profilePictureMedia') && $listing->user->profilePictureMedia) {
+                    $profileMedia = $listing->user->profilePictureMedia;
+                    if ($profileMedia && $profileMedia->path_file_name) {
+                        $profilePictureLink = $profileMedia->getS3PublicUrl($profileMedia->path_file_name);
+                    }
+                }
+
+                $inspectionSides = null;
+                if ($listing->relationLoaded('inspection') && $listing->inspection) {
+                    $inspectionSides = [
+                        'right_side' => $listing->inspection->right_side ?? false,
+                        'left_side' => $listing->inspection->left_side ?? false,
+                        'roof' => $listing->inspection->roof ?? false,
+                        'front' => $listing->inspection->front ?? false,
+                        'back' => $listing->inspection->back ?? false,
+                    ];
+                }
+
+                return [
+                    'id' => $listing->id,
+                    'title' => $listing->title,
+                    'price' => $listing->price,
+                    'price_currency' => $listing->price_currency,
+                    'year' => $listing->year,
+                    'trim' => $listing->trim,
+                    'doors' => $listing->doors,
+                    'mileage' => $listing->mileage,
+                    'mileage_type' => $listing->relationLoaded('mileageType') && $listing->mileageType ? $listing->mileageType->id : null,
+                    'mileage_type_name' => $listing->relationLoaded('mileageType') && $listing->mileageType ? $listing->mileageType->name : null,
+                    'origin_country' => $listing->origin_country,
+                    'gcc_import' => $listing->gcc_import,
+                    'plate_status' => $listing->plate_status,
+                    'condition_type' => $listing->condition_type,
+                    'has_warranty' => $listing->has_warranty,
+                    'is_inspected' => $listing->is_inspected,
+                    'is_verified' => $listing->is_verified,
+                    'has_insurance' => $listing->has_insurance,
+                    'is_sponsored' => $listing->is_sponsored,
+                    'is_featured' => $listing->is_featured,
+                    'is_new_arrival' => $listing->is_new_arrival,
+                    'city_id' => $listing->city_id,
+                    'damaged_areas' => $listing->damaged_areas ?? [],
+                    'brand' => $listing->brand ? [
+                        'id' => $listing->brand->id,
+                        'name' => $listing->brand->name,
+                    ] : null,
+                    'car_model' => $listing->carModel ? [
+                        'id' => $listing->carModel->id,
+                        'name' => $listing->carModel->name,
+                    ] : null,
+                    'body_type' => $listing->bodyType ? [
+                        'id' => $listing->bodyType->id,
+                        'name' => $listing->bodyType->name,
+                    ] : null,
+                    'city' => $listing->city ? [
+                        'id' => $listing->city->id,
+                        'name' => $listing->city->name,
+                    ] : null,
+                    'car_condition' => $listing->carCondition ? [
+                        'id' => $listing->carCondition->id,
+                        'name' => $listing->carCondition->name,
+                    ] : null,
+                    'fuel_type' => $listing->fuelType ? [
+                        'id' => $listing->fuelType->id,
+                        'name' => $listing->fuelType->name,
+                    ] : null,
+                    'transmission' => $listing->transmission ? [
+                        'id' => $listing->transmission->id,
+                        'name' => $listing->transmission->name,
+                    ] : null,
+                    'exterior_color' => $listing->exteriorColor ? [
+                        'id' => $listing->exteriorColor->id,
+                        'name' => $listing->exteriorColor->name,
+                    ] : null,
+                    'drive_type' => $listing->driveType ? [
+                        'id' => $listing->driveType->id,
+                        'name' => $listing->driveType->name,
+                    ] : null,
+                    'cylinder' => $listing->cylinder ? [
+                        'id' => $listing->cylinder->id,
+                        'name' => $listing->cylinder->name,
+                    ] : null,
+                    'media' => $mediaList->toArray(),
+                    'media_count' => $mediaCount,
+                    'inspection_sides' => $inspectionSides,
+                    'user' => $listing->user ? [
+                        'id' => $listing->user->id,
+                        'full_name' => $listing->user->full_name,
+                        'profile_picture' => $profilePictureLink,
+                    ] : null,
+                ];
+            });
+
+            $data = [
+                'listings' => $formattedListings,
+                'total' => $totalActive,
+                'per_page' => $listings->perPage(),
+                'current_page' => $listings->currentPage(),
+                'last_page' => (int) ceil($totalActive / $perPage),
+                'brand_id' => $brandId,
+                'brand' => [
+                    'id' => $brand->id,
+                    'name' => $brand->name,
+                ],
+            ];
+
+            Cache::put($cacheKey, $data, 300);
+
+            return $this->successResponse($data, 'Used cars retrieved successfully');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve used cars: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get used cars for a specific studio
+     */
+    public function getUsedCarsByStudio(Request $request, int $studioId): JsonResponse
+    {
+        try {
+            // Verify studio exists and is active
+            $studio = \App\Models\DealerStudio::where('id', $studioId)
+                ->where('is_active', true)
+                ->first();
+
+            if (!$studio) {
+                return $this->errorResponse('Studio not found or inactive', 404);
+            }
+
+            $cacheKey = 'used_cars_studio_' . $studioId . '_' . md5(serialize($request->all()));
+
+            $cachedResult = Cache::get($cacheKey);
+            if ($cachedResult) {
+                return $this->successResponse($cachedResult, 'Used cars retrieved from cache');
+            }
+
+            // Select only essential fields for listing card UI
+            $query = CarListing::select([
+                'id', 'odoo_id', 'title', 'price', 'price_currency', 'year', 'trim', 'doors',
+                'mileage', 'mileage_type_id', 'city_id', 'car_brand_id', 'car_body_type_id', 'car_model_id',
+                'car_condition_id', 'fuel_type_id', 'transmission_id', 'exterior_color_id',
+                'drive_type_id', 'cylinder_id', 'studio_id', 'is_sponsored', 'is_featured',
+                'status', 'status_id', 'operator_decision', 'is_new_arrival', 'description',
+                'has_warranty', 'is_inspected', 'is_verified', 'has_insurance',
+                'origin_country', 'gcc_import', 'plate_status', 'condition_type',
+                'featured_at', 'created_at', 'user_id', 'damaged_areas'
+            ])
+            ->where('status', 'active')
+            ->where('studio_id', $studioId)
+            ->where('condition_type', 'used')
+            ->with([
+                'brand:id,name,odoo_id',
+                'carModel:id,name,car_brand_id',
+                'bodyType:id,name',
+                'city:id,name,odoo_id',
+                'media' => function($mediaQuery) {
+                    $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                        ->orderBy('order');
+                },
+                'inspection' => function($inspectionQuery) {
+                    $inspectionQuery->select('id', 'car_listing_id', 'right_side', 'left_side', 'roof', 'front', 'back');
+                },
+                'carCondition:id,name',
+                'fuelType:id,name',
+                'transmission:id,name',
+                'exteriorColor:id,name',
+                'driveType:id,name',
+                'cylinder:id,name',
+                'mileageType:id,name',
+                'user:id,full_name',
+                'user.profilePictureMedia' => function($profileQuery) {
+                    $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info')
+                        ->where('info', 'profile_picture');
+                }
+            ]);
+
+            // Apply additional filters if provided
+            if ($request->filled('city_id')) {
+                $query->where('city_id', $request->city_id);
+            }
+
+            if ($request->filled('year_from') && $request->filled('year_to')) {
+                $query->byYearRange($request->year_from, $request->year_to);
+            }
+
+            if ($request->filled('price_min') && $request->filled('price_max')) {
+                $query->byPriceRange($request->price_min, $request->price_max);
+            }
+
+            // Apply sorting
+            $sortBy = $request->get('sort', 'latest');
+            switch ($sortBy) {
+                case 'year_high':
+                    $query->orderBy('year', 'desc');
+                    break;
+                case 'year_low':
+                    $query->orderBy('year', 'asc');
+                    break;
+                case 'price_high':
+                    $query->orderBy('price', 'desc');
+                    break;
+                case 'price_low':
+                    $query->orderBy('price', 'asc');
+                    break;
+                case 'mileage_high':
+                    $query->orderBy('mileage', 'desc');
+                    break;
+                case 'mileage_low':
+                    $query->orderBy('mileage', 'asc');
+                    break;
+                default:
+                    $query->orderBy('created_at', 'desc');
+            }
+
+            // Get pagination parameters
+            $perPage = (int) $request->input('per_page', 7);
+            $page = (int) $request->input('page', 1);
+            $perPage = max(1, min(100, $perPage));
+
+            $listings = $query->paginate($perPage, ['*'], 'page', $page);
+            $totalActive = (clone $query)->count();
+
+            // Get media counts
+            $listingIds = $listings->pluck('id');
+            $mediaCounts = \App\Models\Media::where('modelable_type', 'App\Models\CarListing')
+                ->whereIn('modelable_id', $listingIds)
+                ->selectRaw('modelable_id, COUNT(*) as count')
+                ->groupBy('modelable_id')
+                ->pluck('count', 'modelable_id');
+
+            // Format listings
+            $formattedListings = $listings->map(function ($listing) use ($mediaCounts) {
+                $mediaList = $listing->media->map(function ($media) {
+                    if ($media && $media->path_file_name) {
+                        return [
+                            'media_link' => $media->getS3PublicUrl($media->path_file_name)
+                        ];
+                    }
+                    return null;
+                })->filter()->values();
+
+                $mediaCount = $mediaCounts->get($listing->id, 0);
+
+                $profilePictureLink = null;
+                if ($listing->user && $listing->user->relationLoaded('profilePictureMedia') && $listing->user->profilePictureMedia) {
+                    $profileMedia = $listing->user->profilePictureMedia;
+                    if ($profileMedia && $profileMedia->path_file_name) {
+                        $profilePictureLink = $profileMedia->getS3PublicUrl($profileMedia->path_file_name);
+                    }
+                }
+
+                $inspectionSides = null;
+                if ($listing->relationLoaded('inspection') && $listing->inspection) {
+                    $inspectionSides = [
+                        'right_side' => $listing->inspection->right_side ?? false,
+                        'left_side' => $listing->inspection->left_side ?? false,
+                        'roof' => $listing->inspection->roof ?? false,
+                        'front' => $listing->inspection->front ?? false,
+                        'back' => $listing->inspection->back ?? false,
+                    ];
+                }
+
+                return [
+                    'id' => $listing->id,
+                    'title' => $listing->title,
+                    'price' => $listing->price,
+                    'price_currency' => $listing->price_currency,
+                    'year' => $listing->year,
+                    'trim' => $listing->trim,
+                    'doors' => $listing->doors,
+                    'mileage' => $listing->mileage,
+                    'mileage_type' => $listing->relationLoaded('mileageType') && $listing->mileageType ? $listing->mileageType->id : null,
+                    'mileage_type_name' => $listing->relationLoaded('mileageType') && $listing->mileageType ? $listing->mileageType->name : null,
+                    'origin_country' => $listing->origin_country,
+                    'gcc_import' => $listing->gcc_import,
+                    'plate_status' => $listing->plate_status,
+                    'condition_type' => $listing->condition_type,
+                    'has_warranty' => $listing->has_warranty,
+                    'is_inspected' => $listing->is_inspected,
+                    'is_verified' => $listing->is_verified,
+                    'has_insurance' => $listing->has_insurance,
+                    'is_sponsored' => $listing->is_sponsored,
+                    'is_featured' => $listing->is_featured,
+                    'is_new_arrival' => $listing->is_new_arrival,
+                    'city_id' => $listing->city_id,
+                    'damaged_areas' => $listing->damaged_areas ?? [],
+                    'brand' => $listing->brand ? [
+                        'id' => $listing->brand->id,
+                        'name' => $listing->brand->name,
+                    ] : null,
+                    'car_model' => $listing->carModel ? [
+                        'id' => $listing->carModel->id,
+                        'name' => $listing->carModel->name,
+                    ] : null,
+                    'body_type' => $listing->bodyType ? [
+                        'id' => $listing->bodyType->id,
+                        'name' => $listing->bodyType->name,
+                    ] : null,
+                    'city' => $listing->city ? [
+                        'id' => $listing->city->id,
+                        'name' => $listing->city->name,
+                    ] : null,
+                    'car_condition' => $listing->carCondition ? [
+                        'id' => $listing->carCondition->id,
+                        'name' => $listing->carCondition->name,
+                    ] : null,
+                    'fuel_type' => $listing->fuelType ? [
+                        'id' => $listing->fuelType->id,
+                        'name' => $listing->fuelType->name,
+                    ] : null,
+                    'transmission' => $listing->transmission ? [
+                        'id' => $listing->transmission->id,
+                        'name' => $listing->transmission->name,
+                    ] : null,
+                    'exterior_color' => $listing->exteriorColor ? [
+                        'id' => $listing->exteriorColor->id,
+                        'name' => $listing->exteriorColor->name,
+                    ] : null,
+                    'drive_type' => $listing->driveType ? [
+                        'id' => $listing->driveType->id,
+                        'name' => $listing->driveType->name,
+                    ] : null,
+                    'cylinder' => $listing->cylinder ? [
+                        'id' => $listing->cylinder->id,
+                        'name' => $listing->cylinder->name,
+                    ] : null,
+                    'media' => $mediaList->toArray(),
+                    'media_count' => $mediaCount,
+                    'inspection_sides' => $inspectionSides,
+                    'user' => $listing->user ? [
+                        'id' => $listing->user->id,
+                        'full_name' => $listing->user->full_name,
+                        'profile_picture' => $profilePictureLink,
+                    ] : null,
+                ];
+            });
+
+            $data = [
+                'listings' => $formattedListings,
+                'total' => $totalActive,
+                'per_page' => $listings->perPage(),
+                'current_page' => $listings->currentPage(),
+                'last_page' => (int) ceil($totalActive / $perPage),
+                'studio_id' => $studioId,
+                'studio' => [
+                    'id' => $studio->id,
+                    'name' => $studio->name,
+                    'city_id' => $studio->city_id,
+                ],
+            ];
+
+            Cache::put($cacheKey, $data, 300);
+
+            return $this->successResponse($data, 'Used cars retrieved successfully');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve used cars: ' . $e->getMessage(), 500);
         }
     }
 

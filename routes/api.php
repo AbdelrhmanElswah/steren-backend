@@ -213,6 +213,10 @@ Route::prefix('car-listings')->group(function () {
     Route::get('/brand/{brandId}/condition-groups', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getBrandListingsByCondition']);
     Route::get('/studio/{studioId}/condition-groups', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getStudioListingsByCondition']);
 
+    // Used cars endpoints
+    Route::get('/brand/{brandId}/used', [App\Http\Controllers\Data\CarListingController::class, 'getUsedCarsByBrand']);
+    Route::get('/studio/{studioId}/used', [App\Http\Controllers\Data\CarListingController::class, 'getUsedCarsByStudio']);
+
     Route::get('/filter-options', [App\Http\Controllers\Data\CarListingController::class, 'getFilterOptions']);
     Route::get('/trims/{modelId}', [App\Http\Controllers\Data\CarListingController::class, 'getCarTrims']);
     Route::get('/news', [App\Http\Controllers\Data\CarListingController::class, 'getNewsArticles']);
