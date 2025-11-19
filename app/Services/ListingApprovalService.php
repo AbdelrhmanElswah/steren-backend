@@ -187,26 +187,28 @@ class ListingApprovalService
     public function rejectListingByOdooId(string $odooId, string $reason, ?int $rejectedBy = null): array
     {
         try {
-            $listing = CarListing::where('odoo_id', $odooId)->firstOrFail();
+            // Optimize query - only select needed fields
+            $listing = CarListing::select('id', 'odoo_id', 'operator_decision', 'status', 'rejected_by', 'rejected_at', 'rejection_reason', 'approved_by', 'approved_at')
+                ->where('odoo_id', $odooId)
+                ->firstOrFail();
             
             if ($listing->operator_decision === 'rejected') {
                 throw new OdooServiceException('Listing is already rejected');
             }
 
-            DB::beginTransaction();
-
-            // Update listing status directly (no Odoo callback since we're called FROM Odoo)
-            $listing->update([
-                'operator_decision' => 'rejected',
-                'status' => 'rejected',
-                'rejected_by' => $rejectedBy,
-                'rejected_at' => now(),
-                'rejection_reason' => $reason,
-                'approved_by' => null,
-                'approved_at' => null
-            ]);
-
-            DB::commit();
+            // Disable events to skip observer (performance optimization)
+            // Removed DB transaction - single update doesn't need transaction overhead
+            CarListing::withoutEvents(function () use ($listing, $reason, $rejectedBy) {
+                $listing->update([
+                    'operator_decision' => 'rejected',
+                    'status' => 'rejected',
+                    'rejected_by' => $rejectedBy,
+                    'rejected_at' => now(),
+                    'rejection_reason' => $reason,
+                    'approved_by' => null,
+                    'approved_at' => null
+                ]);
+            });
 
             Log::info('Listing rejected via Odoo integration', [
                 'listing_id' => $listing->id,
@@ -224,7 +226,6 @@ class ListingApprovalService
             ];
 
         } catch (Exception $e) {
-            DB::rollBack();
             Log::error('Failed to reject listing via Odoo', [
                 'odoo_id' => $odooId,
                 'error' => $e->getMessage()

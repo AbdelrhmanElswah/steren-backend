@@ -96,17 +96,35 @@ class ListingApprovalController extends Controller
     public function approveByOdooId(Request $request, string $odooId)
     {
         try {
-            $listing = CarListing::where('odoo_id', $odooId)->firstOrFail();
+            // Optimize query - only select needed fields
+            $listing = CarListing::select('id', 'odoo_id', 'operator_decision', 'status', 'approved_by', 'approved_at', 'rejection_reason', 'rejected_by', 'rejected_at')
+                ->where('odoo_id', $odooId)
+                ->firstOrFail();
 
-            $result = $listing->update([
-                'operator_decision' => 'approved',
-                'status' => 'active',
-                'approved_by' => $request->user()?->id,
-                'approved_at' => now(),
-                'rejection_reason' => null,
-                'rejected_by' => null,
-                'rejected_at' => null
-            ]);
+            // Check if already approved (maintain original functionality)
+            if ($listing->operator_decision === 'approved') {
+                return $this->successResponse([
+                    'success' => true,
+                    'listing_id' => $listing->id,
+                    'odoo_id' => $odooId,
+                    'status' => 'active',
+                    'operator_decision' => 'approved',
+                    'message' => 'Listing is already approved'
+                ], 'Listing is already approved');
+            }
+
+            // Disable events to skip observer (performance optimization)
+            $result = CarListing::withoutEvents(function () use ($listing, $request) {
+                return $listing->update([
+                    'operator_decision' => 'approved',
+                    'status' => 'active',
+                    'approved_by' => $request->user()?->id,
+                    'approved_at' => now(),
+                    'rejection_reason' => null,
+                    'rejected_by' => null,
+                    'rejected_at' => null
+                ]);
+            });
 
             return $this->successResponse($result, 'Listing approved successfully');
 

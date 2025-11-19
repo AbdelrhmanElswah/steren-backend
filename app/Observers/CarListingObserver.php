@@ -34,34 +34,41 @@ class CarListingObserver
      */
     public function updated(CarListing $carListing): void
     {
+        // TODO: Temporarily disabled - processNewDealerListing commented out for performance
+        // This was causing additional database queries and updates during approve/reject operations
         // If listing became active and user is dealer, process it
-        if ($carListing->wasChanged('status') && $carListing->status === 'active') {
-            $this->autoStudioService->processNewDealerListing($carListing);
-        }
+        // if ($carListing->wasChanged('status') && $carListing->status === 'active') {
+        //     $this->autoStudioService->processNewDealerListing($carListing);
+        // }
 
+        // TODO: Temporarily disabled - FCM notification sending commented out for performance
+        // FCM (Firebase Cloud Messaging) sends push notifications to users' mobile devices
+        // This was causing 30+ second timeouts due to synchronous HTTP requests to Firebase
+        // Should be moved to a background job/queue for async processing
+        
         // Send notification when listing is approved
-        if ($carListing->wasChanged('status') && $carListing->status === 'active') {
-            try {
-                $this->notificationService->sendListingApprovedNotification($carListing);
-            } catch (\Exception $e) {
-                Log::error('Failed to send listing approved notification', [
-                    'listing_id' => $carListing->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        }
+        // if ($carListing->wasChanged('status') && $carListing->status === 'active') {
+        //     try {
+        //         $this->notificationService->sendListingApprovedNotification($carListing);
+        //     } catch (\Exception $e) {
+        //         Log::error('Failed to send listing approved notification', [
+        //             'listing_id' => $carListing->id,
+        //             'error' => $e->getMessage()
+        //         ]);
+        //     }
+        // }
 
         // Send notification when listing is rejected
-        if ($carListing->wasChanged('status') && $carListing->status === 'rejected') {
-            try {
-                $this->notificationService->sendListingRejectedNotification($carListing);
-            } catch (\Exception $e) {
-                Log::error('Failed to send listing rejected notification', [
-                    'listing_id' => $carListing->id,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        }
+        // if ($carListing->wasChanged('status') && $carListing->status === 'rejected') {
+        //     try {
+        //         $this->notificationService->sendListingRejectedNotification($carListing);
+        //     } catch (\Exception $e) {
+        //         Log::error('Failed to send listing rejected notification', [
+        //             'listing_id' => $carListing->id,
+        //             'error' => $e->getMessage()
+        //         ]);
+        //     }
+        // }
 
         // Send price drop alert if price decreased significantly
         if ($carListing->wasChanged('price') && $carListing->getOriginal('price') > $carListing->price) {
