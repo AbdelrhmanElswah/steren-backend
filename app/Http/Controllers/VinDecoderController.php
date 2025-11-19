@@ -189,7 +189,13 @@ class VinDecoderController extends Controller
                 ], 422);
             }
 
-            return $this->successResponse($filteredData, 'VIN decoded and filtered for listing creation');
+            // Add API version indicator
+            $responseData = array_merge($filteredData, [
+                'api_version' => 'v2',
+                'endpoint' => 'advanced-vin-decode/v2'
+            ]);
+
+            return $this->successResponse($responseData, 'VIN decoded and filtered for listing creation (using v2 endpoint)');
 
         } catch (VehicleDatabasesException $e) {
             Log::error('VIN decode for listing failed', [
@@ -473,7 +479,13 @@ class VinDecoderController extends Controller
                 ], 422);
             }
 
-            return $this->successResponse($filteredData, 'VIN extracted from image and decoded successfully');
+            // Add API version indicator
+            $responseData = array_merge($filteredData, [
+                'api_version' => 'v2',
+                'endpoint' => 'advanced-vin-decode/v2'
+            ]);
+
+            return $this->successResponse($responseData, 'VIN extracted from image and decoded successfully (using v2 endpoint)');
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Collect all validation errors
@@ -646,10 +658,17 @@ class VinDecoderController extends Controller
             }
         }
 
+        // Handle v2 structure: data is directly in vinData['data'], not nested in additional_data.data
+        // Also support legacy structure for backward compatibility
         $additionalData = $vinData['additional_data']['data'] ?? [];
         $basicData = $vinData['data'] ?? [];
+        
+        // For v2, if basicData is empty but vinData has direct keys, use vinData directly
+        if (empty($basicData) && !empty($vinData) && isset($vinData['make'])) {
+            $basicData = $vinData;
+        }
 
-        // Extract basic vehicle information from either structure
+        // Extract basic vehicle information from either structure (v2 or legacy)
         $make = $additionalData['make'] ?? $basicData['make'] ?? '';
         $model = $additionalData['model'] ?? $basicData['model'] ?? '';
         $year = $additionalData['year'] ?? $basicData['year'] ?? $vinData['year'] ?? null;
@@ -663,21 +682,50 @@ class VinDecoderController extends Controller
         $driveType = $this->extractDriveTypeFromStyle($style);
 
         // Extract additional specifications from the nested data
-        $specifications = $additionalData['specifications'] ?? [];
-        $dimensions = $additionalData['dimensions'] ?? [];
+        // v2: specifications is an array, legacy: might be array or object
+        $specifications = $additionalData['specifications'] ?? $basicData['specifications'] ?? [];
+        // Ensure specifications is an array
+        if (!is_array($specifications) || (isset($specifications[0]) && !is_array($specifications[0]))) {
+            $specifications = !empty($specifications) ? [$specifications] : [];
+        }
+        
+        // v2: dimensions is an array, legacy: might be array or object
+        $dimensions = $additionalData['dimensions'] ?? $basicData['dimensions'] ?? [];
+        // Ensure dimensions is an array
+        if (!is_array($dimensions) || (isset($dimensions[0]) && !is_array($dimensions[0]))) {
+            $dimensions = !empty($dimensions) ? [$dimensions] : [];
+        }
+        
         $vehicle = $additionalData['vehicle'] ?? $basicData['vehicle'] ?? [];
         $standardFeatures = $basicData['standard_features'] ?? [];
+        
+        // v2: transmission is an object directly in data, not in specifications
+        $transmissionData = $basicData['transmission'] ?? $additionalData['transmission'] ?? null;
 
         // Extract fuel type from specifications (more accurate source)
         $fuelType = $this->extractFuelTypeFromSpecifications($specifications);
         if (!$fuelType) {
-            $fuelType = $basicData['fuel_type'] ?? null;
+            // v2: fuel type might be in specifications[0].fuel.type
+            if (!empty($specifications[0]['fuel']['type'])) {
+                $fuelType = $specifications[0]['fuel']['type'];
+            } else {
+                $fuelType = $basicData['fuel_type'] ?? null;
+            }
         }
         
         // Extract cylinders from specifications (more accurate source)
         $cylinders = $this->extractCylindersFromSpecifications($specifications);
         if (!$cylinders) {
-            $cylinders = $basicData['cylinders'] ?? $vinData['cylinders'] ?? null;
+            // v2: cylinders might be in specifications[0].engine.cylinders_configuration
+            if (!empty($specifications[0]['engine']['cylinders_configuration'])) {
+                $cylinderConfig = $specifications[0]['engine']['cylinders_configuration'];
+                if (preg_match('/(\d+)/', $cylinderConfig, $matches)) {
+                    $cylinders = (int) $matches[1];
+                }
+            }
+            if (!$cylinders) {
+                $cylinders = $basicData['cylinders'] ?? $vinData['cylinders'] ?? null;
+            }
         }
         
         $exteriorColor = $basicData['exterior_color'] ?? $vinData['exterior_color'] ?? null;
@@ -746,13 +794,26 @@ class VinDecoderController extends Controller
         $mappedFuelType = $this->mapFuelType($fuelType);
 
         // Map transmission to match your system
+        // v2: transmission type is in transmission.type, not from style
+        if ($transmissionData && isset($transmissionData['type'])) {
+            $transmission = $transmissionData['type'];
+        }
         $mappedTransmission = $this->mapTransmission($transmission);
 
         // Map drive type to match your system
+        // v2: drive type might be in specifications[0].engine.drivetype
+        if (empty($driveType) && !empty($specifications[0]['engine']['drivetype'])) {
+            $driveType = $specifications[0]['engine']['drivetype'];
+        }
         $mappedDriveType = $this->mapDriveType($driveType);
 
         // Extract transmission gears from data
-        $transmissionGears = $this->extractTransmissionGears($specifications, $additionalData, $basicData, $rawData);
+        // v2: transmission.number_of_speeds is directly available
+        if ($transmissionData && isset($transmissionData['number_of_speeds'])) {
+            $transmissionGears = (int) $transmissionData['number_of_speeds'];
+        } else {
+            $transmissionGears = $this->extractTransmissionGears($specifications, $additionalData, $basicData, $rawData);
+        }
         
         // Extract GCC/Import information
         $gccImportData = $this->extractGccImport($vinData, $additionalData, $basicData);

@@ -62,9 +62,8 @@ class VehicleDatabasesService
         }
 
         try {
-            $url = $raw
-                ? "https://api.vehicledatabases.com/vin-decode/{$vin}"
-                : str_replace('{vin}', $vin, $this->apiUrl);
+            // Always use v2 endpoint for both normal and raw calls
+            $url = str_replace('{vin}', $vin, $this->apiUrl);
 
             $response = Http::timeout($this->timeout)
                 ->withHeaders([
@@ -74,7 +73,11 @@ class VehicleDatabasesService
                 ->get($url);
 
             if ($response->successful()) {
-                $data = $response->json();
+                $responseData = $response->json();
+                
+                // v2 API returns: { "status": "success", "data": {...} }
+                // Extract the actual data if it's nested
+                $data = $responseData['data'] ?? $responseData;
                 
                 Log::info('VIN decoded successfully', [
                     'vin' => $vin,
@@ -83,7 +86,8 @@ class VehicleDatabasesService
 
                 if (!$raw) {
                     if ($cache) {
-                        $this->cacheResult($vin, $data);
+                        // Cache the full response data for reference
+                        $this->cacheResult($vin, $responseData);
                     }
 
                     return [
@@ -93,7 +97,8 @@ class VehicleDatabasesService
                     ];
                 }
 
-                return $data;
+                // For raw, return the full response
+                return $responseData;
             }
 
             // Handle API errors
@@ -250,27 +255,56 @@ class VehicleDatabasesService
      */
     protected function prepareVinData(string $vin, array $apiData): array
     {
+        // Handle v2 response structure: data might be nested in 'data' key or direct
+        $data = $apiData['data'] ?? $apiData;
+        
         // Map API response to database fields
-        // This mapping may need adjustment based on the actual API response structure
+        // v2 endpoint structure: make, model, year, trim are directly in data
+        // vehicle.body_type, vehicle.doors are in vehicle object
+        // transmission.type is in transmission object
+        // specifications[0].fuel.type for fuel type
+        // specifications[0].engine.cylinders_configuration for cylinders
+        
+        $vehicle = $data['vehicle'] ?? [];
+        $transmission = $data['transmission'] ?? [];
+        $specifications = $data['specifications'] ?? [];
+        $firstSpec = $specifications[0] ?? [];
+        
         return [
             'vin' => strtoupper($vin),
-            'make' => $apiData['make'] ?? $apiData['Make'] ?? null,
-            'model' => $apiData['model'] ?? $apiData['Model'] ?? null,
-            'year' => $apiData['year'] ?? $apiData['Year'] ?? null,
-            'trim' => $apiData['trim'] ?? $apiData['Trim'] ?? null,
-            'body_type' => $apiData['body_type'] ?? $apiData['BodyType'] ?? null,
-            'engine_type' => $apiData['engine_type'] ?? $apiData['EngineType'] ?? null,
-            'transmission' => $apiData['transmission'] ?? $apiData['Transmission'] ?? null,
-            'drive_type' => $apiData['drive_type'] ?? $apiData['DriveType'] ?? null,
-            'fuel_type' => $apiData['fuel_type'] ?? $apiData['FuelType'] ?? null,
-            'exterior_color' => $apiData['exterior_color'] ?? $apiData['ExteriorColor'] ?? null,
-            'interior_color' => $apiData['interior_color'] ?? $apiData['InteriorColor'] ?? null,
-            'doors' => $apiData['doors'] ?? $apiData['Doors'] ?? null,
-            'cylinders' => $apiData['cylinders'] ?? $apiData['Cylinders'] ?? null,
-            'manufacturer' => $apiData['manufacturer'] ?? $apiData['Manufacturer'] ?? null,
-            'plant' => $apiData['plant'] ?? $apiData['Plant'] ?? null,
-            'additional_data' => $apiData,
+            'make' => $data['make'] ?? $apiData['make'] ?? $apiData['Make'] ?? null,
+            'model' => $data['model'] ?? $apiData['model'] ?? $apiData['Model'] ?? null,
+            'year' => $data['year'] ?? $apiData['year'] ?? $apiData['Year'] ?? null,
+            'trim' => $data['trim'] ?? $apiData['trim'] ?? $apiData['Trim'] ?? null,
+            'body_type' => $vehicle['body_type'] ?? $data['body_type'] ?? $apiData['body_type'] ?? $apiData['BodyType'] ?? null,
+            'engine_type' => $firstSpec['engine']['type'] ?? $data['engine_type'] ?? $apiData['engine_type'] ?? $apiData['EngineType'] ?? null,
+            'transmission' => $transmission['type'] ?? $data['transmission'] ?? (is_string($data['transmission']) ? $data['transmission'] : null) ?? $apiData['transmission'] ?? $apiData['Transmission'] ?? null,
+            'drive_type' => $firstSpec['engine']['drivetype'] ?? $data['drive_type'] ?? $apiData['drive_type'] ?? $apiData['DriveType'] ?? null,
+            'fuel_type' => $firstSpec['fuel']['type'] ?? $data['fuel_type'] ?? $apiData['fuel_type'] ?? $apiData['FuelType'] ?? null,
+            'exterior_color' => $data['exterior_color'] ?? $apiData['exterior_color'] ?? $apiData['ExteriorColor'] ?? null,
+            'interior_color' => $data['interior_color'] ?? $apiData['interior_color'] ?? $apiData['InteriorColor'] ?? null,
+            'doors' => $vehicle['doors'] ?? $data['doors'] ?? $apiData['doors'] ?? $apiData['Doors'] ?? null,
+            'cylinders' => $this->extractCylindersFromConfig($firstSpec['engine']['cylinders_configuration'] ?? null) ?? $data['cylinders'] ?? $apiData['cylinders'] ?? $apiData['Cylinders'] ?? null,
+            'manufacturer' => $data['manufacturer'] ?? $apiData['manufacturer'] ?? $apiData['Manufacturer'] ?? null,
+            'plant' => $data['plant'] ?? $apiData['plant'] ?? $apiData['Plant'] ?? null,
+            'additional_data' => $apiData, // Store full response for reference
         ];
+    }
+    
+    /**
+     * Extract cylinder count from cylinders_configuration string (e.g., "I-4" -> 4)
+     */
+    protected function extractCylindersFromConfig(?string $config): ?int
+    {
+        if (!$config) {
+            return null;
+        }
+        
+        if (preg_match('/(\d+)/', $config, $matches)) {
+            return (int) $matches[1];
+        }
+        
+        return null;
     }
 
     /**
