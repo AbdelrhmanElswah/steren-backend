@@ -12,25 +12,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Check if unique index exists on odoo_id column and drop it if it does
-        $indexes = DB::select("SHOW INDEX FROM authorized_agencies WHERE Column_name = 'odoo_id' AND Non_unique = 0");
+        // Check if odoo_id column exists
+        $columns = DB::select("SHOW COLUMNS FROM authorized_agencies LIKE 'odoo_id'");
         
-        if (!empty($indexes)) {
-            // Get the index name (could be different names)
-            $indexName = $indexes[0]->Key_name;
-            DB::statement("ALTER TABLE authorized_agencies DROP INDEX {$indexName}");
-        }
-        
-        // Make odoo_id nullable using raw SQL
-        DB::statement('ALTER TABLE authorized_agencies MODIFY COLUMN odoo_id VARCHAR(255) NULL');
-        
-        // Re-add unique constraint only if it doesn't exist (allows multiple NULLs in most databases)
-        $indexesAfter = DB::select("SHOW INDEX FROM authorized_agencies WHERE Column_name = 'odoo_id' AND Non_unique = 0");
-        if (empty($indexesAfter)) {
+        if (!empty($columns)) {
+            // Column exists, drop unique index first if it exists
+            $indexes = DB::select("SHOW INDEX FROM authorized_agencies WHERE Column_name = 'odoo_id'");
+            
+            if (!empty($indexes)) {
+                // Get the index name (could be different names)
+                $indexName = $indexes[0]->Key_name;
+                DB::statement("ALTER TABLE authorized_agencies DROP INDEX {$indexName}");
+            }
+            
+            // Drop the odoo_id column
             Schema::table('authorized_agencies', function (Blueprint $table) {
-                $table->unique('odoo_id');
+                $table->dropColumn('odoo_id');
             });
         }
+        // If column doesn't exist, do nothing (already removed)
     }
 
     /**
@@ -38,22 +38,14 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Drop the unique constraint
-        Schema::table('authorized_agencies', function (Blueprint $table) {
-            $table->dropUnique(['odoo_id']);
-        });
+        // Re-add odoo_id column if it doesn't exist (for rollback)
+        $columns = DB::select("SHOW COLUMNS FROM authorized_agencies LIKE 'odoo_id'");
         
-        // Make odoo_id not nullable using raw SQL
-        // First, set NULL values to empty string or a default value
-        DB::statement("UPDATE authorized_agencies SET odoo_id = CONCAT('temp_', id) WHERE odoo_id IS NULL");
-        
-        // Then make it NOT NULL
-        DB::statement('ALTER TABLE authorized_agencies MODIFY COLUMN odoo_id VARCHAR(255) NOT NULL');
-        
-        // Re-add unique constraint
-        Schema::table('authorized_agencies', function (Blueprint $table) {
-            $table->unique('odoo_id');
-        });
+        if (empty($columns)) {
+            Schema::table('authorized_agencies', function (Blueprint $table) {
+                $table->string('odoo_id')->nullable()->unique()->after('id');
+            });
+        }
     }
 };
 
