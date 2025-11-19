@@ -34,7 +34,7 @@ class CarListingController extends Controller
             // Select only essential fields for listing card UI
             $query = CarListing::select([
                 'id', 'odoo_id', 'title', 'price', 'price_currency', 'year', 'trim', 'doors',
-                'mileage', 'city_id', 'car_brand_id', 'car_body_type_id', 'car_model_id',
+                'mileage', 'mileage_type_id', 'city_id', 'car_brand_id', 'car_body_type_id', 'car_model_id',
                 'car_condition_id', 'fuel_type_id', 'transmission_id', 'exterior_color_id',
                 'drive_type_id', 'cylinder_id', 'studio_id', 'is_sponsored', 'is_featured',
                 'status', 'status_id', 'operator_decision', 'is_new_arrival', 'description',
@@ -651,7 +651,7 @@ class CarListingController extends Controller
             // Select only essential fields for listing card UI
             $query = CarListing::select([
                 'id', 'odoo_id', 'title', 'price', 'price_currency', 'year', 'trim', 'doors',
-                'mileage', 'city_id', 'car_brand_id', 'car_body_type_id', 'car_model_id',
+                'mileage', 'mileage_type_id', 'city_id', 'car_brand_id', 'car_body_type_id', 'car_model_id',
                 'car_condition_id', 'fuel_type_id', 'transmission_id', 'exterior_color_id',
                 'drive_type_id', 'cylinder_id', 'studio_id', 'is_sponsored', 'is_featured',
                 'status', 'status_id', 'operator_decision', 'is_new_arrival', 'description',
