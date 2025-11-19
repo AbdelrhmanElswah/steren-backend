@@ -219,10 +219,8 @@ class SubscriptionBasedListingService
                 }
             ]);
 
-        // Only filter studios by city if city_id is provided (otherwise return all verified studios)
-        if (isset($filters['city_id'])) {
-            $query->where('city_id', $filters['city_id']);
-        }
+        // Note: We don't filter studios by city_id - we only filter their listings
+        // This allows studios to be returned if they have at least one listing in the specified city
 
         // Filter by verified status (default: only verified)
         if (isset($filters['verified_only'])) {
