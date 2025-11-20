@@ -764,14 +764,14 @@ class VinDecoderController extends Controller
         $make = $additionalData['make'] ?? $basicData['make'] ?? '';
         $model = $additionalData['model'] ?? $basicData['model'] ?? '';
         $year = $additionalData['year'] ?? $basicData['year'] ?? $vinData['year'] ?? null;
-        $style = $additionalData['style'] ?? $basicData['style'] ?? '';
+        $style = $additionalData['style'] ?? $basicData['specifications'][9] ?? '';
 
         // Extract trim directly from additional_data only (no default values)
         $trim = $additionalData['trim'] ?? $basicData['trim'] ?? null;
 
         $bodyType = $this->extractBodyTypeFromStyle($style);
         $transmission = $this->extractTransmissionFromStyle($style);
-        $driveType = $this->extractDriveTypeFromStyle($style);
+        $driveType = $style['engine']['drivetype'] ?? null;
 
         // Extract additional specifications from the nested data
         // v2: specifications is an array, legacy: might be array or object
