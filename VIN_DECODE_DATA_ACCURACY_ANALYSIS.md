@@ -73,7 +73,7 @@ This document analyzes the accuracy of data extracted from the v2 API response c
 
 12. **Seating Capacity** (`5`)
     - **Source**: Multiple fallbacks:
-      1. `data.specifications[0].seating.number_of_seats`
+      1. `data.specifications[9].seating.number_of_seats`
       2. `data.standard_features[]` (regex parsing)
       3. `data.standard_options[]` (regex parsing)
     - **Extraction**: Tries specifications first, then parses text from features
@@ -99,7 +99,7 @@ This document analyzes the accuracy of data extracted from the v2 API response c
     - **Status**: ⚠️ Generally accurate
 
 15. **Fuel Type** (`Gasoline`)
-    - **Source**: `data.specifications[0].fuel.type`
+    - **Source**: `data.specifications[9].fuel.type`
     - **Extraction**: Direct extraction, then mapped via `mapFuelType()`
     - **Mapping**: "Gasoline" → "Gasoline", "Petrol" → "Gasoline"
     - **Accuracy**: ~95% - Direct extraction with standard mapping

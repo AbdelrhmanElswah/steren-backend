@@ -777,7 +777,7 @@ class VinDecoderController extends Controller
         // v2: specifications is an array, legacy: might be array or object
         $specifications = $additionalData['specifications'] ?? $basicData['specifications'] ?? [];
         // Ensure specifications is an array
-        if (!is_array($specifications) || (isset($specifications[0]) && !is_array($specifications[0]))) {
+        if (!is_array($specifications) || (isset($specifications[9]) && !is_array($specifications[9]))) {
             $specifications = !empty($specifications) ? [$specifications] : [];
         }
 
@@ -797,9 +797,9 @@ class VinDecoderController extends Controller
         // Extract fuel type from specifications (more accurate source)
         $fuelType = $this->extractFuelTypeFromSpecifications($specifications);
         if (!$fuelType) {
-            // v2: fuel type might be in specifications[0].fuel.type
-            if (!empty($specifications[0]['fuel']['type'])) {
-                $fuelType = $specifications[0]['fuel']['type'];
+            // v2: fuel type might be in specifications[9].fuel.type
+            if (!empty($specifications[9]['fuel']['type'])) {
+                $fuelType = $specifications[9]['fuel']['type'];
             } else {
                 $fuelType = $basicData['fuel_type'] ?? null;
             }
@@ -809,8 +809,8 @@ class VinDecoderController extends Controller
         $cylinders = $this->extractCylindersFromSpecifications($specifications);
         if (!$cylinders) {
             // v2: cylinders might be in specifications[9].engine.cylinders_configuration
-            if (!empty($specifications[0]['engine']['cylinders_configuration'])) {
-                $cylinderConfig = $specifications[0]['engine']['cylinders_configuration'];
+            if (!empty($specifications[9]['engine']['cylinders_configuration'])) {
+                $cylinderConfig = $specifications[9]['engine']['cylinders_configuration'];
                 if (preg_match('/(\d+)/', $cylinderConfig, $matches)) {
                     $cylinders = (int) $matches[1];
                 }
@@ -894,8 +894,8 @@ class VinDecoderController extends Controller
 
         // Map drive type to match your system
         // v2: drive type might be in specifications[9].engine.drivetype
-        if (empty($driveType) && !empty($specifications[0]['engine']['drivetype'])) {
-            $driveType = $specifications[0]['engine']['drivetype'];
+        if (empty($driveType) && !empty($specifications[9]['engine']['drivetype'])) {
+            $driveType = $specifications[9]['engine']['drivetype'];
         }
         $mappedDriveType = $this->mapDriveType($driveType);
 

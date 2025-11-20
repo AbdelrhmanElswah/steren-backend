@@ -262,13 +262,13 @@ class VehicleDatabasesService
         // v2 endpoint structure: make, model, year, trim are directly in data
         // vehicle.body_type, vehicle.doors are in vehicle object
         // transmission.type is in transmission object
-        // specifications[0].fuel.type for fuel type
+        // specifications[9].fuel.type for fuel type
         // specifications[9].engine.cylinders_configuration for cylinders
 
         $vehicle = $data['vehicle'] ?? [];
         $transmission = $data['transmission'] ?? [];
         $specifications = $data['specifications'] ?? [];
-        $firstSpec = $specifications[0] ?? [];
+        $firstSpec = $specifications[9] ?? [];
 
         return [
             'vin' => strtoupper($vin),

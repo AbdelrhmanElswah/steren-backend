@@ -409,15 +409,15 @@ Looking at `filterVinDataForListing()`, it expects:
 | Transmission | `data.transmission.transmission_style` | `data.transmission.type` | ⚠️ Needs adjustment |
 | Transmission Gears | ❌ Not available | `data.transmission.number_of_speeds` | ✅ Works in v2 |
 | Drive Type | `data.drivetrain.drive_type` | `data.specifications[9].engine.drivetype` | ⚠️ Needs adjustment |
-| Fuel Type | `data.fuel.fuel_type` | `data.specifications[0].fuel.type` | ⚠️ Needs adjustment |
+| Fuel Type | `data.fuel.fuel_type` | `data.specifications[9].fuel.type` | ⚠️ Needs adjustment |
 | Horsepower | ❌ Not available | `data.dimensions[0].engine[0].horsepower[1].value` | ✅ Works in v2 |
 | Torque | ❌ Not available | `data.dimensions[0].engine[0].torque[1].value` | ✅ Works in v2 |
 | Exterior Colors | ❌ Not available | `data.exterior_colors[]` | ✅ Works in v2 |
-| Seating Capacity | `data.basic.seating_capacity` | `data.specifications[0].seating.number_of_seats` | ⚠️ Needs adjustment |
+| Seating Capacity | `data.basic.seating_capacity` | `data.specifications[9].seating.number_of_seats` | ⚠️ Needs adjustment |
 | Length | ❌ Limited | `data.dimensions[0].exterior[0].overall_length[0].value` | ✅ Works in v2 |
 | Width | ❌ Limited | `data.dimensions[0].exterior[0].overall_width[0].value` | ✅ Works in v2 |
 | Height | ❌ Limited | `data.dimensions[0].exterior[0].overall_height[0].value` | ✅ Works in v2 |
-| MPG | ❌ Not available | `data.specifications[0].mpg.epa_combined_economy` | ✅ Works in v2 |
+| MPG | ❌ Not available | `data.specifications[9].mpg.epa_combined_economy` | ✅ Works in v2 |
 
 ## Conclusion
 
