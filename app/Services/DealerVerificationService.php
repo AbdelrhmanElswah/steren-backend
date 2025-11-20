@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\DealerApplication;
 use App\Models\SubscriptionPlan;
+use App\Models\UserSubscription;
 use App\Models\Status;
 use App\Exceptions\OdooConnectionException;
 use App\Exceptions\OdooServiceException;
@@ -12,6 +13,7 @@ use App\Services\FirebaseService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 use Exception;
 
 class DealerVerificationService
@@ -645,6 +647,24 @@ class DealerVerificationService
 
             $this->createDefaultStudioForDealer($application->user);
 
+            // Auto-complete payment when application is approved
+            // This creates the subscription record using the same logic as payment completion
+            // Can be easily disabled by setting AUTO_COMPLETE_PAYMENT_ON_APPROVAL=false in .env
+            if (config('services.dealer.auto_complete_payment_on_approval', true)) {
+                $subscription = $this->completePaymentForApplication($application, [
+                    'dealer_application_id' => $application->id,
+                    'auto_completed_on_approval' => true,
+                ]);
+                
+                if (!$subscription) {
+                    Log::warning('Failed to create subscription on approval (non-critical)', [
+                        'application_id' => $applicationId,
+                        'subscription_plan_id' => $application->subscription_plan_id,
+                    ]);
+                    // Don't throw exception - approval can still succeed without subscription
+                }
+            }
+
             DB::commit();
 
             $this->firebaseService->updateDealerApplicationStatus(
@@ -1027,5 +1047,119 @@ class DealerVerificationService
             'studio_name' => $studio->name,
             'city_id' => $studio->city_id,
         ]);
+    }
+
+    /**
+     * Complete payment for dealer application and create subscription
+     * This method handles the full payment completion flow including subscription creation
+     * Can be called from approval flow or payment completion endpoint
+     * 
+     * @param DealerApplication $application
+     * @param array $paymentDetails Additional payment details to store
+     * @return UserSubscription|null
+     */
+    public function completePaymentForApplication(DealerApplication $application, array $paymentDetails = []): ?UserSubscription
+    {
+        // Validate application has a user
+        if (!$application->user) {
+            Log::error('Dealer application has no associated user', [
+                'application_id' => $application->id,
+            ]);
+            return null;
+        }
+
+        // Skip if payment already completed
+        if ($application->payment_completed) {
+            Log::info('Payment already completed for dealer application', [
+                'application_id' => $application->id,
+            ]);
+            
+            // Return existing subscription if it exists
+            return UserSubscription::where('user_id', $application->user->id)
+                ->where('subscription_plan_id', $application->subscription_plan_id)
+                ->where('status', 'active')
+                ->first();
+        }
+
+        // Complete payment on the application model
+        $application->completePayment();
+
+        // Check if subscription already exists
+        $userSubscription = UserSubscription::where('user_id', $application->user->id)
+            ->where('subscription_plan_id', $application->subscription_plan_id)
+            ->where('status', 'active')
+            ->first();
+
+        if ($userSubscription) {
+            // Update existing subscription with payment details
+            $userSubscription->update([
+                'payment_details' => array_merge(
+                    $userSubscription->payment_details ?? [],
+                    array_merge($paymentDetails, [
+                        'dealer_application_id' => $application->id,
+                        'payment_completed_at' => now()->toISOString(),
+                    ])
+                ),
+            ]);
+
+            Log::info('Updated existing subscription with payment details', [
+                'subscription_id' => $userSubscription->id,
+                'application_id' => $application->id,
+            ]);
+
+            return $userSubscription;
+        }
+
+        // Create new subscription if it doesn't exist
+        if ($application->subscription_plan_id) {
+            $plan = SubscriptionPlan::find($application->subscription_plan_id);
+            
+            if ($plan) {
+                // Cancel any existing active subscription for this user
+                $existingSubscription = UserSubscription::where('user_id', $application->user->id)
+                    ->where('status', 'active')
+                    ->first();
+                
+                if ($existingSubscription) {
+                    $existingSubscription->cancel();
+                }
+
+                // Use expires_at from application if set, otherwise calculate from plan
+                $expiresAt = $application->expires_at ?? $plan->calculateExpirationDate();
+
+                // Create new subscription record
+                $userSubscription = UserSubscription::create([
+                    'user_id' => $application->user->id,
+                    'subscription_plan_id' => $plan->id,
+                    'status' => 'active',
+                    'started_at' => Carbon::now(),
+                    'expires_at' => $expiresAt,
+                    'grace_period_days' => 15, // Default 15-day grace period
+                    'payment_details' => array_merge($paymentDetails, [
+                        'dealer_application_id' => $application->id,
+                    ]),
+                ]);
+
+                Log::info('User subscription created for dealer application', [
+                    'user_id' => $application->user->id,
+                    'subscription_plan_id' => $plan->id,
+                    'application_id' => $application->id,
+                    'subscription_id' => $userSubscription->id,
+                ]);
+
+                return $userSubscription;
+            } else {
+                Log::warning('Subscription plan not found when completing payment', [
+                    'application_id' => $application->id,
+                    'subscription_plan_id' => $application->subscription_plan_id,
+                ]);
+            }
+        } else {
+            Log::warning('Dealer application has no subscription_plan_id when completing payment', [
+                'application_id' => $application->id,
+            ]);
+        }
+
+        return null;
     }
 }

@@ -43,6 +43,12 @@ return [
         'api_key' => env('ODOO_API_KEY', ''),
     ],
 
+    'dealer' => [
+        // Auto-complete payment when dealer application is approved
+        // Set to false to require manual payment completion
+        'auto_complete_payment_on_approval' => env('DEALER_AUTO_COMPLETE_PAYMENT_ON_APPROVAL', true),
+    ],
+
     'firebase' => [
         'project_id' => env('FIREBASE_PROJECT_ID'),
         'database_url' => env('FIREBASE_DATABASE_URL'),

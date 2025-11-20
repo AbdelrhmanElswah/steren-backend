@@ -257,7 +257,7 @@ class SubscriptionService
             'max_listings' => $maxListings,
             'current_listings' => $currentListingsCount,
             'remaining_listings' => max(0, $maxListings - $currentListingsCount),
-            'max_photos' => 5,
+            'max_photos' => 12,
             'features' => []
         ];
 
@@ -268,7 +268,7 @@ class SubscriptionService
             if ($plan) {
                 $baseLimits['has_subscription'] = true;
                 $baseLimits['plan_name'] = $plan->name;
-                $baseLimits['max_photos'] = $plan->max_photos ?? 5;
+                $baseLimits['max_photos'] = $plan->max_photos ?? 12;
                 $baseLimits['features'] = [
                     'whatsapp_phone' => $plan->is_whatsapp_phone ?? false,
                     'badge' => $plan->is_badge ?? false,
@@ -299,13 +299,13 @@ class SubscriptionService
 
     /**
      * Check if user can upload given number of photos
-     * Free users have a default limit of 5 photos
+     * Free users have a default limit of 12 photos
      */
     public function canUploadPhotos(User $user, int $photoCount): array
     {
-        // Free tier: 5 photos max
+        // Free tier: 12 photos max
         if (!$this->hasActiveSubscription($user)) {
-            $freeMaxPhotos = 5;
+            $freeMaxPhotos = 12;
             
             if ($photoCount > $freeMaxPhotos) {
                 return [

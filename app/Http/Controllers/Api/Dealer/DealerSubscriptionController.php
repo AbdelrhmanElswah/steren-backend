@@ -7,6 +7,7 @@ use App\Http\Requests\Dealer\SubscriptionPlanRequest;
 use App\Models\DealerApplication;
 use App\Models\SubscriptionPlan;
 use App\Models\UserSubscription;
+use App\Services\DealerVerificationService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,13 @@ use Illuminate\Support\Facades\DB;
 class DealerSubscriptionController extends Controller
 {
     use ApiResponse;
+
+    protected DealerVerificationService $dealerVerificationService;
+
+    public function __construct(DealerVerificationService $dealerVerificationService)
+    {
+        $this->dealerVerificationService = $dealerVerificationService;
+    }
 
     /**
      * Get current subscription details for the authenticated user
@@ -199,22 +207,22 @@ class DealerSubscriptionController extends Controller
         try {
             DB::beginTransaction();
 
-            // Complete payment
-            $dealerApplication->completePayment();
-
-            // Create user subscription record
-            $userSubscription = UserSubscription::create([
-                'user_id' => $user->id,
-                'subscription_plan_id' => $dealerApplication->subscription_plan_id,
-                'status' => 'active',
-                'started_at' => now(),
-                'expires_at' => $dealerApplication->expires_at,
-                'payment_details' => [
+            // Use the service method to complete payment and create/update subscription
+            $userSubscription = $this->dealerVerificationService->completePaymentForApplication(
+                $dealerApplication,
+                [
                     'payment_method' => $request->payment_method,
                     'payment_data' => $request->payment_data,
-                    'dealer_application_id' => $dealerApplication->id,
-                ],
-            ]);
+                ]
+            );
+
+            if (!$userSubscription) {
+                DB::rollBack();
+                return $this->errorResponse(
+                    'Failed to create subscription. Please ensure the application has a valid subscription plan.',
+                    422
+                );
+            }
 
             DB::commit();
 
@@ -278,22 +286,24 @@ class DealerSubscriptionController extends Controller
 
             // Reset payment status and complete payment
             $dealerApplication->update(['payment_completed' => false]);
-            $dealerApplication->completePayment();
 
-            // Create new user subscription record
-            $userSubscription = UserSubscription::create([
-                'user_id' => $user->id,
-                'subscription_plan_id' => $dealerApplication->subscription_plan_id,
-                'status' => 'active',
-                'started_at' => now(),
-                'expires_at' => $dealerApplication->expires_at,
-                'payment_details' => [
+            // Use the service method to complete payment and create/update subscription
+            $userSubscription = $this->dealerVerificationService->completePaymentForApplication(
+                $dealerApplication,
+                [
                     'payment_method' => $request->payment_method,
                     'payment_data' => $request->payment_data,
-                    'dealer_application_id' => $dealerApplication->id,
                     'renewal' => true,
-                ],
-            ]);
+                ]
+            );
+
+            if (!$userSubscription) {
+                DB::rollBack();
+                return $this->errorResponse(
+                    'Failed to create subscription. Please ensure the application has a valid subscription plan.',
+                    422
+                );
+            }
 
             DB::commit();
 

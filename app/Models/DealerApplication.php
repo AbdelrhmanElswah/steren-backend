@@ -334,11 +334,17 @@ class DealerApplication extends Model
     {
         $verifiedStatus = Status::findByNameAndType('verified', 'dealer_application');
         
-        $this->update([
+        // Only update approved_at if it's not already set (preserve original approval time)
+        $updateData = [
             'payment_completed' => true,
-            'approved_at' => now(),
             'status_id' => $verifiedStatus?->id,
-        ]);
+        ];
+        
+        if (!$this->approved_at) {
+            $updateData['approved_at'] = now();
+        }
+        
+        $this->update($updateData);
 
         if ($this->subscriptionPlan) {
             $billingCycle = $this->subscriptionPlan->billing_cycle;
