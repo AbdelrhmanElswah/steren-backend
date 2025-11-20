@@ -531,14 +531,32 @@ class OdooService
 
     /**
      * Update listing status in Odoo
+     * Uses the new endpoint structure: /api/listing/{odoo_listing_id}/{action}
+     * 
+     * @param string $odooListingId The odoo_listing_id from car_listings table
+     * @param int $listingId The local listing ID for reference
+     * @param string $action The action to perform (pause, unpause, boost, archive, mark_sold)
+     * @param string $status The new status value
+     * @return array
      */
     public function updateListingStatus(string $odooListingId, int $listingId, string $action, string $status): array
     {
         try {
+            // Map action to endpoint
+            $endpoint = match($action) {
+                'pause' => 'pause',
+                'unpause' => 'unpause',
+                'boost' => 'boost',
+                'archive' => 'archive',
+                'mark_sold' => 'mark_sold',
+                default => throw new Exception("Invalid action: {$action}")
+            };
+
+            $url = $this->baseUrl . '/api/listing/' . $odooListingId . '/' . $endpoint;
+
+            // Prepare payload with listing_id for reference
             $payload = [
-                'odoo_listing_id' => $odooListingId,
                 'listing_id' => $listingId,
-                'action' => $action,
                 'status' => $status,
                 'updated_at' => now()->toISOString()
             ];
@@ -565,16 +583,19 @@ class OdooService
             }
 
             Log::info('Sending listing status update to Odoo', [
-                'url' => $this->baseUrl . '/api/listing/status-update',
-                'payload' => $payload
+                'url' => $url,
+                'action' => $action,
+                'odoo_listing_id' => $odooListingId,
+                'listing_id' => $listingId
             ]);
 
             $response = Http::timeout(30)->withHeaders([
                 'Content-Type' => 'application/json',
                 'Authorization' => 'Bearer ' . $this->apiKey,
-            ])->post($this->baseUrl . '/api/listing/status-update', $payload);
+            ])->post($url, $payload);
 
             Log::info('Odoo listing status update response', [
+                'url' => $url,
                 'status' => $response->status(),
                 'body' => $response->body(),
                 'successful' => $response->successful()

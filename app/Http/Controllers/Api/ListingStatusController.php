@@ -27,8 +27,14 @@ class ListingStatusController extends Controller
         try {
             $listing = $this->getUserListing($request->user(), $listingId);
             
+            // Validate current status
             if ($listing->status === 'paused') {
                 return $this->errorResponse('Listing is already paused', 400);
+            }
+
+            // Prevent pausing sold or archived listings
+            if (in_array($listing->status, ['sold', 'archived'])) {
+                return $this->errorResponse("Cannot pause a listing that is {$listing->status}", 400);
             }
 
             DB::beginTransaction();
@@ -39,9 +45,10 @@ class ListingStatusController extends Controller
                 'paused_at' => now()
             ]);
 
-            // Sync with Odoo if listing has odoo_id
-            if ($listing->odoo_id) {
-                $this->syncStatusWithOdoo($listing, 'pause');
+            // Sync with Odoo if listing has odoo_listing_id
+            $odooSyncResult = null;
+            if ($listing->odoo_listing_id) {
+                $odooSyncResult = $this->syncStatusWithOdoo($listing, 'pause');
             }
 
             DB::commit();
@@ -49,14 +56,22 @@ class ListingStatusController extends Controller
             Log::info('Listing paused successfully', [
                 'listing_id' => $listingId,
                 'user_id' => $request->user()->id,
-                'odoo_id' => $listing->odoo_id
+                'odoo_listing_id' => $listing->odoo_listing_id,
+                'odoo_sync_success' => $odooSyncResult['success'] ?? null
             ]);
 
-            return $this->successResponse([
+            $responseData = [
                 'listing' => $listing->fresh(),
                 'status' => 'paused',
                 'message' => 'Listing paused successfully'
-            ], 'Listing paused successfully');
+            ];
+
+            // Add warning if Odoo sync failed
+            if ($odooSyncResult && !$odooSyncResult['success']) {
+                $responseData['warning'] = 'Listing paused locally, but Odoo sync failed: ' . $odooSyncResult['message'];
+            }
+
+            return $this->successResponse($responseData, 'Listing paused successfully');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -79,6 +94,7 @@ class ListingStatusController extends Controller
         try {
             $listing = $this->getUserListing($request->user(), $listingId);
             
+            // Validate current status
             if ($listing->status !== 'paused') {
                 return $this->errorResponse('Listing is not paused', 400);
             }
@@ -91,9 +107,10 @@ class ListingStatusController extends Controller
                 'paused_at' => null
             ]);
 
-            // Sync with Odoo if listing has odoo_id
-            if ($listing->odoo_id) {
-                $this->syncStatusWithOdoo($listing, 'unpause');
+            // Sync with Odoo if listing has odoo_listing_id
+            $odooSyncResult = null;
+            if ($listing->odoo_listing_id) {
+                $odooSyncResult = $this->syncStatusWithOdoo($listing, 'unpause');
             }
 
             DB::commit();
@@ -101,14 +118,22 @@ class ListingStatusController extends Controller
             Log::info('Listing unpaused successfully', [
                 'listing_id' => $listingId,
                 'user_id' => $request->user()->id,
-                'odoo_id' => $listing->odoo_id
+                'odoo_listing_id' => $listing->odoo_listing_id,
+                'odoo_sync_success' => $odooSyncResult['success'] ?? null
             ]);
 
-            return $this->successResponse([
+            $responseData = [
                 'listing' => $listing->fresh(),
                 'status' => 'active',
                 'message' => 'Listing unpaused successfully'
-            ], 'Listing unpaused successfully');
+            ];
+
+            // Add warning if Odoo sync failed
+            if ($odooSyncResult && !$odooSyncResult['success']) {
+                $responseData['warning'] = 'Listing unpaused locally, but Odoo sync failed: ' . $odooSyncResult['message'];
+            }
+
+            return $this->successResponse($responseData, 'Listing unpaused successfully');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -131,22 +156,30 @@ class ListingStatusController extends Controller
         try {
             $listing = $this->getUserListing($request->user(), $listingId);
             
+            // Validate current status - only active listings can be boosted
             if ($listing->status !== 'active') {
                 return $this->errorResponse('Only active listings can be boosted', 400);
             }
 
+            // Check if already promoted and not expired
+            if ($listing->is_promoted && $listing->promotion_expires_at && $listing->promotion_expires_at->isFuture()) {
+                return $this->errorResponse('Listing is already boosted', 400);
+            }
+
             DB::beginTransaction();
 
-            // Update local database
+            // Update local database - set status to boosted and promotion flags
             $listing->update([
+                'status' => 'boosted',
                 'is_promoted' => true,
                 'promotion_started_at' => now(),
                 'promotion_expires_at' => now()->addDays(7) // Default 7 days boost
             ]);
 
-            // Sync with Odoo if listing has odoo_id
-            if ($listing->odoo_id) {
-                $this->syncStatusWithOdoo($listing, 'boost');
+            // Sync with Odoo if listing has odoo_listing_id
+            $odooSyncResult = null;
+            if ($listing->odoo_listing_id) {
+                $odooSyncResult = $this->syncStatusWithOdoo($listing, 'boost');
             }
 
             DB::commit();
@@ -154,14 +187,22 @@ class ListingStatusController extends Controller
             Log::info('Listing boosted successfully', [
                 'listing_id' => $listingId,
                 'user_id' => $request->user()->id,
-                'odoo_id' => $listing->odoo_id
+                'odoo_listing_id' => $listing->odoo_listing_id,
+                'odoo_sync_success' => $odooSyncResult['success'] ?? null
             ]);
 
-            return $this->successResponse([
+            $responseData = [
                 'listing' => $listing->fresh(),
                 'status' => 'boosted',
                 'message' => 'Listing boosted successfully'
-            ], 'Listing boosted successfully');
+            ];
+
+            // Add warning if Odoo sync failed
+            if ($odooSyncResult && !$odooSyncResult['success']) {
+                $responseData['warning'] = 'Listing boosted locally, but Odoo sync failed: ' . $odooSyncResult['message'];
+            }
+
+            return $this->successResponse($responseData, 'Listing boosted successfully');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -184,21 +225,31 @@ class ListingStatusController extends Controller
         try {
             $listing = $this->getUserListing($request->user(), $listingId);
             
+            // Validate current status
             if ($listing->status === 'archived') {
                 return $this->errorResponse('Listing is already archived', 400);
             }
 
+            // Prevent archiving sold listings
+            if ($listing->status === 'sold') {
+                return $this->errorResponse('Cannot archive a listing that is already sold', 400);
+            }
+
             DB::beginTransaction();
 
-            // Update local database
+            // Update local database - clear promotion flags when archiving
             $listing->update([
                 'status' => 'archived',
-                'archived_at' => now()
+                'archived_at' => now(),
+                'is_promoted' => false,
+                'promotion_started_at' => null,
+                'promotion_expires_at' => null
             ]);
 
-            // Sync with Odoo if listing has odoo_id
-            if ($listing->odoo_id) {
-                $this->syncStatusWithOdoo($listing, 'archive');
+            // Sync with Odoo if listing has odoo_listing_id
+            $odooSyncResult = null;
+            if ($listing->odoo_listing_id) {
+                $odooSyncResult = $this->syncStatusWithOdoo($listing, 'archive');
             }
 
             DB::commit();
@@ -206,14 +257,22 @@ class ListingStatusController extends Controller
             Log::info('Listing archived successfully', [
                 'listing_id' => $listingId,
                 'user_id' => $request->user()->id,
-                'odoo_id' => $listing->odoo_id
+                'odoo_listing_id' => $listing->odoo_listing_id,
+                'odoo_sync_success' => $odooSyncResult['success'] ?? null
             ]);
 
-            return $this->successResponse([
+            $responseData = [
                 'listing' => $listing->fresh(),
                 'status' => 'archived',
                 'message' => 'Listing archived successfully'
-            ], 'Listing archived successfully');
+            ];
+
+            // Add warning if Odoo sync failed
+            if ($odooSyncResult && !$odooSyncResult['success']) {
+                $responseData['warning'] = 'Listing archived locally, but Odoo sync failed: ' . $odooSyncResult['message'];
+            }
+
+            return $this->successResponse($responseData, 'Listing archived successfully');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -236,21 +295,31 @@ class ListingStatusController extends Controller
         try {
             $listing = $this->getUserListing($request->user(), $listingId);
             
+            // Validate current status
             if ($listing->status === 'sold') {
                 return $this->errorResponse('Listing is already marked as sold', 400);
             }
 
+            // Prevent marking archived listings as sold
+            if ($listing->status === 'archived') {
+                return $this->errorResponse('Cannot mark an archived listing as sold', 400);
+            }
+
             DB::beginTransaction();
 
-            // Update local database
+            // Update local database - clear promotion flags when marking as sold
             $listing->update([
                 'status' => 'sold',
-                'sold_at' => now()
+                'sold_at' => now(),
+                'is_promoted' => false,
+                'promotion_started_at' => null,
+                'promotion_expires_at' => null
             ]);
 
-            // Sync with Odoo if listing has odoo_id
-            if ($listing->odoo_id) {
-                $this->syncStatusWithOdoo($listing, 'mark_sold');
+            // Sync with Odoo if listing has odoo_listing_id
+            $odooSyncResult = null;
+            if ($listing->odoo_listing_id) {
+                $odooSyncResult = $this->syncStatusWithOdoo($listing, 'mark_sold');
             }
 
             DB::commit();
@@ -258,14 +327,22 @@ class ListingStatusController extends Controller
             Log::info('Listing marked as sold successfully', [
                 'listing_id' => $listingId,
                 'user_id' => $request->user()->id,
-                'odoo_id' => $listing->odoo_id
+                'odoo_listing_id' => $listing->odoo_listing_id,
+                'odoo_sync_success' => $odooSyncResult['success'] ?? null
             ]);
 
-            return $this->successResponse([
+            $responseData = [
                 'listing' => $listing->fresh(),
                 'status' => 'sold',
                 'message' => 'Listing marked as sold successfully'
-            ], 'Listing marked as sold successfully');
+            ];
+
+            // Add warning if Odoo sync failed
+            if ($odooSyncResult && !$odooSyncResult['success']) {
+                $responseData['warning'] = 'Listing marked as sold locally, but Odoo sync failed: ' . $odooSyncResult['message'];
+            }
+
+            return $this->successResponse($responseData, 'Listing marked as sold successfully');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -298,12 +375,23 @@ class ListingStatusController extends Controller
 
     /**
      * Sync listing status with Odoo
+     * Returns the Odoo sync result for error handling
      */
-    private function syncStatusWithOdoo(CarListing $listing, string $action): void
+    private function syncStatusWithOdoo(CarListing $listing, string $action): array
     {
         try {
+            // Use odoo_listing_id from the car_listings table
+            $odooListingId = $listing->odoo_listing_id;
+            
+            if (!$odooListingId) {
+                return [
+                    'success' => false,
+                    'message' => 'No Odoo listing ID found (odoo_listing_id is required)'
+                ];
+            }
+
             $odooResponse = $this->odooService->updateListingStatus(
-                $listing->odoo_id,
+                $odooListingId,
                 $listing->id,
                 $action,
                 $listing->status
@@ -312,25 +400,32 @@ class ListingStatusController extends Controller
             if (!$odooResponse['success']) {
                 Log::warning('Failed to sync listing status with Odoo', [
                     'listing_id' => $listing->id,
-                    'odoo_id' => $listing->odoo_id,
+                    'odoo_listing_id' => $odooListingId,
                     'action' => $action,
                     'error' => $odooResponse['message']
                 ]);
             } else {
                 Log::info('Listing status synced with Odoo successfully', [
                     'listing_id' => $listing->id,
-                    'odoo_id' => $listing->odoo_id,
+                    'odoo_listing_id' => $odooListingId,
                     'action' => $action
                 ]);
             }
 
+            return $odooResponse;
+
         } catch (\Exception $e) {
             Log::error('Failed to sync listing status with Odoo', [
                 'listing_id' => $listing->id,
-                'odoo_id' => $listing->odoo_id,
+                'odoo_listing_id' => $listing->odoo_listing_id,
                 'action' => $action,
                 'error' => $e->getMessage()
             ]);
+
+            return [
+                'success' => false,
+                'message' => 'Exception during Odoo sync: ' . $e->getMessage()
+            ];
         }
     }
 }
