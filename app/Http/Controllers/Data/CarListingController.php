@@ -1012,7 +1012,9 @@ class CarListingController extends Controller
             }
 
             // Get pagination parameters
-            $perPage = (int) $request->input('per_page', 7);
+            // If limit is provided, use it; otherwise use per_page
+            $limit = $request->input('limit');
+            $perPage = $limit !== null ? (int) $limit : (int) $request->input('per_page', 7);
             $page = (int) $request->input('page', 1);
             $perPage = max(1, min(100, $perPage));
 
@@ -1256,7 +1258,9 @@ class CarListingController extends Controller
             }
 
             // Get pagination parameters
-            $perPage = (int) $request->input('per_page', 7);
+            // If limit is provided, use it; otherwise use per_page
+            $limit = $request->input('limit');
+            $perPage = $limit !== null ? (int) $limit : (int) $request->input('per_page', 7);
             $page = (int) $request->input('page', 1);
             $perPage = max(1, min(100, $perPage));
 
@@ -1428,10 +1432,18 @@ class CarListingController extends Controller
                 'listings' => []
             ];
 
+            // Apply limit if provided
+            $limit = $request->input('limit');
+            $listings = $newData['listings'];
+            if ($limit !== null) {
+                $limit = max(1, min(100, (int) $limit));
+                $listings = array_slice($listings, 0, $limit);
+            }
+
             // Build response matching condition-groups structure
             $data = [
                 'count' => $newData['count'],
-                'listings' => $newData['listings'],
+                'listings' => $listings,
                 'brand' => $groupedData['brand'] ?? [
                     'id' => $brand->id,
                     'name' => $brand->name,
@@ -1477,10 +1489,18 @@ class CarListingController extends Controller
                 'listings' => []
             ];
 
+            // Apply limit if provided
+            $limit = $request->input('limit');
+            $listings = $newData['listings'];
+            if ($limit !== null) {
+                $limit = max(1, min(100, (int) $limit));
+                $listings = array_slice($listings, 0, $limit);
+            }
+
             // Build response matching condition-groups structure
             $data = [
                 'count' => $newData['count'],
-                'listings' => $newData['listings'],
+                'listings' => $listings,
                 'studio' => $groupedData['studio'] ?? [
                     'id' => $studio->id,
                     'name' => $studio->name,
