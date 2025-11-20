@@ -74,11 +74,11 @@ class VehicleDatabasesService
 
             if ($response->successful()) {
                 $responseData = $response->json();
-                
+
                 // v2 API returns: { "status": "success", "data": {...} }
                 // Extract the actual data if it's nested
                 $data = $responseData['data'] ?? $responseData;
-                
+
                 Log::info('VIN decoded successfully', [
                     'vin' => $vin,
                     'status_code' => $response->status(),
@@ -104,7 +104,7 @@ class VehicleDatabasesService
             // Handle API errors
             $responseBody = $response->json();
             $errorMessage = $this->extractErrorMessage($responseBody, $response->status());
-            
+
             Log::error('VehicleDatabases API error', [
                 'vin' => $vin,
                 'status' => $response->status(),
@@ -145,16 +145,16 @@ class VehicleDatabasesService
     public function decodeAndSaveVin(string $vin, bool $updateExisting = true): VinDecoder
     {
         $result = $this->decodeVin($vin);
-        
+
         if (!$result['success']) {
             throw new VehicleDatabasesException('Failed to decode VIN', 500);
         }
 
         $data = $result['data'];
-        
+
         // Check if VIN already exists
         $existingVin = VinDecoder::byVin($vin)->first();
-        
+
         if ($existingVin && !$updateExisting) {
             Log::info('VIN already exists in database, skipping update', ['vin' => $vin]);
             return $existingVin;
@@ -162,7 +162,7 @@ class VehicleDatabasesService
 
         // Prepare data for database
         $vinData = $this->prepareVinData($vin, $data);
-        
+
         if ($existingVin) {
             $existingVin->update($vinData);
             Log::info('VIN data updated in database', ['vin' => $vin]);
@@ -171,7 +171,7 @@ class VehicleDatabasesService
 
         $vinDecoder = VinDecoder::create($vinData);
         Log::info('VIN data saved to database', ['vin' => $vin]);
-        
+
         return $vinDecoder;
     }
 
@@ -184,7 +184,7 @@ class VehicleDatabasesService
     protected function getCachedResult(string $vin): ?array
     {
         $vinDecoder = VinDecoder::byVin($vin)->first();
-        
+
         if (!$vinDecoder) {
             return null;
         }
@@ -233,7 +233,7 @@ class VehicleDatabasesService
         try {
             $vinData = $this->prepareVinData($vin, $data);
             $vinData['last_updated'] = now();
-            
+
             VinDecoder::updateOrCreate(
                 ['vin' => $vin],
                 $vinData
@@ -257,19 +257,19 @@ class VehicleDatabasesService
     {
         // Handle v2 response structure: data might be nested in 'data' key or direct
         $data = $apiData['data'] ?? $apiData;
-        
+
         // Map API response to database fields
         // v2 endpoint structure: make, model, year, trim are directly in data
         // vehicle.body_type, vehicle.doors are in vehicle object
         // transmission.type is in transmission object
         // specifications[0].fuel.type for fuel type
-        // specifications[0].engine.cylinders_configuration for cylinders
-        
+        // specifications[9].engine.cylinders_configuration for cylinders
+
         $vehicle = $data['vehicle'] ?? [];
         $transmission = $data['transmission'] ?? [];
         $specifications = $data['specifications'] ?? [];
         $firstSpec = $specifications[0] ?? [];
-        
+
         return [
             'vin' => strtoupper($vin),
             'make' => $data['make'] ?? $apiData['make'] ?? $apiData['Make'] ?? null,
@@ -290,7 +290,7 @@ class VehicleDatabasesService
             'additional_data' => $apiData, // Store full response for reference
         ];
     }
-    
+
     /**
      * Extract cylinder count from cylinders_configuration string (e.g., "I-4" -> 4)
      */
@@ -299,11 +299,11 @@ class VehicleDatabasesService
         if (!$config) {
             return null;
         }
-        
+
         if (preg_match('/(\d+)/', $config, $matches)) {
             return (int) $matches[1];
         }
-        
+
         return null;
     }
 
@@ -317,17 +317,17 @@ class VehicleDatabasesService
     {
         // Remove spaces and convert to uppercase
         $vin = strtoupper(str_replace(' ', '', $vin));
-        
+
         // Check length
         if (strlen($vin) !== 17) {
             return false;
         }
-        
+
         // Check for invalid characters (I, O, Q)
         if (preg_match('/[IOQ]/', $vin)) {
             return false;
         }
-        
+
         // Check if all characters are alphanumeric
         return ctype_alnum($vin);
     }
@@ -342,21 +342,21 @@ class VehicleDatabasesService
     protected function extractErrorMessage(array $responseBody, int $statusCode): string
     {
         $errorMessage = 'Failed to decode VIN';
-        
+
         if (isset($responseBody['message'])) {
-            $errorMessage = is_array($responseBody['message']) 
-                ? json_encode($responseBody['message']) 
+            $errorMessage = is_array($responseBody['message'])
+                ? json_encode($responseBody['message'])
                 : $responseBody['message'];
         } elseif (isset($responseBody['error'])) {
-            $errorMessage = is_array($responseBody['error']) 
-                ? json_encode($responseBody['error']) 
+            $errorMessage = is_array($responseBody['error'])
+                ? json_encode($responseBody['error'])
                 : $responseBody['error'];
         } elseif (isset($responseBody['errors'])) {
-            $errorMessage = is_array($responseBody['errors']) 
-                ? json_encode($responseBody['errors']) 
+            $errorMessage = is_array($responseBody['errors'])
+                ? json_encode($responseBody['errors'])
                 : $responseBody['errors'];
         }
-        
+
         return $errorMessage . ' (HTTP ' . $statusCode . ')';
     }
 

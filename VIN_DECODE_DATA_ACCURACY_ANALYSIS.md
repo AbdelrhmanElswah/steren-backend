@@ -82,7 +82,7 @@ This document analyzes the accuracy of data extracted from the v2 API response c
 
 13. **Engine Size** (`"2"` as string)
     - **Source**: Multiple fallbacks:
-      1. `data.specifications[0].engine.displacement` or `engine_size`
+      1. `data.specifications[9].engine.displacement` or `engine_size`
       2. `data.dimensions[0].engine[0].engine_size[]`
       3. `data.standard_features[]` (regex: `/(\d+\.?\d*)\s*L\s*I-?\d*\s*Engine/i`)
     - **Extraction**: Normalizes from various formats (CC to Liters, removes units)
@@ -92,7 +92,7 @@ This document analyzes the accuracy of data extracted from the v2 API response c
 
 14. **Cylinders** (`4`)
     - **Source**: Multiple fallbacks:
-      1. `data.specifications[0].engine.cylinders_configuration` (regex: extracts number from "I-4")
+      1. `data.specifications[9].engine.cylinders_configuration` (regex: extracts number from "I-4")
       2. `data.standard_features[]` (regex: `/(\d+\.?\d*)\s*L\s*I-(\d+)\s*Engine/i`)
     - **Extraction**: Parses configuration string like "I-4" → 4
     - **Accuracy**: ~90% - Regex parsing is generally reliable
@@ -106,7 +106,7 @@ This document analyzes the accuracy of data extracted from the v2 API response c
     - **Status**: ⚠️ Accurate
 
 16. **Drive Type** (`FWD`)
-    - **Source**: `data.specifications[0].engine.drivetype` or `data.style` (parsed)
+    - **Source**: `data.specifications[9].engine.drivetype` or `data.style` (parsed)
     - **Extraction**: Direct from specifications, or parsed from style string
     - **Mapping**: "Front-Wheel Drive" → "FWD", "4MATIC" → "AWD"
     - **Accuracy**: ~90% - Depends on API providing correct drivetype

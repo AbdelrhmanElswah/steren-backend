@@ -177,7 +177,7 @@ class VinDecoderController extends Controller
                 // Add debugging information
                 $extractedBrand = $filteredData['general']['make'] ?? 'Unknown';
                 $brandId = $filteredData['brand_id'] ?? 'Not found';
-                
+
                 return response()->json([
                     "success" => false,
                     "message" => "This vehicle brand is not supported in our system",
@@ -219,7 +219,7 @@ class VinDecoderController extends Controller
                         ],
                         'engine_size' => [
                             'extracted' => $filteredData['engine']['engine_size'] ?? null,
-                            'source_path' => 'dimensions[0].engine[0].engine_size[] or specifications[0].engine.displacement',
+                            'source_path' => 'dimensions[0].engine[0].engine_size[] or specifications[9].engine.displacement',
                             'raw_value' => $rawData['dimensions'][0]['engine'][0]['engine_size'] ?? null,
                         ],
                         'length' => [
@@ -457,11 +457,11 @@ class VinDecoderController extends Controller
             if (!$fileField) {
                 $contentType = $request->header('Content-Type', 'not set');
                 $isJson = str_contains($contentType, 'application/json');
-                
-                $errorMessage = $isJson 
+
+                $errorMessage = $isJson
                     ? 'Invalid request format. The request was sent as JSON but files must be uploaded using multipart/form-data. In Postman: 1) Select Body tab, 2) Choose "form-data" (not raw/JSON), 3) Add key "file" with type "File", 4) Select your image file.'
                     : 'File is required. Please upload an image file (PNG, JPG, JPEG) using the "file", "image", or "upload" field in multipart/form-data format.';
-                
+
                 Log::warning('OCR file upload failed', [
                     'hasFile_file' => $request->hasFile('file'),
                     'hasFile_image' => $request->hasFile('image'),
@@ -470,7 +470,7 @@ class VinDecoderController extends Controller
                     'content_type' => $contentType,
                     'is_json' => $isJson,
                 ]);
-                
+
                 return $this->errorResponse($errorMessage, 400);
             }
 
@@ -555,7 +555,7 @@ class VinDecoderController extends Controller
                         ],
                         'engine_size' => [
                             'extracted' => $filteredData['engine']['engine_size'] ?? null,
-                            'source_path' => 'dimensions[0].engine[0].engine_size[] or specifications[0].engine.displacement',
+                            'source_path' => 'dimensions[0].engine[0].engine_size[] or specifications[9].engine.displacement',
                             'raw_value' => $rawData['dimensions'][0]['engine'][0]['engine_size'] ?? null,
                         ],
                         'length' => [
@@ -585,11 +585,11 @@ class VinDecoderController extends Controller
             foreach ($e->errors() as $field => $fieldErrors) {
                 $errors = array_merge($errors, $fieldErrors);
             }
-            
-            $errorMessage = !empty($errors) 
+
+            $errorMessage = !empty($errors)
                 ? 'Invalid file: ' . implode(', ', $errors)
                 : 'File validation failed. Please ensure you upload a valid image file (PNG, JPG, JPEG) with a maximum size of 10MB.';
-            
+
             return $this->errorResponse($errorMessage, 400);
         } catch (VehicleDatabasesException $e) {
             Log::error('VIN OCR and decode failed', [
@@ -630,28 +630,28 @@ class VinDecoderController extends Controller
             // Use vehicledatabases OCR endpoint (matches VinOcrAuctionController approach)
             $baseUrl = 'https://api.vehicledatabases.com';
             $ocrEndpoint = config('services.vehicledatabases.ocr_endpoint');
-            
+
             // If ocr_endpoint is configured, use it; otherwise construct from baseUrl
             $endpoint = $ocrEndpoint ?: ($baseUrl . '/vin-ocr');
             $apiKey = config('services.vehicledatabases.api_key');
             $timeout = config('services.vehicledatabases.timeout', 30);
-            
+
             Log::info('Calling OCR service', [
                 'endpoint' => $endpoint,
                 'has_api_key' => !empty($apiKey),
                 'timeout' => $timeout,
             ]);
-            
+
             // Build HTTP request with timeout and authentication (matches VehicleDatabasesService)
             $headers = [
                 'Accept' => 'application/json',
             ];
-            
+
             // Add API key header if available (using x-AuthKey like VehicleDatabasesService)
             if ($apiKey) {
                 $headers['x-AuthKey'] = $apiKey;
             }
-            
+
             // Make the request with file attachment and headers
             $response = Http::timeout($timeout)
                 ->withHeaders($headers)
@@ -672,7 +672,7 @@ class VinDecoderController extends Controller
                         ]
                     ];
                 }
-                
+
                 Log::warning('OCR service returned unexpected response', [
                     'status_code' => $response->status(),
                     'response' => $response->json(),
@@ -754,7 +754,7 @@ class VinDecoderController extends Controller
         // Also support legacy structure for backward compatibility
         $additionalData = $vinData['additional_data']['data'] ?? [];
         $basicData = $vinData['data'] ?? [];
-        
+
         // For v2, if basicData is empty but vinData has direct keys, use vinData directly
         if (empty($basicData) && !empty($vinData) && isset($vinData['make'])) {
             $basicData = $vinData;
@@ -768,7 +768,7 @@ class VinDecoderController extends Controller
 
         // Extract trim directly from additional_data only (no default values)
         $trim = $additionalData['trim'] ?? $basicData['trim'] ?? null;
-        
+
         $bodyType = $this->extractBodyTypeFromStyle($style);
         $transmission = $this->extractTransmissionFromStyle($style);
         $driveType = $this->extractDriveTypeFromStyle($style);
@@ -780,17 +780,17 @@ class VinDecoderController extends Controller
         if (!is_array($specifications) || (isset($specifications[0]) && !is_array($specifications[0]))) {
             $specifications = !empty($specifications) ? [$specifications] : [];
         }
-        
+
         // v2: dimensions is an array, legacy: might be array or object
         $dimensions = $additionalData['dimensions'] ?? $basicData['dimensions'] ?? [];
         // Ensure dimensions is an array
         if (!is_array($dimensions) || (isset($dimensions[0]) && !is_array($dimensions[0]))) {
             $dimensions = !empty($dimensions) ? [$dimensions] : [];
         }
-        
+
         $vehicle = $additionalData['vehicle'] ?? $basicData['vehicle'] ?? [];
         $standardFeatures = $basicData['standard_features'] ?? [];
-        
+
         // v2: transmission is an object directly in data, not in specifications
         $transmissionData = $basicData['transmission'] ?? $additionalData['transmission'] ?? null;
 
@@ -804,11 +804,11 @@ class VinDecoderController extends Controller
                 $fuelType = $basicData['fuel_type'] ?? null;
             }
         }
-        
+
         // Extract cylinders from specifications (more accurate source)
         $cylinders = $this->extractCylindersFromSpecifications($specifications);
         if (!$cylinders) {
-            // v2: cylinders might be in specifications[0].engine.cylinders_configuration
+            // v2: cylinders might be in specifications[9].engine.cylinders_configuration
             if (!empty($specifications[0]['engine']['cylinders_configuration'])) {
                 $cylinderConfig = $specifications[0]['engine']['cylinders_configuration'];
                 if (preg_match('/(\d+)/', $cylinderConfig, $matches)) {
@@ -819,7 +819,7 @@ class VinDecoderController extends Controller
                 $cylinders = $basicData['cylinders'] ?? $vinData['cylinders'] ?? null;
             }
         }
-        
+
         $exteriorColor = $basicData['exterior_color'] ?? $vinData['exterior_color'] ?? null;
         $doors = $basicData['doors'] ?? $vinData['doors'] ?? null;
         $engineSize = $basicData['engine_size'] ?? $vinData['engine_size'] ?? null;
@@ -893,7 +893,7 @@ class VinDecoderController extends Controller
         $mappedTransmission = $this->mapTransmission($transmission);
 
         // Map drive type to match your system
-        // v2: drive type might be in specifications[0].engine.drivetype
+        // v2: drive type might be in specifications[9].engine.drivetype
         if (empty($driveType) && !empty($specifications[0]['engine']['drivetype'])) {
             $driveType = $specifications[0]['engine']['drivetype'];
         }
@@ -906,40 +906,40 @@ class VinDecoderController extends Controller
         } else {
             $transmissionGears = $this->extractTransmissionGears($specifications, $additionalData, $basicData, $rawData);
         }
-        
+
         // Extract GCC/Import information
         $gccImportData = $this->extractGccImport($vinData, $additionalData, $basicData);
-        
+
         // Extract damaged parts information
         $damagedParts = $this->extractDamagedParts($vinData, $additionalData, $basicData);
-        
+
         // Build response structured to match UI design
         $response = [
             'general' => [],
             'engine' => []
         ];
-        
+
         // General Section
         if (!empty($basicData['vin'] ?? $vinData['vin'])) {
             $response['general']['vin'] = $basicData['vin'] ?? $vinData['vin'];
         }
-        
+
         if (!empty($make)) {
             $response['general']['make'] = $make;
         }
-        
+
         if (!empty($model)) {
             $response['general']['model'] = $model;
         }
-        
+
         if ($year) {
             $response['general']['model_year'] = (string)$year;
         }
-        
+
         if ($trim !== null && $trim !== '') {
             $response['general']['trim'] = (string)$trim;
         }
-        
+
         // GCC/Import field location: response.general.gcc_import
         // Returns "GCC" for GCC countries, "Import" for others, or null if cannot be determined
         if (!empty($gccImportData['category'])) {
@@ -949,45 +949,45 @@ class VinDecoderController extends Controller
         if (!empty($gccImportData['country'])) {
             $response['general']['gcc_import_country'] = $gccImportData['country'];
         }
-        
+
         if (!empty($bodyTypeName)) {
             $response['general']['body_type'] = $bodyTypeName;
         }
-        
+
         if ($seatingCapacity) {
             $response['general']['seating_capacity'] = $seatingCapacity;
         }
-        
+
         if ($damagedParts !== null) {
             $response['general']['damaged_parts'] = $damagedParts;
         }
-        
+
         // Engine Section
         if (!empty($mappedFuelType)) {
             $response['engine']['engine_type'] = $mappedFuelType;
         }
-        
+
         if ($engineSize) {
             $normalizedBaseEngineSize = $this->normalizeEngineSize($engineSize, true);
             $response['engine']['engine_size'] = $normalizedBaseEngineSize ?? $engineSize;
         }
-        
+
         if ($cylinders) {
             $response['engine']['engine_cylinders'] = $cylinders;
         }
-        
+
         if (!empty($mappedTransmission)) {
             $response['engine']['transmission'] = $mappedTransmission;
         }
-        
+
         if ($transmissionGears) {
             $response['engine']['transmission_gears'] = $transmissionGears;
         }
-        
+
         if (!empty($mappedDriveType)) {
             $response['engine']['drive_type'] = $mappedDriveType;
         }
-        
+
         if (!empty($mappedFuelType)) {
             $response['engine']['fuel_type'] = $mappedFuelType;
         }
@@ -1099,58 +1099,58 @@ class VinDecoderController extends Controller
                 }
             }
         }
-        
+
         // Additional fields for backward compatibility and extended data
         // Add brand_id and model_id for internal validation (not exposed in final response)
         if ($brandId) {
             $response['brand_id'] = (string)$brandId;
             $response['brand_logo_url'] = $this->getBrandLogoUrl($brandId);
         }
-        
+
         if ($modelId) {
             $response['model_id'] = (string)$modelId;
         }
-        
+
         if (!empty($exteriorColor)) {
             $response['exterior_color'] = $exteriorColor;
         }
-        
+
         if ($doors) {
             $response['doors'] = $doors;
         }
-        
+
         if ($horsepower) {
             $response['horsepower'] = $horsepower;
         }
-        
+
         if ($torque) {
             $response['torque'] = $torque;
         }
-        
+
         if ($acceleration) {
             $response['acceleration_0_100'] = $acceleration;
         }
-        
+
         if ($topSpeed) {
             $response['top_speed'] = $topSpeed;
         }
-        
+
         if ($mileageEfficiency) {
             $response['mileage_efficiency'] = $mileageEfficiency;
         }
-        
+
         if ($length) {
             $response['length'] = $length;
         }
-        
+
         if ($width) {
             $response['width'] = $width;
         }
-        
+
         if ($height) {
             $response['height'] = $height;
         }
-        
+
         return $response;
     }
 
@@ -1309,7 +1309,7 @@ class VinDecoderController extends Controller
 
         // Clean the brand name (trim whitespace)
         $brandName = trim($brandName);
-        
+
         if (empty($brandName)) {
             return null;
         }
@@ -1318,7 +1318,7 @@ class VinDecoderController extends Controller
 
         // Get all brands and match in PHP (handles any whitespace issues)
         $brands = \App\Models\CarBrand::get(['id', 'name']);
-        
+
         foreach ($brands as $brand) {
             $normalizedDbName = strtolower(trim($brand->name));
             if ($normalizedDbName === $normalizedBrandName) {
@@ -1437,29 +1437,29 @@ class VinDecoderController extends Controller
         }
 
         $brand = \App\Models\CarBrand::with('media')->find($brandId);
-        
+
         if (!$brand || !$brand->media) {
             return null;
         }
 
         $media = $brand->media;
-        
+
         // Use the media's temporary URL accessor (expires in 60 minutes)
         // This uses the getMediaTemporaryUrlAttribute from the Media model
         if (isset($media->media_temporary_url) && $media->media_temporary_url) {
             return $media->media_temporary_url;
         }
-        
+
         // Fallback: generate temporary URL directly if accessor doesn't work
         if ($media->path_file_name) {
             return $media->getS3TemporaryUrl($media->path_file_name, 60);
         }
-        
+
         // Last resort: try public URL
         if ($media->path_file_name) {
             return $media->getS3PublicUrl($media->path_file_name);
         }
-        
+
         return null;
     }
 
@@ -1968,11 +1968,11 @@ class VinDecoderController extends Controller
         ];
 
         // Try to get country of origin from various sources
-        $country = $additionalData['country_of_origin'] ?? 
-                  $basicData['country_of_origin'] ?? 
-                  $vinData['country_of_origin'] ?? 
-                  $additionalData['manufacturer_country'] ?? 
-                  $basicData['manufacturer_country'] ?? 
+        $country = $additionalData['country_of_origin'] ??
+                  $basicData['country_of_origin'] ??
+                  $vinData['country_of_origin'] ??
+                  $additionalData['manufacturer_country'] ??
+                  $basicData['manufacturer_country'] ??
                   $vinData['manufacturer_country'] ?? null;
 
         if ($country) {
@@ -1987,10 +1987,10 @@ class VinDecoderController extends Controller
         // Try to determine from manufacturer or make (API provides 'make' not 'manufacturer')
         $manufacturer = $additionalData['manufacturer'] ?? $basicData['manufacturer'] ?? $vinData['manufacturer'] ?? null;
         $make = $additionalData['make'] ?? $basicData['make'] ?? $vinData['make'] ?? null;
-        
+
         // Use make if manufacturer is not available
         $brandName = $manufacturer ?? $make;
-        
+
         if ($brandName) {
             // Expanded brand to country mappings
             // Note: For combined names like "Chevrolet / GMC", check each part
@@ -2057,7 +2057,7 @@ class VinDecoderController extends Controller
 
             // Try exact match first
             $country = $countryMappings[$brandName] ?? null;
-            
+
             // If not found, try partial match (for combined names like "Chevrolet / GMC")
             if (!$country) {
                 foreach ($countryMappings as $mappedBrand => $mappedCountry) {
@@ -2068,7 +2068,7 @@ class VinDecoderController extends Controller
                     }
                 }
             }
-            
+
             if ($country) {
                 $result['country'] = $country;
                 $mapped = $this->mapCountryToGccImport($country);
@@ -2081,13 +2081,13 @@ class VinDecoderController extends Controller
         // Try to extract from VIN pattern or plant code
         $vin = $basicData['vin'] ?? $additionalData['vin'] ?? $vinData['vin'] ?? '';
         $plant = $additionalData['plant'] ?? $basicData['plant'] ?? null;
-        
+
         // Check VIN 11th character (plant code) - some manufacturers use specific codes for GCC
         // K = Korea, J = Japan, U = USA, W = Germany, etc.
         if (strlen($vin) >= 11) {
             $plantCode = strtoupper($vin[10]);
             $gccPlantCodes = ['K', 'U', '1', '2', '3', '4', '5']; // These might indicate GCC assembly
-            
+
             // Note: VIN plant codes vary by manufacturer, so this is a basic check
             // You may need to adjust based on your specific requirements
         }
@@ -2213,11 +2213,11 @@ class VinDecoderController extends Controller
     private function extractDamagedParts(array $vinData, array $additionalData, array $basicData): ?int
     {
         // Look for damage information in various sources
-        $damageInfo = $additionalData['damage'] ?? 
-                     $basicData['damage'] ?? 
-                     $vinData['damage'] ?? 
-                     $additionalData['accident_history'] ?? 
-                     $basicData['accident_history'] ?? 
+        $damageInfo = $additionalData['damage'] ??
+                     $basicData['damage'] ??
+                     $vinData['damage'] ??
+                     $additionalData['accident_history'] ??
+                     $basicData['accident_history'] ??
                      $vinData['accident_history'] ?? null;
 
         if ($damageInfo) {
@@ -2237,8 +2237,8 @@ class VinDecoderController extends Controller
         }
 
         // Check for accident history
-        $accidentHistory = $additionalData['accident_count'] ?? 
-                          $basicData['accident_count'] ?? 
+        $accidentHistory = $additionalData['accident_count'] ??
+                          $basicData['accident_count'] ??
                           $vinData['accident_count'] ?? null;
 
         if ($accidentHistory && is_numeric($accidentHistory)) {

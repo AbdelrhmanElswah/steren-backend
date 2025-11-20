@@ -405,10 +405,10 @@ Looking at `filterVinDataForListing()`, it expects:
 | Body Type | `data.basic.body_type` | `data.vehicle.body_type` | ✅ Works |
 | Doors | `data.basic.doors` | `data.vehicle.doors` | ✅ Works |
 | Engine Size | `data.engine.engine_size` | `data.dimensions[0].engine[0].engine_size[0].value` | ⚠️ Needs adjustment |
-| Cylinders | `data.engine.cylinders` | `data.specifications[0].engine.cylinders_configuration` | ⚠️ Needs adjustment |
+| Cylinders | `data.engine.cylinders` | `data.specifications[9].engine.cylinders_configuration` | ⚠️ Needs adjustment |
 | Transmission | `data.transmission.transmission_style` | `data.transmission.type` | ⚠️ Needs adjustment |
 | Transmission Gears | ❌ Not available | `data.transmission.number_of_speeds` | ✅ Works in v2 |
-| Drive Type | `data.drivetrain.drive_type` | `data.specifications[0].engine.drivetype` | ⚠️ Needs adjustment |
+| Drive Type | `data.drivetrain.drive_type` | `data.specifications[9].engine.drivetype` | ⚠️ Needs adjustment |
 | Fuel Type | `data.fuel.fuel_type` | `data.specifications[0].fuel.type` | ⚠️ Needs adjustment |
 | Horsepower | ❌ Not available | `data.dimensions[0].engine[0].horsepower[1].value` | ✅ Works in v2 |
 | Torque | ❌ Not available | `data.dimensions[0].engine[0].torque[1].value` | ✅ Works in v2 |
