@@ -867,7 +867,7 @@ class VinDecoderController extends Controller
         $length = $this->extractDimension($dimensions, 'overall_length');
         $width = $this->extractDimension($dimensions, 'overall_width');
         $height = $this->extractDimension($dimensions, 'overall_height');
-        $summary = $basicData['summary'] ?? null;
+        $summary = $vinData['summary'] ?? null;
 
         // Extract seating capacity from specifications
         $seatingCapacity = $this->extractSeatingCapacity($specifications) ?? $seatingCapacity;
@@ -1152,7 +1152,7 @@ class VinDecoderController extends Controller
             $response['height'] = $height;
         }
 
-        $response['summary'] = $summary ?: '-';
+        $response['summary'] = $summary ?: '';
 
         return $response;
     }
