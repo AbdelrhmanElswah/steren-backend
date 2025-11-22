@@ -24,6 +24,7 @@ class SearchRequest extends FormRequest
         return [
             'search' => 'nullable|string|max:255',
             'brand_id' => 'nullable|integer|exists:car_brands,id',
+            'studio_id' => 'nullable|integer|exists:dealer_studios,id',
             'model_id' => 'nullable|integer|exists:car_models,id',
             'condition_id' => 'nullable|integer|exists:car_conditions,id',
             'year_from' => 'nullable|integer|min:1990|max:' . date('Y'),
@@ -58,6 +59,7 @@ class SearchRequest extends FormRequest
             'price_max.gte' => 'The maximum price must be greater than or equal to minimum price.',
             'mileage_max.gte' => 'The maximum mileage must be greater than or equal to minimum mileage.',
             'brand_id.exists' => 'The selected brand does not exist.',
+            'studio_id.exists' => 'The selected studio does not exist.',
             'model_id.exists' => 'The selected model does not exist.',
             'condition_id.exists' => 'The selected condition does not exist.',
             'body_type_id.exists' => 'The selected body type does not exist.',

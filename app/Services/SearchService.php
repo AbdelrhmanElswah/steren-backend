@@ -526,33 +526,52 @@ class SearchService
             }
         }
 
-        // Brand filter
-        if (isset($filters['brand_id']) && $filters['brand_id'] !== '' && $filters['brand_id'] !== null) {
-            $query->where('car_brand_id', (int)$filters['brand_id']);
+        // Brand filter - support both singular and plural
+        $brandIds = $this->normalizeIds($filters['brand_ids'] ?? $filters['brand_id'] ?? null);
+        if (!empty($brandIds)) {
+            $query->whereIn('car_brand_id', $brandIds);
         }
 
-        // Model filter
-        if (isset($filters['model_id']) && $filters['model_id'] !== '' && $filters['model_id'] !== null) {
-            $query->where('car_model_id', (int)$filters['model_id']);
+        // Studio filter - support both singular and plural
+        $studioIds = $this->normalizeIds($filters['studio_ids'] ?? $filters['studio_id'] ?? null);
+        if (!empty($studioIds)) {
+            $query->whereIn('studio_id', $studioIds);
         }
 
-        // Condition filter
-        if (isset($filters['condition_id']) && $filters['condition_id'] !== '' && $filters['condition_id'] !== null) {
-            $conditionId = (int)$filters['condition_id'];
-            // Cache condition lookup to avoid query on every search
-            $condition = Cache::remember("car_condition_{$conditionId}", 3600, function () use ($conditionId) {
-                return CarCondition::select('id', 'name')->find($conditionId);
+        // Model filter - support both singular and plural
+        $modelIds = $this->normalizeIds($filters['model_ids'] ?? $filters['model_id'] ?? null);
+        if (!empty($modelIds)) {
+            $query->whereIn('car_model_id', $modelIds);
+        }
+
+        // Condition filter - support both singular and plural
+        $conditionIds = $this->normalizeIds($filters['condition_ids'] ?? $filters['condition_id'] ?? null);
+        if (!empty($conditionIds)) {
+            // Cache condition lookups to avoid query on every search
+            $conditions = Cache::remember('car_conditions_' . md5(implode(',', $conditionIds)), 3600, function () use ($conditionIds) {
+                return CarCondition::select('id', 'name')->whereIn('id', $conditionIds)->get();
             });
 
-            if ($condition) {
-                $conditionName = strtolower($condition->name);
+            if ($conditions->isNotEmpty()) {
+                $conditionNames = $conditions->pluck('name')->map(fn($name) => strtolower($name))->toArray();
 
-                $query->where(function($q) use ($conditionId, $conditionName) {
-                    $q->where('car_condition_id', $conditionId)
-                      ->orWhere(function($legacyQuery) use ($conditionName) {
-                          $legacyQuery->whereNull('car_condition_id')
-                                      ->whereRaw('LOWER(condition_type) = ?', [$conditionName]);
-                      });
+                $query->where(function($q) use ($conditionIds, $conditionNames) {
+                    // Match by condition_id
+                    $q->whereIn('car_condition_id', $conditionIds);
+                    
+                    // Also match by condition_type for legacy listings
+                    if (!empty($conditionNames)) {
+                        $q->orWhere(function($legacyQuery) use ($conditionNames) {
+                            $legacyQuery->whereNull('car_condition_id');
+                            foreach ($conditionNames as $index => $conditionName) {
+                                if ($index === 0) {
+                                    $legacyQuery->whereRaw('LOWER(condition_type) = ?', [$conditionName]);
+                                } else {
+                                    $legacyQuery->orWhereRaw('LOWER(condition_type) = ?', [$conditionName]);
+                                }
+                            }
+                        });
+                    }
                 });
             }
         }
