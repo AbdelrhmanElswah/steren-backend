@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Auth\AuthenticationException;
 use Exception;
 
 class NotificationController extends Controller
@@ -38,11 +39,21 @@ class NotificationController extends Controller
      */
     private function ensureAuthenticated(Request $request): ?JsonResponse
     {
-        $user = $request->user();
-        if (!$user) {
+        try {
+            $user = $request->user();
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
+            return null;
+        } catch (\Illuminate\Auth\AuthenticationException $e) {
+            return $this->errorResponse('User not authenticated', 401);
+        } catch (\Exception $e) {
+            Log::warning('Authentication check failed in NotificationController', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->errorResponse('User not authenticated', 401);
         }
-        return null;
     }
 
     /**
@@ -311,11 +322,11 @@ class NotificationController extends Controller
     public function getUnreadCount(Request $request): JsonResponse
     {
         try {
-            if ($error = $this->ensureAuthenticated($request)) {
-                return $error;
-            }
-
+            // Check authentication first - return 401 if not authenticated
             $user = $request->user();
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
 
             $unreadCount = Notification::where('user_id', $user->id)
                 ->where('is_read', false)
@@ -325,7 +336,13 @@ class NotificationController extends Controller
                 'unread_count' => $unreadCount
             ], 'Unread count retrieved successfully');
 
+        } catch (\Illuminate\Auth\AuthenticationException $e) {
+            return $this->errorResponse('User not authenticated', 401);
         } catch (Exception $e) {
+            Log::error('Failed to get unread count', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->errorResponse(
                 'Failed to get unread count: ' . $e->getMessage(),
                 500
@@ -339,11 +356,11 @@ class NotificationController extends Controller
     public function getUserNotifications(Request $request): JsonResponse
     {
         try {
-            if ($error = $this->ensureAuthenticated($request)) {
-                return $error;
-            }
-
+            // Check authentication first - return 401 if not authenticated
             $user = $request->user();
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
 
             $perPage = $request->get('per_page', 15);
             $page = $request->get('page', 1);
@@ -404,7 +421,13 @@ class NotificationController extends Controller
                 ]
             ], 'User notifications retrieved successfully');
 
+        } catch (AuthenticationException $e) {
+            return $this->errorResponse('User not authenticated', 401);
         } catch (Exception $e) {
+            Log::error('Failed to get user notifications', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->errorResponse(
                 'Failed to get user notifications: ' . $e->getMessage(),
                 500
@@ -418,11 +441,11 @@ class NotificationController extends Controller
     public function markAsRead(Request $request, int $notificationId): JsonResponse
     {
         try {
-            if ($error = $this->ensureAuthenticated($request)) {
-                return $error;
-            }
-
+            // Check authentication first - return 401 if not authenticated
             $user = $request->user();
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
             
             $notification = Notification::where('id', $notificationId)
                 ->where('user_id', $user->id)
@@ -477,7 +500,13 @@ class NotificationController extends Controller
                 'unread_count' => $unreadCount
             ], 'Notification marked as read');
 
+        } catch (AuthenticationException $e) {
+            return $this->errorResponse('User not authenticated', 401);
         } catch (Exception $e) {
+            Log::error('Failed to mark notification as read', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->errorResponse(
                 'Failed to mark notification as read: ' . $e->getMessage(),
                 500
@@ -491,11 +520,11 @@ class NotificationController extends Controller
     public function markAllAsRead(Request $request): JsonResponse
     {
         try {
-            if ($error = $this->ensureAuthenticated($request)) {
-                return $error;
-            }
-
+            // Check authentication first - return 401 if not authenticated
             $user = $request->user();
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
 
             $updated = Notification::where('user_id', $user->id)
                 ->where('is_read', false)
@@ -514,7 +543,13 @@ class NotificationController extends Controller
                 'unread_count' => $unreadCount
             ], 'All notifications marked as read');
 
+        } catch (AuthenticationException $e) {
+            return $this->errorResponse('User not authenticated', 401);
         } catch (Exception $e) {
+            Log::error('Failed to mark all notifications as read', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->errorResponse(
                 'Failed to mark all notifications as read: ' . $e->getMessage(),
                 500
@@ -528,11 +563,11 @@ class NotificationController extends Controller
     public function delete(Request $request, int $notificationId): JsonResponse
     {
         try {
-            if ($error = $this->ensureAuthenticated($request)) {
-                return $error;
-            }
-
+            // Check authentication first - return 401 if not authenticated
             $user = $request->user();
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
             
             $notification = Notification::where('id', $notificationId)
                 ->where('user_id', $user->id)
@@ -544,7 +579,13 @@ class NotificationController extends Controller
                 'notification_id' => $notificationId
             ], 'Notification deleted successfully');
 
+        } catch (AuthenticationException $e) {
+            return $this->errorResponse('User not authenticated', 401);
         } catch (Exception $e) {
+            Log::error('Failed to delete notification', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->errorResponse(
                 'Failed to delete notification: ' . $e->getMessage(),
                 500
@@ -558,8 +599,10 @@ class NotificationController extends Controller
     public function getAnalytics(Request $request): JsonResponse
     {
         try {
-            if ($error = $this->ensureAuthenticated($request)) {
-                return $error;
+            // Check authentication first - return 401 if not authenticated
+            $user = $request->user();
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
             }
 
             if ($error = $this->checkFirebaseService()) {
@@ -572,7 +615,13 @@ class NotificationController extends Controller
 
             return $this->successResponse($result, 'Analytics retrieved successfully');
 
+        } catch (AuthenticationException $e) {
+            return $this->errorResponse('User not authenticated', 401);
         } catch (Exception $e) {
+            Log::error('Failed to get analytics', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->errorResponse(
                 'Failed to get analytics: ' . $e->getMessage(),
                 500
@@ -586,8 +635,10 @@ class NotificationController extends Controller
     public function getNotificationTypes(Request $request): JsonResponse
     {
         try {
-            if ($error = $this->ensureAuthenticated($request)) {
-                return $error;
+            // Check authentication first - return 401 if not authenticated
+            $user = $request->user();
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
             }
 
             $types = NotificationType::select('id', 'name', 'display_name', 'description', 'icon', 'color', 'is_active', 'sort_order')
@@ -597,7 +648,13 @@ class NotificationController extends Controller
 
             return $this->successResponse($types, 'Notification types retrieved successfully');
 
+        } catch (AuthenticationException $e) {
+            return $this->errorResponse('User not authenticated', 401);
         } catch (Exception $e) {
+            Log::error('Failed to get notification types', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->errorResponse(
                 'Failed to get notification types: ' . $e->getMessage(),
                 500
@@ -611,8 +668,10 @@ class NotificationController extends Controller
     public function registerToken(Request $request): JsonResponse
     {
         try {
-            if ($error = $this->ensureAuthenticated($request)) {
-                return $error;
+            // Check authentication first - return 401 if not authenticated
+            $user = $request->user();
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
             }
 
             $validator = Validator::make($request->all(), [
@@ -632,7 +691,6 @@ class NotificationController extends Controller
                 return $error;
             }
 
-            $user = $request->user();
             $deviceInfo = $request->only(['device_id', 'device_type', 'platform', 'app_version', 'os_version']);
 
             $fcmToken = $this->firebaseService->registerFcmToken(
@@ -647,7 +705,13 @@ class NotificationController extends Controller
                 'is_active' => $fcmToken->is_active
             ], 'FCM token registered successfully');
 
+        } catch (AuthenticationException $e) {
+            return $this->errorResponse('User not authenticated', 401);
         } catch (Exception $e) {
+            Log::error('Failed to register FCM token', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->errorResponse(
                 'Failed to register FCM token: ' . $e->getMessage(),
                 500
@@ -661,8 +725,10 @@ class NotificationController extends Controller
     public function deactivateToken(Request $request): JsonResponse
     {
         try {
-            if ($error = $this->ensureAuthenticated($request)) {
-                return $error;
+            // Check authentication first - return 401 if not authenticated
+            $user = $request->user();
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
             }
 
             $validator = Validator::make($request->all(), [
@@ -684,7 +750,13 @@ class NotificationController extends Controller
                 'deactivated' => $result
             ], 'FCM token deactivated successfully');
 
+        } catch (AuthenticationException $e) {
+            return $this->errorResponse('User not authenticated', 401);
         } catch (Exception $e) {
+            Log::error('Failed to deactivate FCM token', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->errorResponse(
                 'Failed to deactivate FCM token: ' . $e->getMessage(),
                 500
