@@ -50,14 +50,18 @@ return [
     ],
 
     'firebase' => [
+        'enabled' => env('FIREBASE_ENABLED', false), // Set to true to enable Firebase push notifications
         'project_id' => env('FIREBASE_PROJECT_ID'),
         'database_url' => env('FIREBASE_DATABASE_URL'),
         'web_api_key' => env('FIREBASE_WEB_API_KEY'),
+        'server_key' => env('FIREBASE_SERVER_KEY'),
         'auth_domain' => env('FIREBASE_AUTH_DOMAIN'),
         'storage_bucket' => env('FIREBASE_STORAGE_BUCKET'),
         'messaging_sender_id' => env('FIREBASE_MESSAGING_SENDER_ID'),
         'app_id' => env('FIREBASE_APP_ID'),
         'measurement_id' => env('FIREBASE_MEASUREMENT_ID'),
+        'credentials_path' => env('FIREBASE_CREDENTIALS_PATH', 'google-services.json'),
+        'scope_message_url' => env('FIREBASE_SCOPE_MESSAGE_URL', 'https://www.googleapis.com/auth/firebase.messaging'),
     ],
 
     'standingtech' => [

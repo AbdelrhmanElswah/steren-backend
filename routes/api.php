@@ -529,6 +529,7 @@ Route::prefix('subscription-listings')->middleware('auth:sanctum')->group(functi
     // Notification Routes
     Route::prefix('notifications')->middleware('auth:sanctum')->group(function () {
         // User notification management
+        Route::get('/unread-count', [App\Http\Controllers\Api\NotificationController::class, 'getUnreadCount']);
         Route::get('/', [App\Http\Controllers\Api\NotificationController::class, 'getUserNotifications']);
         Route::get('/types', [App\Http\Controllers\Api\NotificationController::class, 'getNotificationTypes']);
         Route::get('/analytics', [App\Http\Controllers\Api\NotificationController::class, 'getAnalytics']);

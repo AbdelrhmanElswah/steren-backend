@@ -11,6 +11,7 @@ class Notification extends Model
 
     protected $fillable = [
         'user_id',
+        'notification_type_id',
         'type',
         'title',
         'message',
@@ -30,6 +31,11 @@ class Notification extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function notificationType()
+    {
+        return $this->belongsTo(NotificationType::class);
+    }
+
     public function scopeUnread($query)
     {
         return $query->where('is_read', false);
@@ -38,6 +44,13 @@ class Notification extends Model
     public function scopeByType($query, $type)
     {
         return $query->where('type', $type);
+    }
+
+    public function scopeByNotificationType($query, $typeName)
+    {
+        return $query->whereHas('notificationType', function ($q) use ($typeName) {
+            $q->where('name', $typeName);
+        });
     }
 
     public function markAsRead()

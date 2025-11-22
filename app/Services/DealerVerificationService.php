@@ -10,6 +10,7 @@ use App\Models\Status;
 use App\Exceptions\OdooConnectionException;
 use App\Exceptions\OdooServiceException;
 use App\Services\FirebaseService;
+use App\Services\UnifiedNotificationService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -22,13 +23,17 @@ class DealerVerificationService
     protected $database;
     protected $apiKey;
     protected FirebaseService $firebaseService;
+    protected UnifiedNotificationService $notificationService;
 
-    public function __construct(FirebaseService $firebaseService)
-    {
+    public function __construct(
+        FirebaseService $firebaseService,
+        UnifiedNotificationService $notificationService
+    ) {
         $this->baseUrl = config('services.odoo.base_url');
         $this->database = config('services.odoo.database');
         $this->apiKey = config('services.odoo.api_key');
         $this->firebaseService = $firebaseService;
+        $this->notificationService = $notificationService;
     }
 
     public function submitVerification(array $data, ?User $authenticatedUser = null): array
@@ -129,6 +134,17 @@ class DealerVerificationService
                     'application_id' => $dealerApplication->id,
                     'status' => 'application_applied'
                 ]);
+
+                // Create notification for the user (database + optional Firebase)
+                try {
+                    $this->notificationService->createDealerApplicationSubmittedNotification($dealerApplication);
+                } catch (Exception $e) {
+                    // Log error but don't fail the submission process
+                    Log::error('Failed to create dealer application submitted notification', [
+                        'application_id' => $dealerApplication->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
 
                 // Now send to Odoo
                 try {
@@ -667,6 +683,17 @@ class DealerVerificationService
 
             DB::commit();
 
+            // Create notification for the user (database + optional Firebase)
+            try {
+                $this->notificationService->createDealerApplicationApprovedNotification($application);
+            } catch (Exception $e) {
+                // Log error but don't fail the approval process
+                Log::error('Failed to create dealer application approval notification', [
+                    'application_id' => $applicationId,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
             $this->firebaseService->updateDealerApplicationStatus(
                 $application->odoo_id,
                 $applicationId,
@@ -739,6 +766,17 @@ class DealerVerificationService
             ]);
 
             DB::commit();
+
+            // Create notification for the user (database + optional Firebase)
+            try {
+                $this->notificationService->createDealerApplicationRejectedNotification($application, $reason);
+            } catch (Exception $e) {
+                // Log error but don't fail the rejection process
+                Log::error('Failed to create dealer application rejection notification', [
+                    'application_id' => $applicationId,
+                    'error' => $e->getMessage()
+                ]);
+            }
 
             $this->firebaseService->updateDealerApplicationStatus(
                 $application->odoo_id,

@@ -294,6 +294,33 @@ class NotificationController extends Controller
     }
 
     /**
+     * Get unread notification count
+     */
+    public function getUnreadCount(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
+
+            $unreadCount = Notification::where('user_id', $user->id)
+                ->where('is_read', false)
+                ->count();
+
+            return $this->successResponse([
+                'unread_count' => $unreadCount
+            ], 'Unread count retrieved successfully');
+
+        } catch (Exception $e) {
+            return $this->errorResponse(
+                'Failed to get unread count: ' . $e->getMessage(),
+                500
+            );
+        }
+    }
+
+    /**
      * Get user notifications
      */
     public function getUserNotifications(Request $request): JsonResponse
@@ -311,8 +338,14 @@ class NotificationController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
+            // Get unread count
+            $unreadCount = Notification::where('user_id', $user->id)
+                ->where('is_read', false)
+                ->count();
+
             return $this->successResponse([
                 'notifications' => $notifications->items(),
+                'unread_count' => $unreadCount,
                 'pagination' => [
                     'current_page' => $notifications->currentPage(),
                     'last_page' => $notifications->lastPage(),
@@ -338,6 +371,10 @@ class NotificationController extends Controller
         try {
             $user = $request->user();
             
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
+            
             $notification = Notification::where('id', $notificationId)
                 ->where('user_id', $user->id)
                 ->firstOrFail();
@@ -347,9 +384,15 @@ class NotificationController extends Controller
                 'is_read' => true
             ]);
 
+            // Get updated unread count
+            $unreadCount = Notification::where('user_id', $user->id)
+                ->where('is_read', false)
+                ->count();
+
             return $this->successResponse([
                 'notification_id' => $notificationId,
-                'read_at' => $notification->read_at
+                'read_at' => $notification->read_at,
+                'unread_count' => $unreadCount
             ], 'Notification marked as read');
 
         } catch (Exception $e) {
@@ -368,15 +411,25 @@ class NotificationController extends Controller
         try {
             $user = $request->user();
             
+            if (!$user) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
+
             $updated = Notification::where('user_id', $user->id)
-                ->whereNull('read_at')
+                ->where('is_read', false)
                 ->update([
                     'read_at' => now(),
                     'is_read' => true
                 ]);
 
+            // Get updated unread count (should be 0)
+            $unreadCount = Notification::where('user_id', $user->id)
+                ->where('is_read', false)
+                ->count();
+
             return $this->successResponse([
-                'updated_count' => $updated
+                'updated_count' => $updated,
+                'unread_count' => $unreadCount
             ], 'All notifications marked as read');
 
         } catch (Exception $e) {

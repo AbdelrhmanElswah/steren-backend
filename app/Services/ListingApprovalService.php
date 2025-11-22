@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CarListing;
 use App\Services\OdooService;
+use App\Services\UnifiedNotificationService;
 use App\Exceptions\OdooServiceException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -12,7 +13,8 @@ use Exception;
 class ListingApprovalService
 {
     public function __construct(
-        private OdooService $odooService
+        private OdooService $odooService,
+        private UnifiedNotificationService $notificationService
     ) {}
 
     public function approveListing(int $listingId, ?int $approvedBy = null): array
@@ -47,6 +49,19 @@ class ListingApprovalService
             ]);
 
             DB::commit();
+
+            // Create notification for the user (database + optional Firebase)
+            try {
+                // Reload listing with relationships for notification
+                $listing->load(['brand', 'carModel']);
+                $this->notificationService->createListingApprovedNotification($listing);
+            } catch (Exception $e) {
+                // Log error but don't fail the approval process
+                Log::error('Failed to create approval notification', [
+                    'listing_id' => $listingId,
+                    'error' => $e->getMessage()
+                ]);
+            }
 
             Log::info('Listing approved', [
                 'listing_id' => $listingId,
@@ -108,6 +123,19 @@ class ListingApprovalService
 
             DB::commit();
 
+            // Create notification for the user (database + optional Firebase)
+            try {
+                // Reload listing with relationships for notification
+                $listing->load(['brand', 'carModel']);
+                $this->notificationService->createListingRejectedNotification($listing, $reason);
+            } catch (Exception $e) {
+                // Log error but don't fail the rejection process
+                Log::error('Failed to create rejection notification', [
+                    'listing_id' => $listingId,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
             Log::info('Listing rejected', [
                 'listing_id' => $listingId,
                 'odoo_id' => $listing->odoo_id,
@@ -160,6 +188,19 @@ class ListingApprovalService
 
             DB::commit();
 
+            // Create notification for the user
+            try {
+                // Reload listing with relationships for notification
+                $listing->load(['brand', 'carModel']);
+                $this->notificationService->createListingApprovedNotification($listing);
+            } catch (Exception $e) {
+                // Log error but don't fail the approval process
+                Log::error('Failed to create approval notification', [
+                    'listing_id' => $listing->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
             Log::info('Listing approved via Odoo integration', [
                 'listing_id' => $listing->id,
                 'odoo_id' => $odooId,
@@ -209,6 +250,19 @@ class ListingApprovalService
                     'approved_at' => null
                 ]);
             });
+
+            // Create notification for the user
+            try {
+                // Reload listing with relationships for notification
+                $listing->load(['brand', 'carModel']);
+                $this->notificationService->createListingRejectedNotification($listing, $reason);
+            } catch (Exception $e) {
+                // Log error but don't fail the rejection process
+                Log::error('Failed to create rejection notification', [
+                    'listing_id' => $listing->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
 
             Log::info('Listing rejected via Odoo integration', [
                 'listing_id' => $listing->id,

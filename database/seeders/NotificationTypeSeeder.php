@@ -196,7 +196,21 @@ class NotificationTypeSeeder extends Seeder
                 'sort_order' => 13,
             ],
             [
-                'name' => 'dealer_approved',
+                'name' => 'dealer_application_submitted',
+                'display_name' => 'Dealer Application Submitted',
+                'description' => 'Your dealer application has been submitted successfully',
+                'icon' => 'send',
+                'color' => '#3B82F6',
+                'is_active' => true,
+                'default_template' => [
+                    'title' => 'Application Submitted!',
+                    'body' => 'Your dealer application for {{company_name}} has been submitted and is pending review.'
+                ],
+                'channels' => ['push'],
+                'sort_order' => 14,
+            ],
+            [
+                'name' => 'dealer_application_approved',
                 'display_name' => 'Dealer Application Approved',
                 'description' => 'Your dealer application has been approved',
                 'icon' => 'check_circle',
@@ -207,10 +221,10 @@ class NotificationTypeSeeder extends Seeder
                     'body' => 'Congratulations! Your dealer application for {{company_name}} has been approved. You can now access dealer features.'
                 ],
                 'channels' => ['push', 'email'],
-                'sort_order' => 14,
+                'sort_order' => 15,
             ],
             [
-                'name' => 'dealer_rejected',
+                'name' => 'dealer_application_rejected',
                 'display_name' => 'Dealer Application Rejected',
                 'description' => 'Your dealer application has been rejected',
                 'icon' => 'cancel',
@@ -221,7 +235,7 @@ class NotificationTypeSeeder extends Seeder
                     'body' => 'Your dealer application for {{company_name}} was not approved. Reason: {{reason}}'
                 ],
                 'channels' => ['push', 'email'],
-                'sort_order' => 15,
+                'sort_order' => 16,
             ],
             [
                 'name' => 'search_saved',
