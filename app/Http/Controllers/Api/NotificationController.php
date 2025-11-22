@@ -323,6 +323,7 @@ class NotificationController extends Controller
     {
         try {
             $user = auth()->user();
+            
             if (!$user) {
                 return $this->errorResponse('User not authenticated', 401);
             }
@@ -335,12 +336,41 @@ class NotificationController extends Controller
                 'unread_count' => $unreadCount
             ], 'Unread count retrieved successfully');
 
-        } catch (\Illuminate\Auth\AuthenticationException $e) {
+        } catch (AuthenticationException $e) {
             return $this->errorResponse('User not authenticated', 401);
-        } catch (Exception $e) {
-            Log::error('Failed to get unread count', [
+        } catch (\TypeError $e) {
+            // Handle case where $user is null but we try to access ->id
+            if (str_contains($e->getMessage(), 'null') || str_contains($e->getMessage(), 'User')) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
+            Log::error('TypeError in getUnreadCount', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
+        } catch (\Error $e) {
+            // Handle PHP 7+ Error exceptions (like trying to call method on null)
+            if (str_contains($e->getMessage(), 'null') || str_contains($e->getMessage(), 'Call to a member function')) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
+            Log::error('Error in getUnreadCount', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->errorResponse('User not authenticated', 401);
+        } catch (Exception $e) {
+            // Check if exception is authentication-related
+            $errorMessage = strtolower($e->getMessage());
+            if (str_contains($errorMessage, 'authenticated') || 
+                str_contains($errorMessage, 'unauthorized') ||
+                str_contains($errorMessage, 'authentication')) {
+                return $this->errorResponse('User not authenticated', 401);
+            }
+            
+            Log::error('Failed to get unread count', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
             return $this->errorResponse(
                 'Failed to get unread count: ' . $e->getMessage(),
