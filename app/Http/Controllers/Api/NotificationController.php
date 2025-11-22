@@ -322,8 +322,7 @@ class NotificationController extends Controller
     public function getUnreadCount(Request $request): JsonResponse
     {
         try {
-            // Check authentication first - return 401 if not authenticated
-            $user = $request->user();
+            $user = auth()->user();
             if (!$user) {
                 return $this->errorResponse('User not authenticated', 401);
             }
@@ -356,8 +355,7 @@ class NotificationController extends Controller
     public function getUserNotifications(Request $request): JsonResponse
     {
         try {
-            // Check authentication first - return 401 if not authenticated
-            $user = $request->user();
+            $user = auth()->user();
             if (!$user) {
                 return $this->errorResponse('User not authenticated', 401);
             }
@@ -441,8 +439,7 @@ class NotificationController extends Controller
     public function markAsRead(Request $request, int $notificationId): JsonResponse
     {
         try {
-            // Check authentication first - return 401 if not authenticated
-            $user = $request->user();
+            $user = auth()->user();
             if (!$user) {
                 return $this->errorResponse('User not authenticated', 401);
             }
@@ -520,8 +517,7 @@ class NotificationController extends Controller
     public function markAllAsRead(Request $request): JsonResponse
     {
         try {
-            // Check authentication first - return 401 if not authenticated
-            $user = $request->user();
+            $user = auth()->user();
             if (!$user) {
                 return $this->errorResponse('User not authenticated', 401);
             }
@@ -563,8 +559,7 @@ class NotificationController extends Controller
     public function delete(Request $request, int $notificationId): JsonResponse
     {
         try {
-            // Check authentication first - return 401 if not authenticated
-            $user = $request->user();
+            $user = auth()->user();
             if (!$user) {
                 return $this->errorResponse('User not authenticated', 401);
             }
@@ -599,8 +594,7 @@ class NotificationController extends Controller
     public function getAnalytics(Request $request): JsonResponse
     {
         try {
-            // Check authentication first - return 401 if not authenticated
-            $user = $request->user();
+            $user = auth()->user();
             if (!$user) {
                 return $this->errorResponse('User not authenticated', 401);
             }
@@ -635,8 +629,7 @@ class NotificationController extends Controller
     public function getNotificationTypes(Request $request): JsonResponse
     {
         try {
-            // Check authentication first - return 401 if not authenticated
-            $user = $request->user();
+            $user = auth()->user();
             if (!$user) {
                 return $this->errorResponse('User not authenticated', 401);
             }
@@ -668,8 +661,7 @@ class NotificationController extends Controller
     public function registerToken(Request $request): JsonResponse
     {
         try {
-            // Check authentication first - return 401 if not authenticated
-            $user = $request->user();
+            $user = auth()->user();
             if (!$user) {
                 return $this->errorResponse('User not authenticated', 401);
             }
@@ -725,8 +717,7 @@ class NotificationController extends Controller
     public function deactivateToken(Request $request): JsonResponse
     {
         try {
-            // Check authentication first - return 401 if not authenticated
-            $user = $request->user();
+            $user = auth()->user();
             if (!$user) {
                 return $this->errorResponse('User not authenticated', 401);
             }
