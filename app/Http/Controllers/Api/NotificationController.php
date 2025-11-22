@@ -321,15 +321,8 @@ class NotificationController extends Controller
      */
     public function getUnreadCount(Request $request): JsonResponse
     {
-        // Catch all exceptions first, including those from auth system
         try {
-            try {
-                $user = auth()->user();
-            } catch (\Throwable $e) {
-                // If auth()->user() itself throws an exception, treat as unauthenticated
-                return $this->errorResponse('User not authenticated', 401);
-            }
-            
+            $user = auth()->user();
             if (!$user) {
                 return $this->errorResponse('User not authenticated', 401);
             }
@@ -350,28 +343,20 @@ class NotificationController extends Controller
         } catch (\Error $e) {
             // Handle PHP 7+ Error exceptions (like trying to call method on null)
             return $this->errorResponse('User not authenticated', 401);
-        } catch (\Throwable $e) {
-            // Catch any other throwable (including exceptions from auth system)
+        } catch (Exception $e) {
+            // Check if exception message contains authentication-related keywords
             $errorMessage = strtolower($e->getMessage());
-            $exceptionClass = get_class($e);
-            
-            // If it's any authentication-related exception or error, return 401
-            if ($e instanceof AuthenticationException ||
-                str_contains($errorMessage, 'authenticated') || 
+            if (str_contains($errorMessage, 'authenticated') || 
                 str_contains($errorMessage, 'unauthorized') ||
                 str_contains($errorMessage, 'authentication') ||
-                str_contains($errorMessage, 'unauthenticated') ||
-                str_contains($exceptionClass, 'Authentication') ||
-                str_contains($exceptionClass, 'Unauthenticated')) {
+                str_contains($errorMessage, 'unauthenticated')) {
                 return $this->errorResponse('User not authenticated', 401);
             }
             
             Log::error('Failed to get unread count', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'exception_class' => $exceptionClass,
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'exception_class' => get_class($e)
             ]);
             return $this->errorResponse(
                 'Failed to get unread count: ' . $e->getMessage(),
