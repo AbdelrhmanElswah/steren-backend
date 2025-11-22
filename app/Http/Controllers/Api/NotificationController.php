@@ -34,6 +34,18 @@ class NotificationController extends Controller
     }
 
     /**
+     * Ensure user is authenticated
+     */
+    private function ensureAuthenticated(Request $request): ?JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return $this->errorResponse('User not authenticated', 401);
+        }
+        return null;
+    }
+
+    /**
      * Check if Firebase service is available
      */
     private function checkFirebaseService()
@@ -299,10 +311,11 @@ class NotificationController extends Controller
     public function getUnreadCount(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
-            if (!$user) {
-                return $this->errorResponse('User not authenticated', 401);
+            if ($error = $this->ensureAuthenticated($request)) {
+                return $error;
             }
+
+            $user = $request->user();
 
             $unreadCount = Notification::where('user_id', $user->id)
                 ->where('is_read', false)
@@ -326,10 +339,11 @@ class NotificationController extends Controller
     public function getUserNotifications(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
-            if (!$user) {
-                return $this->errorResponse('User not authenticated', 401);
+            if ($error = $this->ensureAuthenticated($request)) {
+                return $error;
             }
+
+            $user = $request->user();
 
             $perPage = $request->get('per_page', 15);
             $page = $request->get('page', 1);
@@ -404,11 +418,11 @@ class NotificationController extends Controller
     public function markAsRead(Request $request, int $notificationId): JsonResponse
     {
         try {
-            $user = $request->user();
-            
-            if (!$user) {
-                return $this->errorResponse('User not authenticated', 401);
+            if ($error = $this->ensureAuthenticated($request)) {
+                return $error;
             }
+
+            $user = $request->user();
             
             $notification = Notification::where('id', $notificationId)
                 ->where('user_id', $user->id)
@@ -477,11 +491,11 @@ class NotificationController extends Controller
     public function markAllAsRead(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
-            
-            if (!$user) {
-                return $this->errorResponse('User not authenticated', 401);
+            if ($error = $this->ensureAuthenticated($request)) {
+                return $error;
             }
+
+            $user = $request->user();
 
             $updated = Notification::where('user_id', $user->id)
                 ->where('is_read', false)
@@ -514,6 +528,10 @@ class NotificationController extends Controller
     public function delete(Request $request, int $notificationId): JsonResponse
     {
         try {
+            if ($error = $this->ensureAuthenticated($request)) {
+                return $error;
+            }
+
             $user = $request->user();
             
             $notification = Notification::where('id', $notificationId)
@@ -540,6 +558,10 @@ class NotificationController extends Controller
     public function getAnalytics(Request $request): JsonResponse
     {
         try {
+            if ($error = $this->ensureAuthenticated($request)) {
+                return $error;
+            }
+
             if ($error = $this->checkFirebaseService()) {
                 return $error;
             }
@@ -561,10 +583,16 @@ class NotificationController extends Controller
     /**
      * Get notification types
      */
-    public function getNotificationTypes(): JsonResponse
+    public function getNotificationTypes(Request $request): JsonResponse
     {
         try {
-            $types = NotificationType::select('id', 'name', 'display_name', 'description')
+            if ($error = $this->ensureAuthenticated($request)) {
+                return $error;
+            }
+
+            $types = NotificationType::select('id', 'name', 'display_name', 'description', 'icon', 'color', 'is_active', 'sort_order')
+                ->where('is_active', true)
+                ->orderBy('sort_order')
                 ->get();
 
             return $this->successResponse($types, 'Notification types retrieved successfully');
@@ -583,6 +611,10 @@ class NotificationController extends Controller
     public function registerToken(Request $request): JsonResponse
     {
         try {
+            if ($error = $this->ensureAuthenticated($request)) {
+                return $error;
+            }
+
             $validator = Validator::make($request->all(), [
                 'token' => 'required|string',
                 'device_id' => 'nullable|string',
@@ -629,6 +661,10 @@ class NotificationController extends Controller
     public function deactivateToken(Request $request): JsonResponse
     {
         try {
+            if ($error = $this->ensureAuthenticated($request)) {
+                return $error;
+            }
+
             $validator = Validator::make($request->all(), [
                 'token' => 'required|string'
             ]);
