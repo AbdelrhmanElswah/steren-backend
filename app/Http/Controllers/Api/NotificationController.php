@@ -321,8 +321,14 @@ class NotificationController extends Controller
      */
     public function getUnreadCount(Request $request): JsonResponse
     {
+        // Catch all exceptions first, including those from auth system
         try {
-            $user = auth()->user();
+            try {
+                $user = auth()->user();
+            } catch (\Throwable $e) {
+                // If auth()->user() itself throws an exception, treat as unauthenticated
+                return $this->errorResponse('User not authenticated', 401);
+            }
             
             if (!$user) {
                 return $this->errorResponse('User not authenticated', 401);
@@ -340,37 +346,32 @@ class NotificationController extends Controller
             return $this->errorResponse('User not authenticated', 401);
         } catch (\TypeError $e) {
             // Handle case where $user is null but we try to access ->id
-            if (str_contains($e->getMessage(), 'null') || str_contains($e->getMessage(), 'User')) {
-                return $this->errorResponse('User not authenticated', 401);
-            }
-            Log::error('TypeError in getUnreadCount', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
             return $this->errorResponse('User not authenticated', 401);
         } catch (\Error $e) {
             // Handle PHP 7+ Error exceptions (like trying to call method on null)
-            if (str_contains($e->getMessage(), 'null') || str_contains($e->getMessage(), 'Call to a member function')) {
-                return $this->errorResponse('User not authenticated', 401);
-            }
-            Log::error('Error in getUnreadCount', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
             return $this->errorResponse('User not authenticated', 401);
-        } catch (Exception $e) {
-            // Check if exception is authentication-related
+        } catch (\Throwable $e) {
+            // Catch any other throwable (including exceptions from auth system)
             $errorMessage = strtolower($e->getMessage());
-            if (str_contains($errorMessage, 'authenticated') || 
+            $exceptionClass = get_class($e);
+            
+            // If it's any authentication-related exception or error, return 401
+            if ($e instanceof AuthenticationException ||
+                str_contains($errorMessage, 'authenticated') || 
                 str_contains($errorMessage, 'unauthorized') ||
-                str_contains($errorMessage, 'authentication')) {
+                str_contains($errorMessage, 'authentication') ||
+                str_contains($errorMessage, 'unauthenticated') ||
+                str_contains($exceptionClass, 'Authentication') ||
+                str_contains($exceptionClass, 'Unauthenticated')) {
                 return $this->errorResponse('User not authenticated', 401);
             }
             
             Log::error('Failed to get unread count', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'exception_class' => get_class($e)
+                'exception_class' => $exceptionClass,
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
             ]);
             return $this->errorResponse(
                 'Failed to get unread count: ' . $e->getMessage(),
