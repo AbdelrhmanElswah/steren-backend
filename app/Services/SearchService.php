@@ -632,21 +632,21 @@ class SearchService
         // Mileage range filter - support both individual and range (FIXED: properly handle 0 values)
         $mileageMin = isset($filters['mileage_min']) && $filters['mileage_min'] !== '' && $filters['mileage_min'] !== null ? (int)$filters['mileage_min'] : null;
         $mileageMax = isset($filters['mileage_max']) && $filters['mileage_max'] !== '' && $filters['mileage_max'] !== null ? (int)$filters['mileage_max'] : null;
-        // Default requested mileage unit to 'km' when any mileage filter is provided and no unit specified
-        $requestedMileageUnit = $this->normalizeMileageUnit(
-            $filters['mileage_unit'] ?? $filters['mileage_units'] ?? (($mileageMin !== null || $mileageMax !== null) ? 'km' : null)
-        );
-
-        if ($requestedMileageUnit && ($mileageMin !== null || $mileageMax !== null)) {
-            $this->applyMileageFilterWithUnit($query, $mileageMin, $mileageMax, $requestedMileageUnit);
-        } else {
-            if ($mileageMin !== null && $mileageMax !== null) {
-                $query->whereBetween('mileage', [$mileageMin, $mileageMax]);
-            } elseif ($mileageMin !== null) {
-                $query->where('mileage', '>=', $mileageMin);
-            } elseif ($mileageMax !== null) {
-                $query->where('mileage', '<=', $mileageMax);
+        
+        // If mileage filters are provided, always use unit conversion (default to 'km' if no unit specified)
+        if ($mileageMin !== null || $mileageMax !== null) {
+            // Default requested mileage unit to 'km' when any mileage filter is provided and no unit specified
+            $requestedMileageUnit = $this->normalizeMileageUnit(
+                $filters['mileage_unit'] ?? $filters['mileage_units'] ?? 'km'
+            );
+            
+            // If unit is still null after normalization (shouldn't happen due to validation, but safety check)
+            // Default to 'km' to ensure unit conversion is always applied
+            if ($requestedMileageUnit === null) {
+                $requestedMileageUnit = 'km';
             }
+            
+            $this->applyMileageFilterWithUnit($query, $mileageMin, $mileageMax, $requestedMileageUnit);
         }
 
         // Body type filter
