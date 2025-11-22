@@ -691,24 +691,10 @@ class SearchService
             $query->whereIn('city_id', $cityIds);
         }
 
-        // Import type filter (GCC/IMPORT)
+        // Import type filter - support both singular and plural
         $importTypeIds = $this->normalizeIds($filters['import_type_ids'] ?? $filters['import_type_id'] ?? null);
         if (!empty($importTypeIds)) {
             $query->whereIn('import_type_id', $importTypeIds);
-        }
-
-        $gccImports = $this->normalizeValues($filters['gcc_imports'] ?? $filters['gcc_import'] ?? null);
-        if (!empty($gccImports)) {
-            $normalizedImports = array_map(fn ($value) => strtolower($value), $gccImports);
-            $query->where(function ($q) use ($normalizedImports) {
-                foreach ($normalizedImports as $index => $value) {
-                    if ($index === 0) {
-                        $q->whereRaw('LOWER(gcc_import) = ?', [$value]);
-                    } else {
-                        $q->orWhereRaw('LOWER(gcc_import) = ?', [$value]);
-                    }
-                }
-            });
         }
 
         // Warranty filter
@@ -716,9 +702,21 @@ class SearchService
             // Handle both boolean and string values
             $warrantyValue = $filters['has_warranty'];
             if (is_string($warrantyValue)) {
-                $warrantyValue = strtolower($warrantyValue) === 'true' || strtolower($warrantyValue) === '1' || strtolower($warrantyValue) === 'yes';
+                $normalized = strtolower(trim($warrantyValue));
+                // Map string values to boolean
+                if (in_array($normalized, ['true', '1', 'yes'], true)) {
+                    $warrantyValue = true;
+                } elseif (in_array($normalized, ['false', '0', 'no'], true)) {
+                    $warrantyValue = false;
+                } else {
+                    // Default to false for unknown string values
+                    $warrantyValue = false;
+                }
+            } elseif (is_numeric($warrantyValue)) {
+                $warrantyValue = (int)$warrantyValue === 1;
             }
-            $query->where('has_warranty', $warrantyValue);
+            // Convert to boolean and apply filter
+            $query->where('has_warranty', (bool)$warrantyValue);
         }
     }
 
@@ -790,11 +788,21 @@ class SearchService
             return null;
         }
 
+        // Handle numeric values: 1 = km, 2 = mile
+        if (is_numeric($value)) {
+            $numericValue = (int) $value;
+            return match ($numericValue) {
+                1 => 'km',
+                2 => 'mile',
+                default => null,
+            };
+        }
+
         $normalized = strtolower(trim((string) $value));
 
         return match ($normalized) {
-            'km', 'kilometer', 'kilometers', 'kilometre', 'kilometres' => 'km',
-            'mile', 'miles', 'mi' => 'mile',
+            'km', 'kilometer', 'kilometers', 'kilometre', 'kilometres', '1' => 'km',
+            'mile', 'miles', 'mi', '2' => 'mile',
             default => null,
         };
     }

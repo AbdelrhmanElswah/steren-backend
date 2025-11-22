@@ -33,8 +33,24 @@ class SearchRequest extends FormRequest
             'price_max' => 'nullable|numeric|min:0|gte:price_min',
             'mileage_min' => 'nullable|integer|min:0',
             'mileage_max' => 'nullable|integer|min:0|gte:mileage_min',
-            'mileage_unit' => 'nullable|string|in:km,kilometer,kilometers,kilometre,kilometres,mile,miles,mi',
-            'mileage_units' => 'nullable|string|in:km,kilometer,kilometers,kilometre,kilometres,mile,miles,mi',
+            'mileage_unit' => [
+                'nullable',
+                function ($attribute, $value, $fail) {
+                    $validValues = ['km', 'kilometer', 'kilometers', 'kilometre', 'kilometres', 'mile', 'miles', 'mi', '1', '2', 1, 2];
+                    if (!in_array($value, $validValues, true)) {
+                        $fail('The mileage unit must be one of: km, kilometer, kilometers, kilometre, kilometres, mile, miles, mi, 1 (km), or 2 (mile).');
+                    }
+                },
+            ],
+            'mileage_units' => [
+                'nullable',
+                function ($attribute, $value, $fail) {
+                    $validValues = ['km', 'kilometer', 'kilometers', 'kilometre', 'kilometres', 'mile', 'miles', 'mi', '1', '2', 1, 2];
+                    if (!in_array($value, $validValues, true)) {
+                        $fail('The mileage units must be one of: km, kilometer, kilometers, kilometre, kilometres, mile, miles, mi, 1 (km), or 2 (mile).');
+                    }
+                },
+            ],
             'body_type_id' => 'nullable|integer|exists:body_types,id',
             'fuel_type_id' => 'nullable|integer|exists:fuel_types,id',
             'transmission_id' => 'nullable|integer|exists:transmissions,id',
@@ -43,7 +59,15 @@ class SearchRequest extends FormRequest
             'cylinder_id' => 'nullable|integer|exists:cylinder_options,id',
             'city_id' => 'nullable|integer|exists:cities,id',
             'import_type_id' => 'nullable|integer|exists:import_types,id',
-            'has_warranty' => 'nullable|boolean',
+            'has_warranty' => [
+                'nullable',
+                function ($attribute, $value, $fail) {
+                    $validValues = [true, false, 'true', 'false', '1', '0', 'yes', 'no', 1, 0];
+                    if (!in_array($value, $validValues, true)) {
+                        $fail('The has warranty must be a boolean value: true, false, 1, 0, yes, or no.');
+                    }
+                },
+            ],
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:100',
         ];
@@ -60,8 +84,8 @@ class SearchRequest extends FormRequest
             'year_to.gte' => 'The year to must be greater than or equal to year from.',
             'price_max.gte' => 'The maximum price must be greater than or equal to minimum price.',
             'mileage_max.gte' => 'The maximum mileage must be greater than or equal to minimum mileage.',
-            'mileage_unit.in' => 'The mileage unit must be one of: km, kilometer, kilometers, kilometre, kilometres, mile, miles, or mi.',
-            'mileage_units.in' => 'The mileage units must be one of: km, kilometer, kilometers, kilometre, kilometres, mile, miles, or mi.',
+            'mileage_unit' => 'The mileage unit must be one of: km, kilometer, kilometers, kilometre, kilometres, mile, miles, mi, 1 (km), or 2 (mile).',
+            'mileage_units' => 'The mileage units must be one of: km, kilometer, kilometers, kilometre, kilometres, mile, miles, mi, 1 (km), or 2 (mile).',
             'brand_id.exists' => 'The selected brand does not exist.',
             'studio_id.exists' => 'The selected studio does not exist.',
             'model_id.exists' => 'The selected model does not exist.',
