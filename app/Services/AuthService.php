@@ -24,7 +24,8 @@ class AuthService
         private OdooService $odooService,
         private ClientService $clientService,
         private FirebaseService $firebaseService,
-        private StandingTechService $standingTechService
+        private StandingTechService $standingTechService,
+        private UnifiedNotificationService $notificationService
     ) {
     }
 
@@ -117,6 +118,17 @@ class AuthService
             $this->storeOtp($this->phoneKey($user->phone), $otp['code']);
 
             $token = $user->createToken('otp-verification', ['verify-otp'])->plainTextToken;
+
+            // Create welcome notification (outside transaction to avoid blocking)
+            try {
+                $this->notificationService->createUserCreatedNotification($user);
+            } catch (\Exception $e) {
+                Log::warning('Failed to create welcome notification for new user (non-critical)', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage()
+                ]);
+                // Don't throw - notification failure shouldn't block registration
+            }
 
             return [
                 'user' => $user,
@@ -665,6 +677,16 @@ class AuthService
             }
 
             DB::commit();
+
+            // Create welcome notification after account completion
+            try {
+                $this->notificationService->createUserCreatedNotification($user);
+            } catch (\Exception $e) {
+                Log::warning('Failed to create welcome notification for completed pending account (non-critical)', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
 
             Log::info('Pending account completed successfully', [
                 'user_id' => $user->id,

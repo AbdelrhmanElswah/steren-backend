@@ -350,6 +350,43 @@ class DatabaseNotificationService
     }
 
     /**
+     * Create user created (welcome) notification
+     */
+    public function createUserCreatedNotification($user): Notification
+    {
+        try {
+            // Get the notification type (should exist from seeder)
+            $notificationType = NotificationType::findByName('user_created');
+            if (!$notificationType) {
+                throw new Exception('Notification type "user_created" not found. Please run the NotificationTypeSeeder.');
+            }
+
+            $userName = $user->full_name ?? 'there';
+            $title = 'Welcome to Steren!';
+            $message = "Welcome {$userName}! We're excited to have you join our community. Start exploring amazing cars or list your own!";
+
+            return $this->createNotification(
+                $user->id,
+                'user_created',
+                $title,
+                $message,
+                [
+                    'user_id' => $user->id,
+                    'user_name' => $userName,
+                ],
+                $notificationType->id
+            );
+
+        } catch (Exception $e) {
+            Log::error('Failed to create user created notification', [
+                'user_id' => $user->id ?? null,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Get unread notification count for a user
      */
     public function getUnreadCount(int $userId): int

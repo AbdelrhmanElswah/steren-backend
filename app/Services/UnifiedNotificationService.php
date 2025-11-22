@@ -491,6 +491,55 @@ class UnifiedNotificationService
     }
 
     /**
+     * Create user created (welcome) notification
+     */
+    public function createUserCreatedNotification($user): array
+    {
+        // Always create database notification
+        $notification = $this->databaseService->createUserCreatedNotification($user);
+
+        $results = [
+            'database' => $notification,
+            'firebase' => null,
+            'success' => true,
+        ];
+
+        // Optionally send Firebase push notification
+        if ($this->firebaseEnabled && $this->firebaseService) {
+            try {
+                $userName = $user->full_name ?? 'there';
+                $title = 'Welcome to Steren!';
+                $message = "Welcome {$userName}! We're excited to have you join our community. Start exploring amazing cars or list your own!";
+
+                $notificationType = \App\Models\NotificationType::findByName('user_created');
+                if ($notificationType) {
+                    $firebaseResult = $this->firebaseService->sendToUser(
+                        $user->id,
+                        $title,
+                        $message,
+                        [
+                            'user_id' => $user->id,
+                            'user_name' => $userName,
+                            'type' => 'user_created',
+                        ],
+                        $notificationType->id
+                    );
+
+                    $results['firebase'] = $firebaseResult;
+                }
+
+            } catch (Exception $e) {
+                Log::warning('Firebase push notification failed for user created (non-critical)', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        return $results;
+    }
+
+    /**
      * Check if Firebase is enabled
      */
     public function isFirebaseActive(): bool

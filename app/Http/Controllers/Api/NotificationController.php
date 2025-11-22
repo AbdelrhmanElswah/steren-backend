@@ -335,8 +335,43 @@ class NotificationController extends Controller
             $page = $request->get('page', 1);
 
             $notifications = Notification::where('user_id', $user->id)
+                ->with('notificationType:id,name,display_name,description,icon,color,is_active,sort_order')
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage, ['*'], 'page', $page);
+
+            // Format notifications to include type details
+            $formattedNotifications = $notifications->getCollection()->map(function ($notification) {
+                $notificationData = [
+                    'id' => $notification->id,
+                    'user_id' => $notification->user_id,
+                    'type' => $notification->type,
+                    'title' => $notification->title,
+                    'message' => $notification->message,
+                    'data' => $notification->data,
+                    'is_read' => $notification->is_read,
+                    'read_at' => $notification->read_at,
+                    'created_at' => $notification->created_at,
+                    'updated_at' => $notification->updated_at,
+                ];
+
+                // Include notification type details if available
+                if ($notification->notificationType) {
+                    $notificationData['notification_type'] = [
+                        'id' => $notification->notificationType->id,
+                        'name' => $notification->notificationType->name,
+                        'display_name' => $notification->notificationType->display_name,
+                        'description' => $notification->notificationType->description,
+                        'icon' => $notification->notificationType->icon,
+                        'color' => $notification->notificationType->color,
+                        'is_active' => $notification->notificationType->is_active,
+                        'sort_order' => $notification->notificationType->sort_order,
+                    ];
+                } else {
+                    $notificationData['notification_type'] = null;
+                }
+
+                return $notificationData;
+            });
 
             // Get unread count
             $unreadCount = Notification::where('user_id', $user->id)
@@ -344,7 +379,7 @@ class NotificationController extends Controller
                 ->count();
 
             return $this->successResponse([
-                'notifications' => $notifications->items(),
+                'notifications' => $formattedNotifications,
                 'unread_count' => $unreadCount,
                 'pagination' => [
                     'current_page' => $notifications->currentPage(),
@@ -377,6 +412,7 @@ class NotificationController extends Controller
             
             $notification = Notification::where('id', $notificationId)
                 ->where('user_id', $user->id)
+                ->with('notificationType:id,name,display_name,description,icon,color,is_active,sort_order')
                 ->firstOrFail();
 
             $notification->update([
@@ -384,14 +420,46 @@ class NotificationController extends Controller
                 'is_read' => true
             ]);
 
+            // Refresh to get updated read_at
+            $notification->refresh();
+
+            // Format notification with type details
+            $notificationData = [
+                'id' => $notification->id,
+                'user_id' => $notification->user_id,
+                'type' => $notification->type,
+                'title' => $notification->title,
+                'message' => $notification->message,
+                'data' => $notification->data,
+                'is_read' => $notification->is_read,
+                'read_at' => $notification->read_at,
+                'created_at' => $notification->created_at,
+                'updated_at' => $notification->updated_at,
+            ];
+
+            // Include notification type details if available
+            if ($notification->notificationType) {
+                $notificationData['notification_type'] = [
+                    'id' => $notification->notificationType->id,
+                    'name' => $notification->notificationType->name,
+                    'display_name' => $notification->notificationType->display_name,
+                    'description' => $notification->notificationType->description,
+                    'icon' => $notification->notificationType->icon,
+                    'color' => $notification->notificationType->color,
+                    'is_active' => $notification->notificationType->is_active,
+                    'sort_order' => $notification->notificationType->sort_order,
+                ];
+            } else {
+                $notificationData['notification_type'] = null;
+            }
+
             // Get updated unread count
             $unreadCount = Notification::where('user_id', $user->id)
                 ->where('is_read', false)
                 ->count();
 
             return $this->successResponse([
-                'notification_id' => $notificationId,
-                'read_at' => $notification->read_at,
+                'notification' => $notificationData,
                 'unread_count' => $unreadCount
             ], 'Notification marked as read');
 

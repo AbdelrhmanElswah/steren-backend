@@ -14,6 +14,20 @@ class NotificationTypeSeeder extends Seeder
     {
         $notificationTypes = [
             [
+                'name' => 'user_created',
+                'display_name' => 'Welcome to Steren',
+                'description' => 'Welcome notification when user registers',
+                'icon' => 'waving_hand',
+                'color' => '#10B981',
+                'is_active' => true,
+                'default_template' => [
+                    'title' => 'Welcome to Steren!',
+                    'body' => 'Welcome {{user_name}}! We\'re excited to have you join our community. Start exploring amazing cars or list your own!'
+                ],
+                'channels' => ['push'],
+                'sort_order' => 0,
+            ],
+            [
                 'name' => 'listing_created',
                 'display_name' => 'Listing Created',
                 'description' => 'Your car listing has been created successfully',
