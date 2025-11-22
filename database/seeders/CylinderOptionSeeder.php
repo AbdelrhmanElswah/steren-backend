@@ -8,7 +8,7 @@ class CylinderOptionSeeder extends Seeder
 {
     public function run(): void
     {
-        CylinderOption::insert([
+        $cylinderOptions = [
             ['name' => '3'],
             ['name' => '4'],
             ['name' => '5'],
@@ -17,6 +17,13 @@ class CylinderOptionSeeder extends Seeder
             ['name' => '10'],
             ['name' => 'Unknown'],
             ['name' => 'Electric'],
-        ]);
+        ];
+
+        foreach ($cylinderOptions as $option) {
+            CylinderOption::updateOrCreate(
+                ['name' => $option['name']],
+                $option
+            );
+        }
     }
 }

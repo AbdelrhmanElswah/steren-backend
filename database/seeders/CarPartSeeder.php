@@ -22,7 +22,10 @@ class CarPartSeeder extends Seeder
         ];
 
         foreach ($parts as $part) {
-            CarPart::create($part);
+            CarPart::updateOrCreate(
+                ['name' => $part['name']],
+                $part
+            );
         }
     }
 }

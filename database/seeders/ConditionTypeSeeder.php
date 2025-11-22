@@ -22,7 +22,10 @@ class ConditionTypeSeeder extends Seeder
         ];
 
         foreach ($conditionTypes as $condition) {
-            CarCondition::create($condition);
+            CarCondition::updateOrCreate(
+                ['name' => $condition['name']],
+                $condition
+            );
         }
     }
 }

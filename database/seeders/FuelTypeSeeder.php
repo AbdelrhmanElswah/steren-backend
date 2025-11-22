@@ -8,11 +8,18 @@ class FuelTypeSeeder extends Seeder
 {
     public function run(): void
     {
-        FuelType::insert([
+        $fuelTypes = [
             ['name' => 'Petrol'],
             ['name' => 'Diesel'],
             ['name' => 'Electric'],
             ['name' => 'Hybrid'],
-        ]);
+        ];
+
+        foreach ($fuelTypes as $type) {
+            FuelType::updateOrCreate(
+                ['name' => $type['name']],
+                $type
+            );
+        }
     }
 }

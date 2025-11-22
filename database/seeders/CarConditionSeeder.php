@@ -8,10 +8,17 @@ class CarConditionSeeder extends Seeder
 {
     public function run(): void
     {
-        CarCondition::insert([
+        $conditions = [
             ['name' => 'New'],
             ['name' => 'Used'],
-        ]);
+        ];
+
+        foreach ($conditions as $condition) {
+            CarCondition::updateOrCreate(
+                ['name' => $condition['name']],
+                $condition
+            );
+        }
     }
 }
 

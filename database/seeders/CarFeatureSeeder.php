@@ -195,7 +195,10 @@ class CarFeatureSeeder extends Seeder
         ];
 
         foreach ($features as $feature) {
-            CarFeature::create($feature);
+            CarFeature::updateOrCreate(
+                ['name' => $feature['name']],
+                $feature
+            );
         }
     }
 }

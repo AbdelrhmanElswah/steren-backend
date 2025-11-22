@@ -46,7 +46,10 @@ class PromotionTypeSeeder extends Seeder
         ];
 
         foreach ($promotionTypes as $type) {
-            Promotion::create($type);
+            Promotion::updateOrCreate(
+                ['title' => $type['title']],
+                $type
+            );
         }
     }
 }

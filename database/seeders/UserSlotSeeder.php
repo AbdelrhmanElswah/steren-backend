@@ -42,16 +42,18 @@ class UserSlotSeeder extends Seeder
 
             // Only create slot records for free users (no active subscription)
             if (!$hasActiveSubscription) {
-                UserSlot::create([
-                    'user_id' => $user->id,
-                    'total_slots' => 1,
-                    'consumed_slots' => 0,
-                    'available_slots' => 1,
-                    'purchased_slots' => 0,
-                    'has_monthly_free_slot' => true,
-                    'last_free_slot_reset_at' => Carbon::now(),
-                    'next_free_slot_reset_at' => Carbon::now()->addMonth()->startOfMonth(),
-                ]);
+                UserSlot::updateOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'total_slots' => 1,
+                        'consumed_slots' => 0,
+                        'available_slots' => 1,
+                        'purchased_slots' => 0,
+                        'has_monthly_free_slot' => true,
+                        'last_free_slot_reset_at' => Carbon::now(),
+                        'next_free_slot_reset_at' => Carbon::now()->addMonth()->startOfMonth(),
+                    ]
+                );
 
                 $createdCount++;
             } else {

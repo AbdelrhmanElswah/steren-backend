@@ -8,9 +8,16 @@ class TransmissionSeeder extends Seeder
 {
     public function run(): void
     {
-        Transmission::insert([
+        $transmissions = [
             ['name' => 'Automatic'],
             ['name' => 'Manual'],
-        ]);
+        ];
+
+        foreach ($transmissions as $transmission) {
+            Transmission::updateOrCreate(
+                ['name' => $transmission['name']],
+                $transmission
+            );
+        }
     }
 }

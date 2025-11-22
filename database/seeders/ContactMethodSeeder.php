@@ -64,7 +64,10 @@ class ContactMethodSeeder extends Seeder
         ];
 
         foreach ($contactMethods as $method) {
-            ContactMethod::create($method);
+            ContactMethod::updateOrCreate(
+                ['name' => $method['name']],
+                $method
+            );
         }
     }
 }

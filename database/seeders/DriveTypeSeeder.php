@@ -8,11 +8,18 @@ class DriveTypeSeeder extends Seeder
 {
     public function run(): void
     {
-        DriveType::insert([
+        $driveTypes = [
             ['name' => 'RWD'],
             ['name' => 'FWD'],
             ['name' => 'AWD'],
             ['name' => '4x4'],
-        ]);
+        ];
+
+        foreach ($driveTypes as $type) {
+            DriveType::updateOrCreate(
+                ['name' => $type['name']],
+                $type
+            );
+        }
     }
 }

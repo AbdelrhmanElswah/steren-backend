@@ -8,9 +8,16 @@ class WarrantyStatusSeeder extends Seeder
 {
     public function run(): void
     {
-        WarrantyStatus::insert([
+        $warrantyStatuses = [
             ['name' => 'Yes'],
             ['name' => 'No'],
-        ]);
+        ];
+
+        foreach ($warrantyStatuses as $status) {
+            WarrantyStatus::updateOrCreate(
+                ['name' => $status['name']],
+                $status
+            );
+        }
     }
 }

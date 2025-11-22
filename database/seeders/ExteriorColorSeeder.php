@@ -8,7 +8,7 @@ class ExteriorColorSeeder extends Seeder
 {
     public function run(): void
     {
-        ExteriorColor::insert([
+        $colors = [
             ['name' => 'White'],
             ['name' => 'Black'],
             ['name' => 'Red'],
@@ -17,6 +17,13 @@ class ExteriorColorSeeder extends Seeder
             ['name' => 'Green'],
             ['name' => 'Purple'],
             ['name' => 'Other'],
-        ]);
+        ];
+
+        foreach ($colors as $color) {
+            ExteriorColor::updateOrCreate(
+                ['name' => $color['name']],
+                $color
+            );
+        }
     }
 }

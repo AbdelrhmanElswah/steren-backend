@@ -38,19 +38,13 @@ class IraqStatesSeeder extends Seeder
                     
                     foreach ($states as $state) {
                         try {
-                            // Use both name and odoo_id to prevent duplicates
-                            $existing = City::where('name', $state['name'])->first();
-                            
-                            if ($existing) {
-                                // Update existing city with odoo_id
-                                $existing->update(['odoo_id' => $state['id']]);
-                            } else {
-                                // Create new city
-                                City::create([
+                            City::updateOrCreate(
+                                ['name' => $state['name']],
+                                [
                                     'name' => $state['name'],
                                     'odoo_id' => $state['id']
-                                ]);
-                            }
+                                ]
+                            );
                         } catch (\Exception $e) {
                             $this->command->warn("Skipped duplicate city: {$state['name']}");
                             Log::warning('IraqStatesSeeder: Duplicate city skipped', [

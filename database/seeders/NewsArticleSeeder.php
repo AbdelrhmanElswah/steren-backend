@@ -61,7 +61,10 @@ class NewsArticleSeeder extends Seeder
         ];
 
         foreach ($articles as $article) {
-            NewsArticle::create($article);
+            NewsArticle::updateOrCreate(
+                ['title' => $article['title']],
+                $article
+            );
         }
     }
 }

@@ -8,7 +8,7 @@ class ImportTypeSeeder extends Seeder
 {
     public function run(): void
     {
-        ImportType::insert([
+        $importTypes = [
             ['name' => 'GCC'],
             ['name' => 'American'],
             ['name' => 'Canadian'],
@@ -17,6 +17,13 @@ class ImportTypeSeeder extends Seeder
             ['name' => 'Korean'],
             ['name' => 'Chinese'],
             ['name' => 'Others'],
-        ]);
+        ];
+
+        foreach ($importTypes as $type) {
+            ImportType::updateOrCreate(
+                ['name' => $type['name']],
+                $type
+            );
+        }
     }
 }

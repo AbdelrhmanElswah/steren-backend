@@ -282,19 +282,21 @@ class NotificationTypeSeeder extends Seeder
         ];
 
         foreach ($notificationTypes as $type) {
-            DB::table('notification_types')->insert([
-                'name' => $type['name'],
-                'display_name' => $type['display_name'],
-                'description' => $type['description'],
-                'icon' => $type['icon'],
-                'color' => $type['color'],
-                'is_active' => $type['is_active'],
-                'default_template' => json_encode($type['default_template']),
-                'channels' => json_encode($type['channels']),
-                'sort_order' => $type['sort_order'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            DB::table('notification_types')->updateOrInsert(
+                ['name' => $type['name']], // Match by unique name
+                [
+                    'display_name' => $type['display_name'],
+                    'description' => $type['description'],
+                    'icon' => $type['icon'],
+                    'color' => $type['color'],
+                    'is_active' => $type['is_active'],
+                    'default_template' => json_encode($type['default_template']),
+                    'channels' => json_encode($type['channels']),
+                    'sort_order' => $type['sort_order'],
+                    'updated_at' => now(),
+                    'created_at' => DB::raw('COALESCE(created_at, NOW())'), // Preserve original created_at if exists
+                ]
+            );
         }
     }
 }
