@@ -100,7 +100,7 @@ class SearchController extends Controller
                     'total' => $results['total'],
                 ],
                 'filters_applied' => array_filter($validated, function($value, $key) {
-                    return !in_array($key, ['page', 'per_page']) && $value !== null;
+                    return !in_array($key, ['page', 'per_page', 'sort']) && $value !== null;
                 }, ARRAY_FILTER_USE_BOTH)
             ];
 

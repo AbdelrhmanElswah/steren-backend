@@ -421,9 +421,10 @@ class SearchService
      */
     public function searchListings(array $filters, int $page = 1, int $perPage = 20): array
     {
-        $cacheKey = 'search_listings_' . md5(serialize($filters)) . "_{$page}_{$perPage}";
+        $sortBy = $filters['sort'] ?? 'latest';
+        $cacheKey = 'search_listings_' . md5(serialize($filters)) . "_{$page}_{$perPage}_{$sortBy}";
         
-        return Cache::remember($cacheKey, 300, function () use ($filters, $page, $perPage) {
+        return Cache::remember($cacheKey, 300, function () use ($filters, $page, $perPage, $sortBy) {
             // Build base query for filtering (without eager loading for count)
             $baseQuery = CarListing::query();
             $this->applySearchFilters($baseQuery, $filters);
@@ -463,9 +464,32 @@ class SearchService
             // Apply the same filters to the eager-loaded query
             $this->applySearchFilters($query, $filters);
 
+            // Apply sorting - same as /api/car-listings
+            switch ($sortBy) {
+                case 'year_high':
+                    $query->orderBy('car_listings.year', 'desc');
+                    break;
+                case 'year_low':
+                    $query->orderBy('car_listings.year', 'asc');
+                    break;
+                case 'price_high':
+                    $query->orderBy('car_listings.price', 'desc');
+                    break;
+                case 'price_low':
+                    $query->orderBy('car_listings.price', 'asc');
+                    break;
+                case 'mileage_high':
+                    $query->orderBy('car_listings.mileage', 'desc');
+                    break;
+                case 'mileage_low':
+                    $query->orderBy('car_listings.mileage', 'asc');
+                    break;
+                default: // 'latest' or any other value
+                    $query->orderBy('car_listings.created_at', 'desc');
+            }
+
             // Get paginated results - use limit/offset for better performance
-            $listings = $query->orderBy('car_listings.created_at', 'desc')
-                ->skip(($page - 1) * $perPage)
+            $listings = $query->skip(($page - 1) * $perPage)
                 ->take($perPage)
                 ->get();
 
