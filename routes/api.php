@@ -141,6 +141,9 @@ Route::prefix('client')->group(function () {
     Route::get('partner/{partnerId}', [App\Http\Controllers\Api\Client\ClientController::class, 'getByPartnerId']);
 });
 
+// Contact Us Routes - Public (no authentication required)
+Route::post('contact-us', [App\Http\Controllers\Api\ContactUsController::class, 'store']);
+
 // Auth Routes
 Route::prefix('auth')->group(function () {
     Route::post('/register', [App\Http\Controllers\Auth\AuthController::class, 'register']);

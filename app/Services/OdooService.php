@@ -321,6 +321,81 @@ class OdooService
         }
     }
 
+    public function submitContactUs(array $contactData): array
+    {
+        try {
+            $response = Http::timeout(30)->withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post($this->baseUrl . '/api/contact-us', [
+                'full_name' => $contactData['full_name'],
+                'phone' => $contactData['phone'],
+                'email' => $contactData['email'],
+                'message' => $contactData['message'],
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                // Handle different response formats
+                if (isset($data['result']) && isset($data['result']['success'])) {
+                    return [
+                        'success' => $data['result']['success'],
+                        'message' => $data['result']['message'] ?? 'Contact form submitted successfully',
+                        'data' => $data['result']['data'] ?? null
+                    ];
+                }
+
+                // If response doesn't have result wrapper, assume success
+                return [
+                    'success' => true,
+                    'message' => $data['message'] ?? 'Contact form submitted successfully',
+                    'data' => $data
+                ];
+            }
+
+            if ($response->status() >= 500) {
+                Log::error('Odoo contact-us endpoint returned server error', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+                return [
+                    'success' => false,
+                    'message' => 'Odoo service is temporarily unavailable'
+                ];
+            }
+
+            $errorData = $response->json();
+            $errorMessage = 'Failed to submit contact form to Odoo';
+            
+            if (isset($errorData['result']['message'])) {
+                $errorMessage = $errorData['result']['message'];
+            } elseif (isset($errorData['message'])) {
+                $errorMessage = $errorData['message'];
+            }
+
+            Log::warning('Odoo contact-us submission failed', [
+                'status' => $response->status(),
+                'error' => $errorData
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $errorMessage
+            ];
+
+        } catch (Exception $e) {
+            Log::error('Odoo contact-us submission exception', [
+                'contact_data' => $contactData,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Unable to submit contact form to Odoo: ' . $e->getMessage()
+            ];
+        }
+    }
+
     public function createListing(array $listingData): array
     {
         try {
