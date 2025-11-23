@@ -23,10 +23,32 @@ class SearchRequest extends FormRequest
     {
         return [
             'search' => 'nullable|string|max:255',
+            // Singular filters
             'brand_id' => 'nullable|integer|exists:car_brands,id',
             'studio_id' => 'nullable|integer|exists:dealer_studios,id',
             'model_id' => 'nullable|integer|exists:car_models,id',
             'condition_id' => 'nullable|integer|exists:car_conditions,id',
+            'body_type_id' => 'nullable|integer|exists:body_types,id',
+            'fuel_type_id' => 'nullable|integer|exists:fuel_types,id',
+            'transmission_id' => 'nullable|integer|exists:transmissions,id',
+            'exterior_color_id' => 'nullable|integer|exists:exterior_colors,id',
+            'drive_type_id' => 'nullable|integer|exists:drive_types,id',
+            'cylinder_id' => 'nullable|integer|exists:cylinder_options,id',
+            'city_id' => 'nullable|integer|exists:cities,id',
+            'import_type_id' => 'nullable|integer|exists:import_types,id',
+            // Plural filters (accept array, comma-separated string, or single value)
+            'brand_ids' => 'nullable',
+            'studio_ids' => 'nullable',
+            'model_ids' => 'nullable',
+            'condition_ids' => 'nullable',
+            'body_type_ids' => 'nullable',
+            'fuel_type_ids' => 'nullable',
+            'transmission_ids' => 'nullable',
+            'exterior_color_ids' => 'nullable',
+            'drive_type_ids' => 'nullable',
+            'cylinder_ids' => 'nullable',
+            'city_ids' => 'nullable',
+            'import_type_ids' => 'nullable',
             'year_from' => 'nullable|integer|min:1990|max:' . date('Y'),
             'year_to' => 'nullable|integer|min:1990|max:' . date('Y') . '|gte:year_from',
             'price_min' => 'nullable|numeric|min:0',
@@ -51,14 +73,6 @@ class SearchRequest extends FormRequest
                     }
                 },
             ],
-            'body_type_id' => 'nullable|integer|exists:body_types,id',
-            'fuel_type_id' => 'nullable|integer|exists:fuel_types,id',
-            'transmission_id' => 'nullable|integer|exists:transmissions,id',
-            'exterior_color_id' => 'nullable|integer|exists:exterior_colors,id',
-            'drive_type_id' => 'nullable|integer|exists:drive_types,id',
-            'cylinder_id' => 'nullable|integer|exists:cylinder_options,id',
-            'city_id' => 'nullable|integer|exists:cities,id',
-            'import_type_id' => 'nullable|integer|exists:import_types,id',
             'has_warranty' => [
                 'nullable',
                 function ($attribute, $value, $fail) {
