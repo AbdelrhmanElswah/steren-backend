@@ -205,12 +205,18 @@ class StudioListingService
 
             // Build trims array from listings (keep original price and currency)
             $trims = $modelListings->map(function ($listing) {
+                // Normalize currency to uppercase, default to USD if null/empty
+                $currency = strtoupper(trim($listing->price_currency ?? ''));
+                if (empty($currency)) {
+                    $currency = 'USD';
+                }
+                
                 return [
                     'listing_id' => $listing->id,
                     'name' => $listing->trim ?? 'Base', // Use trim field from listing, fallback to 'Base'
                     'engine_size' => $listing->engine_size ?? null,
-                    'price' => (string) $listing->price, // Keep original price (not converted)
-                    'currency' => $listing->price_currency ?? 'USD', // Include currency
+                    'price' => number_format((float) $listing->price, 2, '.', ''), // Format price with 2 decimals
+                    'currency' => $currency, // Include normalized currency
                 ];
             })->values()->toArray();
 
@@ -219,9 +225,10 @@ class StudioListingService
                 return $this->convertPriceToUsd($listing->price, $listing->price_currency, $iqdPerUsd);
             })->min();
 
+            // Format starting_from with 2 decimal places to match trim price format
             $models[] = [
                 'name' => $model->name,
-                'starting_from' => (string) $minPriceUsd, // Minimum price in USD
+                'starting_from' => number_format($minPriceUsd, 2, '.', ''), // Minimum price in USD with 2 decimals
                 'image' => $image,
                 'trims' => $trims,
             ];
@@ -240,12 +247,15 @@ class StudioListingService
      */
     private function convertPriceToUsd(float $price, ?string $currency, float $iqdPerUsd): float
     {
+        // Normalize currency to uppercase for comparison
+        $normalizedCurrency = strtoupper(trim($currency ?? ''));
+        
         // If currency is IQD, convert to USD
-        if ($currency === 'IQD') {
+        if ($normalizedCurrency === 'IQD') {
             return $price / $iqdPerUsd;
         }
         
-        // If currency is USD or null, return as is
+        // If currency is USD, null, or empty, return as is (assume USD)
         return $price;
     }
 
