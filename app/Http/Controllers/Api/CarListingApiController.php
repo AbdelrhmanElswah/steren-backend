@@ -1281,6 +1281,7 @@ class CarListingApiController extends Controller
             'operator_decision' => $data['operator_decision'] ?? 'pending',
             'is_featured' => $data['is_featured'] ?? false,
             'is_new_arrival' => $data['is_new_arrival'] ?? false,
+            'features' => $data['features'] ?? null,
             'price' => $data['price'],
             'price_currency' => $data['price_currency'],
             'title' => $data['title'],

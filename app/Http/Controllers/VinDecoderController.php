@@ -169,6 +169,9 @@ class VinDecoderController extends Controller
 
             $vinData = $result['data'];
 
+            // Extract features from the API response
+            $features = $vinData['features'] ?? $rawResult['data']['features'] ?? $rawResult['features'] ?? null;
+
             // Filter and map the data for car listing creation
             $filteredData = $this->filterVinDataForListing($vinData, $rawResult);
 
@@ -190,10 +193,11 @@ class VinDecoderController extends Controller
                 ], 422);
             }
 
-            // Add API version indicator
+            // Add API version indicator and features
             $responseData = array_merge($filteredData, [
                 'api_version' => 'v2',
-                'endpoint' => 'advanced-vin-decode/v2'
+                'endpoint' => 'advanced-vin-decode/v2',
+                'features' => $features
             ]);
 
             // Add debug data if requested - shows raw API response for verification
@@ -513,6 +517,9 @@ class VinDecoderController extends Controller
                 ]);
             }
 
+            // Extract features from the API response
+            $features = $vinData['features'] ?? $rawResult['data']['features'] ?? $rawResult['features'] ?? null;
+
             // Step 3: Filter and map the data for car listing creation
             $filteredData = $this->filterVinDataForListing($vinData, $rawResult);
 
@@ -525,10 +532,11 @@ class VinDecoderController extends Controller
                 ], 422);
             }
 
-            // Add API version indicator
+            // Add API version indicator and features
             $responseData = array_merge($filteredData, [
                 'api_version' => 'v2',
-                'endpoint' => 'advanced-vin-decode/v2'
+                'endpoint' => 'advanced-vin-decode/v2',
+                'features' => $features
             ]);
 
             // Add debug data if requested - shows raw API response for verification

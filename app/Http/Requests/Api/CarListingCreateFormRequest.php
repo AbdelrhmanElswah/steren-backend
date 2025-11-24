@@ -66,7 +66,10 @@ class CarListingCreateFormRequest extends FormRequest
             'operator_decision' => 'nullable|string|max:50',
             'is_featured' => 'nullable|boolean',
             'is_new_arrival' => 'nullable|boolean',
-            'features' => 'nullable|string',
+            'features' => 'nullable|array',
+            'features.*.title' => 'required_with:features|string',
+            'features.*.description' => 'required_with:features|array',
+            'features.*.description.*' => 'string',
             'specifications' => 'nullable|string',
             
             // Pricing

@@ -326,6 +326,7 @@ class CarListingDetailsController extends Controller
                 
                 // Features and specifications
                 'features_by_category' => $featuresByCategory,
+                'features' => $listing->features ?? null,
                 'detailed_specifications' => $specificationsByType,
                 
                 // Badges and status
@@ -663,6 +664,7 @@ class CarListingDetailsController extends Controller
                 
                 // Features and specifications
                 'features_by_category' => $featuresByCategory,
+                'features' => $listing->features ?? null,
                 'detailed_specifications' => $specificationsByType,
                 
                 // Badges and status

@@ -568,6 +568,7 @@ class CarListingController extends Controller
                 ],
                 'detailed_specifications' => $specificationsByType,
                 'features_by_category' => $featuresByCategory,
+                'features' => $listing->features ?? null,
                 'badges' => $listing->active_badges,
                 'status_badge' => $listing->status_badge,
                 'contact_methods' => \App\Models\ContactMethod::active()->ordered()->get(),
