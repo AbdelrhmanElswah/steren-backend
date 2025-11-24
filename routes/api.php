@@ -170,6 +170,7 @@ Route::prefix('auth')->group(function () {
         Route::put('/profile/password', [App\Http\Controllers\Auth\UserProfileController::class, 'updatePassword']);
         Route::post('/profile/picture', [App\Http\Controllers\Auth\UserProfileController::class, 'updateProfilePicture']);
         Route::put('/profile/preferences', [App\Http\Controllers\Auth\UserProfileController::class, 'updatePreferences']);
+        Route::get('/profile/favorites', [App\Http\Controllers\Auth\UserProfileController::class, 'getFavorites']);
         Route::put('/profile/favorites', [App\Http\Controllers\Auth\UserProfileController::class, 'setFavorites']);
     });
 });

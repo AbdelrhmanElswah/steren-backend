@@ -203,6 +203,59 @@ class UserProfileController extends Controller
     }
 
     /**
+     * Get user favorite preferences (brands, models, cities)
+     */
+    public function getFavorites(): JsonResponse
+    {
+        try {
+            $user = auth()->user();
+            
+            // Get favorite brands, models, and cities with full details
+            $favoriteBrands = $user->favorite_brands ?? collect([]);
+            $favoriteModels = $user->favorite_models ?? collect([]);
+            $favoriteCities = $user->favorite_cities ?? collect([]);
+            
+            return $this->successResponse([
+                'favorites' => [
+                    'brand_ids' => $user->fav_brand_ids ?? [],
+                    'model_ids' => $user->fav_models_ids ?? [],
+                    'city_ids' => $user->fav_citie_ids ?? [],
+                    'brands' => $favoriteBrands->map(function($brand) {
+                        return [
+                            'id' => $brand->id,
+                            'name' => $brand->name,
+                            'odoo_id' => $brand->odoo_id,
+                        ];
+                    })->values(),
+                    'models' => $favoriteModels->map(function($model) {
+                        return [
+                            'id' => $model->id,
+                            'name' => $model->name,
+                            'odoo_id' => $model->odoo_id,
+                            'brand_id' => $model->car_brand_id,
+                        ];
+                    })->values(),
+                    'cities' => $favoriteCities->map(function($city) {
+                        return [
+                            'id' => $city->id,
+                            'name' => $city->name,
+                            'odoo_id' => $city->odoo_id,
+                        ];
+                    })->values(),
+                ]
+            ], 'Favorite preferences retrieved successfully');
+
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve favorite preferences', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            
+            return $this->errorResponse('Failed to retrieve favorite preferences: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Set user favorite preferences (brands, models, cities)
      */
     public function setFavorites(SetFavoritesRequest $request): JsonResponse
