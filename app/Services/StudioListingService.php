@@ -176,6 +176,9 @@ class StudioListingService
             return [];
         }
 
+        // Get exchange rate for IQD to USD conversion (for starting_from only)
+        $iqdPerUsd = $this->getIqdPerUsdRate();
+
         // Group listings by model
         $groupedByModel = $listings->groupBy('car_model_id');
 
@@ -189,9 +192,6 @@ class StudioListingService
                 continue;
             }
 
-            // Get minimum price (starting_from)
-            $minPrice = $modelListings->min('price');
-
             // Get first image from oldest listing (order by created_at ASC, then get first media)
             $oldestListing = $modelListings->sortBy('created_at')->first();
             $image = null;
@@ -203,25 +203,62 @@ class StudioListingService
                 }
             }
 
-            // Build trims array from listings
+            // Build trims array from listings (keep original price and currency)
             $trims = $modelListings->map(function ($listing) {
                 return [
                     'listing_id' => $listing->id,
                     'name' => $listing->trim ?? 'Base', // Use trim field from listing, fallback to 'Base'
                     'engine_size' => $listing->engine_size ?? null,
-                    'price' => (string) $listing->price, // Convert to string as per user requirement
+                    'price' => (string) $listing->price, // Keep original price (not converted)
+                    'currency' => $listing->price_currency ?? 'USD', // Include currency
                 ];
             })->values()->toArray();
 
+            // Calculate starting_from: convert all prices to USD, find minimum, return in USD
+            $minPriceUsd = $modelListings->map(function ($listing) use ($iqdPerUsd) {
+                return $this->convertPriceToUsd($listing->price, $listing->price_currency, $iqdPerUsd);
+            })->min();
+
             $models[] = [
                 'name' => $model->name,
-                'starting_from' => (string) $minPrice, // Convert to string as per user requirement
+                'starting_from' => (string) $minPriceUsd, // Minimum price in USD
                 'image' => $image,
                 'trims' => $trims,
             ];
         }
 
         return $models;
+    }
+
+    /**
+     * Convert price to USD
+     * 
+     * @param float $price
+     * @param string|null $currency
+     * @param float $iqdPerUsd
+     * @return float
+     */
+    private function convertPriceToUsd(float $price, ?string $currency, float $iqdPerUsd): float
+    {
+        // If currency is IQD, convert to USD
+        if ($currency === 'IQD') {
+            return $price / $iqdPerUsd;
+        }
+        
+        // If currency is USD or null, return as is
+        return $price;
+    }
+
+    /**
+     * Get IQD per 1 USD exchange rate used for normalization.
+     * Falls back to 1300 if not configured.
+     */
+    private function getIqdPerUsdRate(): float
+    {
+        // Prefer config, then env, fallback constant
+        $rate = config('app.iqd_per_usd') ?? env('IQD_PER_USD', 1300);
+        $rate = (float) $rate;
+        return $rate > 0 ? $rate : 1300.0;
     }
 }
 
