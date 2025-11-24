@@ -30,11 +30,7 @@ class ListingApprovalController extends Controller
                 $request->user()?->id
             );
 
-            // Get the listing to send notification
-            $carListing = CarListing::find($listingId);
-            if ($carListing && $carListing->odoo_id) {
-                $this->sendListingStatusNotification($carListing->odoo_id, 'approved');
-            }
+            // Notification is already sent by ListingApprovalService via UnifiedNotificationService
 
             return $this->successResponse($result, 'Listing approved successfully');
 
@@ -57,11 +53,7 @@ class ListingApprovalController extends Controller
                 $request->user()?->id
             );
 
-            // Get the listing to send notification
-            $carListing = CarListing::find($listingId);
-            if ($carListing && $carListing->odoo_id) {
-                $this->sendListingStatusNotification($carListing->odoo_id, 'rejected', $validated['reason'] ?? 'No reason provided');
-            }
+            // Notification is already sent by ListingApprovalService via UnifiedNotificationService
 
             return $this->successResponse($result, 'Listing rejected successfully');
 
@@ -169,8 +161,7 @@ class ListingApprovalController extends Controller
 
             $result = $this->listingApprovalService->processListingByOdooId($odooId, $action, $reason, $operatorId);
 
-            // Send notification to user about listing status change
-            $this->sendListingStatusNotification($odooId, $action, $reason);
+            // Notification is already sent by ListingApprovalService via UnifiedNotificationService
 
             return $this->successResponse($result, "Listing {$action}d successfully");
 

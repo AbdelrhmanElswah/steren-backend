@@ -164,11 +164,7 @@ class DealerVerificationController extends Controller
                 $request->user()?->id
             );
 
-            // Get the application to send notification
-            $application = DealerApplication::find($applicationId);
-            if ($application) {
-                $this->sendDealerApplicationNotification($application, 'approved');
-            }
+            // Notification is already sent by DealerVerificationService via UnifiedNotificationService
 
             return $this->successResponse($result, 'Dealer application approved successfully');
 
@@ -194,11 +190,7 @@ class DealerVerificationController extends Controller
                 $request->user()?->id
             );
 
-            // Get the application to send notification
-            $application = DealerApplication::find($applicationId);
-            if ($application) {
-                $this->sendDealerApplicationNotification($application, 'rejected', $validated['reason'] ?? 'No reason provided');
-            }
+            // Notification is already sent by DealerVerificationService via UnifiedNotificationService
 
             return $this->successResponse($result, 'Dealer application rejected successfully');
 
@@ -260,8 +252,7 @@ class DealerVerificationController extends Controller
             // Call Odoo mark-paid API after successful approval
             $this->callOdooMarkPaid($odooId);
 
-            // Send notification to user about approval
-            $this->sendDealerApplicationNotification($application, 'approved');
+            // Notification is already sent by DealerVerificationService via UnifiedNotificationService
 
             return $this->successResponse($result, 'Dealer application approved successfully');
 
@@ -340,8 +331,7 @@ class DealerVerificationController extends Controller
             // Call Odoo mark-paid API after successful rejection
             $this->callOdooMarkPaid($odooId);
 
-            // Send notification to user about rejection
-            $this->sendDealerApplicationNotification($application, 'rejected', 'Rejected via Odoo integration');
+            // Notification is already sent by DealerVerificationService via UnifiedNotificationService
 
             return $this->successResponse($result, 'Dealer application rejected successfully');
 
