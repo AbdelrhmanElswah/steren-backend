@@ -1050,4 +1050,22 @@ class CarListingDetailsController extends Controller
             return $this->errorResponse('Failed to retrieve car listings: ' . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Get studio listings with custom structure for FE needs
+     * Used listings: same format as condition-groups
+     * New listings: grouped by model with trims
+     */
+    public function getStudioListingsCustomStructure(Request $request, int $studioId): JsonResponse
+    {
+        try {
+            $result = $this->studioListingService->getStudioListingsCustomStructure($studioId);
+
+            return $this->successResponse($result, 'Studio listings with custom structure retrieved successfully');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->notFoundResponse('Studio not found');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve studio listings: ' . $e->getMessage(), 500);
+        }
+    }
 }

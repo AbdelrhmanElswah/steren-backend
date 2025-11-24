@@ -217,6 +217,7 @@ Route::prefix('car-listings')->group(function () {
     Route::middleware('auth:sanctum')->get('/you-may-also-like', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getYouMayAlsoLike']);
     Route::get('/brand/{brandId}/condition-groups', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getBrandListingsByCondition']);
     Route::get('/studio/{studioId}/condition-groups', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getStudioListingsByCondition']);
+    Route::get('/studio/{studioId}/listings', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getStudioListingsCustomStructure']);
 
     // Used cars endpoints
     Route::get('/brand/{brandId}/used', [App\Http\Controllers\Data\CarListingController::class, 'getUsedCarsByBrand']);

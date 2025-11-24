@@ -119,6 +119,110 @@ class StudioListingService
             ->orderByDesc('created_at')
             ->get();
     }
+
+    /**
+     * Get studio listings with custom structure for FE needs
+     * Used listings: same format as condition-groups
+     * New listings: grouped by model with trims
+     *
+     * @param  int  $studioId
+     * @return array{studio: array<string, mixed>, new: array<string, mixed>, used: array<string, mixed>}
+     *
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     */
+    public function getStudioListingsCustomStructure(int $studioId): array
+    {
+        // Build cache key
+        $cacheKey = 'studio_custom_structure_' . $studioId;
+        
+        // Cache for 24 hours (86400 seconds)
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($studioId) {
+            $studio = DealerStudio::select('id', 'name')->findOrFail($studioId);
+
+            $baseQuery = $this->buildBaseQuery($studioId);
+
+            $newListings = $this->getNewListings(clone $baseQuery);
+            $usedListings = $this->getUsedListings(clone $baseQuery, $newListings->pluck('id')->all());
+
+            // Format used listings (same as condition-groups)
+            $usedFormatted = $this->formatListings($usedListings);
+
+            // Format new listings (custom structure by model)
+            $newFormatted = $this->formatNewListingsByModel($newListings);
+
+            return [
+                'studio' => [
+                    'id' => $studio->id,
+                    'name' => $studio->name,
+                ],
+                'new' => [
+                    'count' => $newListings->count(),
+                    'models' => $newFormatted,
+                ],
+                'used' => [
+                    'count' => $usedListings->count(),
+                    'listings' => $usedFormatted,
+                ],
+            ];
+        });
+    }
+
+    /**
+     * Format new listings grouped by model with custom structure
+     */
+    private function formatNewListingsByModel(Collection $listings): array
+    {
+        if ($listings->isEmpty()) {
+            return [];
+        }
+
+        // Group listings by model
+        $groupedByModel = $listings->groupBy('car_model_id');
+
+        $models = [];
+
+        foreach ($groupedByModel as $modelId => $modelListings) {
+            $firstListing = $modelListings->first();
+            $model = $firstListing->carModel;
+
+            if (!$model) {
+                continue;
+            }
+
+            // Get minimum price (starting_from)
+            $minPrice = $modelListings->min('price');
+
+            // Get first image from oldest listing (order by created_at ASC, then get first media)
+            $oldestListing = $modelListings->sortBy('created_at')->first();
+            $image = null;
+            if ($oldestListing && $oldestListing->relationLoaded('media') && $oldestListing->media->isNotEmpty()) {
+                $firstMedia = $oldestListing->media->sortBy('order')->first();
+                if ($firstMedia) {
+                    // Use public_url accessor which generates S3 public URL
+                    $image = $firstMedia->public_url ?? $firstMedia->media_temporary_url ?? $firstMedia->path_file_name;
+                }
+            }
+
+            // Build trims array from listings
+            $trims = $modelListings->map(function ($listing) {
+                return [
+                    'listing_id' => $listing->id,
+                    'name' => $listing->trim ?? 'Base', // Use trim field from listing, fallback to 'Base'
+                    'engine_size' => $listing->engine_size ?? null,
+                    'price' => (string) $listing->price, // Convert to string as per user requirement
+                ];
+            })->values()->toArray();
+
+            $models[] = [
+                'name' => $model->name,
+                'starting_from' => (string) $minPrice, // Convert to string as per user requirement
+                'image' => $image,
+                'trims' => $trims,
+            ];
+        }
+
+        return $models;
+    }
 }
 
 
