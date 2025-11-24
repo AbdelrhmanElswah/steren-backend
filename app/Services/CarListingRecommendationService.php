@@ -51,7 +51,7 @@ class CarListingRecommendationService
             }
         }
 
-        $recommendations = $this->mergeWithFallbackListings($recommendations, $limit, $primarySource);
+        $recommendations = $this->mergeWithFallbackListings($recommendations, $limit, $primarySource, $user);
 
         // Format listings using shared formatter
         // Handle both arrays (from search) and models (from fallback)
@@ -119,9 +119,10 @@ class CarListingRecommendationService
      * @param  Collection  $current
      * @param  int  $limit
      * @param  string  $primarySource
+     * @param  User|null  $user
      * @return Collection
      */
-    private function mergeWithFallbackListings(Collection &$current, int $limit, string &$primarySource): Collection
+    private function mergeWithFallbackListings(Collection &$current, int $limit, string &$primarySource, ?User $user = null): Collection
     {
         $neededCount = $limit - $current->count();
 
@@ -129,10 +130,73 @@ class CarListingRecommendationService
             return $current;
         }
 
-        $fallback = $this->getSponsoredFallbackListings(
-            $current->pluck('id')->all(),
-            $neededCount
-        );
+        // Get user favorites
+        $favBrandIds = $user?->fav_brand_ids ?? [];
+        $favBodyTypeIds = $user?->fav_body_type_ids ?? [];
+        $favCityIds = $user?->fav_citie_ids ?? [];
+
+        $excludeIds = $current->pluck('id')->all();
+        $fallback = collect();
+
+        // Fallback logic: brand+body_type+city -> brand+city -> city -> no filters
+        // Step 1: Try brand + body_type + city (if user has favorites)
+        if (!empty($favBrandIds) && !empty($favBodyTypeIds) && !empty($favCityIds)) {
+            foreach ($favCityIds as $cityId) {
+                $fallback = $this->getSponsoredFallbackListings(
+                    $excludeIds,
+                    $neededCount,
+                    $favBrandIds,
+                    $favBodyTypeIds,
+                    $cityId
+                );
+                if ($fallback->isNotEmpty()) {
+                    break;
+                }
+            }
+        }
+
+        // Step 2: Try brand + city (if no results from step 1)
+        if ($fallback->isEmpty() && !empty($favBrandIds) && !empty($favCityIds)) {
+            foreach ($favCityIds as $cityId) {
+                $fallback = $this->getSponsoredFallbackListings(
+                    $excludeIds,
+                    $neededCount,
+                    $favBrandIds,
+                    null,
+                    $cityId
+                );
+                if ($fallback->isNotEmpty()) {
+                    break;
+                }
+            }
+        }
+
+        // Step 3: Try city only (if no results from step 2)
+        if ($fallback->isEmpty() && !empty($favCityIds)) {
+            foreach ($favCityIds as $cityId) {
+                $fallback = $this->getSponsoredFallbackListings(
+                    $excludeIds,
+                    $neededCount,
+                    null,
+                    null,
+                    $cityId
+                );
+                if ($fallback->isNotEmpty()) {
+                    break;
+                }
+            }
+        }
+
+        // Step 4: Fallback to no filters (if no results from step 3)
+        if ($fallback->isEmpty()) {
+            $fallback = $this->getSponsoredFallbackListings(
+                $excludeIds,
+                $neededCount,
+                null,
+                null,
+                null
+            );
+        }
 
         if ($fallback->isNotEmpty() && $primarySource !== 'search_history') {
             $primarySource = 'top_picks';
@@ -144,10 +208,15 @@ class CarListingRecommendationService
     /**
      * Fetch fallback featured listings (top picks).
      */
-    private function getSponsoredFallbackListings(array $excludeIds, int $limit): EloquentCollection
-    {
+    private function getSponsoredFallbackListings(
+        array $excludeIds,
+        int $limit,
+        ?array $brandIds = null,
+        ?array $bodyTypeIds = null,
+        ?int $cityId = null
+    ): EloquentCollection {
         // Load all relationships needed for standardized format
-        return CarListing::select('car_listings.*')
+        $query = CarListing::select('car_listings.*')
             ->with([
                 'brand:id,name,odoo_id',
                 'carModel:id,name,car_brand_id',
@@ -179,10 +248,20 @@ class CarListingRecommendationService
             ->when(!empty($excludeIds), function ($query) use ($excludeIds) {
                 $query->whereNotIn('id', $excludeIds);
             })
+            ->when(!empty($brandIds), function ($query) use ($brandIds) {
+                $query->whereIn('car_brand_id', $brandIds);
+            })
+            ->when(!empty($bodyTypeIds), function ($query) use ($bodyTypeIds) {
+                $query->whereIn('car_body_type_id', $bodyTypeIds);
+            })
+            ->when($cityId, function ($query) use ($cityId) {
+                $query->where('city_id', $cityId);
+            })
             ->orderByDesc('featured_at')
             ->orderByDesc('created_at')
-            ->limit($limit)
-            ->get();
+            ->limit($limit);
+
+        return $query->get();
     }
 
     /**

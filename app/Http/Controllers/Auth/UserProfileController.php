@@ -210,36 +210,41 @@ class UserProfileController extends Controller
         try {
             $user = auth()->user();
             
-            // Get favorite brands, models, and cities with full details
+            // Get favorite brands, models, body types, and cities with full details
             $favoriteBrands = $user->favorite_brands ?? collect([]);
             $favoriteModels = $user->favorite_models ?? collect([]);
+            $favoriteBodyTypes = $user->favorite_body_types ?? collect([]);
             $favoriteCities = $user->favorite_cities ?? collect([]);
             
             return $this->successResponse([
                 'favorites' => [
                     'brand_ids' => $user->fav_brand_ids ?? [],
                     'model_ids' => $user->fav_models_ids ?? [],
+                    'body_type_ids' => $user->fav_body_type_ids ?? [],
                     'city_ids' => $user->fav_citie_ids ?? [],
                     'brands' => $favoriteBrands->map(function($brand) {
                         return [
                             'id' => $brand->id,
                             'name' => $brand->name,
-                            'odoo_id' => $brand->odoo_id,
                         ];
                     })->values(),
                     'models' => $favoriteModels->map(function($model) {
                         return [
                             'id' => $model->id,
                             'name' => $model->name,
-                            'odoo_id' => $model->odoo_id,
                             'brand_id' => $model->car_brand_id,
+                        ];
+                    })->values(),
+                    'body_types' => $favoriteBodyTypes->map(function($bodyType) {
+                        return [
+                            'id' => $bodyType->id,
+                            'name' => $bodyType->name,
                         ];
                     })->values(),
                     'cities' => $favoriteCities->map(function($city) {
                         return [
                             'id' => $city->id,
                             'name' => $city->name,
-                            'odoo_id' => $city->odoo_id,
                         ];
                     })->values(),
                 ]
@@ -277,6 +282,10 @@ class UserProfileController extends Controller
                 $updateData['fav_models_ids'] = $validated['fav_models_ids'];
             }
             
+            if (isset($validated['fav_body_type_ids'])) {
+                $updateData['fav_body_type_ids'] = $validated['fav_body_type_ids'];
+            }
+            
             if (isset($validated['fav_citie_ids'])) {
                 $updateData['fav_citie_ids'] = $validated['fav_citie_ids'];
             }
@@ -297,6 +306,7 @@ class UserProfileController extends Controller
                 'favorites' => [
                     'brand_ids' => $user->fav_brand_ids ?? [],
                     'model_ids' => $user->fav_models_ids ?? [],
+                    'body_type_ids' => $user->fav_body_type_ids ?? [],
                     'city_ids' => $user->fav_citie_ids ?? [],
                 ]
             ], 'Favorite preferences updated successfully');

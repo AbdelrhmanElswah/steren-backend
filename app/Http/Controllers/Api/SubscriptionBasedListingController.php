@@ -59,29 +59,61 @@ class SubscriptionBasedListingController extends Controller
     {
         try {
             $limit = (int) $request->input('limit', 10);
-            $filters = array_filter(
-                $request->only(['city_id']),
-                fn ($value) => $value !== null && $value !== ''
-            );
-
-            // Build cache key based on limit and filters (no user ID since it's public)
-            // Use city_id directly in cache key for better cache differentiation
-            $cityId = isset($filters['city_id']) ? '_city_' . (int) $filters['city_id'] : '';
-            $cacheKey = 'top_picks_public_' . $limit . $cityId . '_' . md5(serialize($filters));
+            $cityId = $request->input('city_id');
             
-            // Cache for 24 hours (86400 seconds) - longer cache since it's public data
-            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($limit, $filters) {
-                // Always get general top picks (not user-specific)
-                $topPicks = $this->listingService->getGeneralTopPicks($limit, $filters);
-                
-                // Format listings using shared formatter (matches /api/car-listings format)
+            // Get user favorites if authenticated (optional auth)
+            $user = Auth::user();
+            $favBrandIds = $user?->fav_brand_ids ?? [];
+            $favBodyTypeIds = $user?->fav_body_type_ids ?? [];
+            
+            // Build initial filters with city_id
+            $filters = [];
+            if ($cityId) {
+                $filters['city_id'] = $cityId;
+            }
+            
+            // Build cache key - include user ID if authenticated for personalized results
+            $userId = $user?->id ?? 'guest';
+            $cacheKey = 'top_picks_' . $userId . '_' . $limit . '_' . md5(serialize([
+                'city_id' => $cityId,
+                'brand_ids' => $favBrandIds,
+                'body_type_ids' => $favBodyTypeIds,
+            ]));
+            
+            // Cache for 1 hour (3600 seconds) - shorter cache for personalized data
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($limit, $filters, $favBrandIds, $favBodyTypeIds, $cityId) {
                 $formatter = app(\App\Services\CarListingFormatterService::class);
-                $formattedListings = $formatter->formatListings($topPicks);
-
-                // If city_id was provided but no results found, fall back to no city filter
-                if (empty($formattedListings) && isset($filters['city_id'])) {
-                    $fallbackFilters = [];
-                    $topPicks = $this->listingService->getGeneralTopPicks($limit, $fallbackFilters);
+                $formattedListings = [];
+                
+                // Fallback logic: brand+body_type+city -> brand+city -> city -> no filters
+                // Step 1: Try brand + body_type + city
+                if (!empty($favBrandIds) && !empty($favBodyTypeIds) && $cityId) {
+                    $testFilters = array_merge($filters, [
+                        'brand_ids' => $favBrandIds,
+                        'body_type_ids' => $favBodyTypeIds,
+                    ]);
+                    $topPicks = $this->listingService->getGeneralTopPicks($limit, $testFilters);
+                    $formattedListings = $formatter->formatListings($topPicks);
+                }
+                
+                // Step 2: Try brand + city (if no results from step 1)
+                if (empty($formattedListings) && !empty($favBrandIds) && $cityId) {
+                    $testFilters = array_merge($filters, [
+                        'brand_ids' => $favBrandIds,
+                    ]);
+                    $topPicks = $this->listingService->getGeneralTopPicks($limit, $testFilters);
+                    $formattedListings = $formatter->formatListings($topPicks);
+                }
+                
+                // Step 3: Try city only (if no results from step 2)
+                if (empty($formattedListings) && $cityId) {
+                    $topPicks = $this->listingService->getGeneralTopPicks($limit, $filters);
+                    $formattedListings = $formatter->formatListings($topPicks);
+                }
+                
+                // Step 4: Fallback to no filters (if no results from step 3)
+                if (empty($formattedListings)) {
+                    $topPicks = $this->listingService->getGeneralTopPicks($limit, []);
                     $formattedListings = $formatter->formatListings($topPicks);
                 }
 

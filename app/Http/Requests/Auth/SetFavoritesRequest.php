@@ -27,6 +27,8 @@ class SetFavoritesRequest extends FormRequest
             'fav_brand_ids.*' => 'integer|exists:car_brands,id',
             'fav_models_ids' => 'sometimes|array',
             'fav_models_ids.*' => 'integer|exists:car_models,id',
+            'fav_body_type_ids' => 'sometimes|array',
+            'fav_body_type_ids.*' => 'integer|exists:body_types,id',
             'fav_citie_ids' => 'sometimes|array',
             'fav_citie_ids.*' => 'integer|exists:cities,id',
         ];
@@ -41,6 +43,9 @@ class SetFavoritesRequest extends FormRequest
             'fav_models_ids.array' => 'Favorite model IDs must be an array',
             'fav_models_ids.*.integer' => 'Each model ID must be an integer',
             'fav_models_ids.*.exists' => 'One or more model IDs do not exist',
+            'fav_body_type_ids.array' => 'Favorite body type IDs must be an array',
+            'fav_body_type_ids.*.integer' => 'Each body type ID must be an integer',
+            'fav_body_type_ids.*.exists' => 'One or more body type IDs do not exist',
             'fav_citie_ids.array' => 'Favorite city IDs must be an array',
             'fav_citie_ids.*.integer' => 'Each city ID must be an integer',
             'fav_citie_ids.*.exists' => 'One or more city IDs do not exist',
@@ -52,6 +57,7 @@ class SetFavoritesRequest extends FormRequest
         return [
             'fav_brand_ids' => 'favorite brand IDs',
             'fav_models_ids' => 'favorite model IDs',
+            'fav_body_type_ids' => 'favorite body type IDs',
             'fav_citie_ids' => 'favorite city IDs',
         ];
     }

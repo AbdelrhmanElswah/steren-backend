@@ -33,6 +33,7 @@ class User extends Authenticatable
         'notification_preferences',
         'fav_brand_ids',
         'fav_models_ids',
+        'fav_body_type_ids',
         'fav_citie_ids',
         'last_login_at',
         'last_activity_at',
@@ -56,6 +57,7 @@ class User extends Authenticatable
         'notification_preferences' => 'array',
         'fav_brand_ids' => 'array',
         'fav_models_ids' => 'array',
+        'fav_body_type_ids' => 'array',
         'fav_citie_ids' => 'array',
         'last_login_at' => 'datetime',
         'last_activity_at' => 'datetime',
@@ -264,6 +266,17 @@ class User extends Authenticatable
             return collect([]);
         }
         return CarModel::whereIn('id', $this->fav_models_ids)->get();
+    }
+
+    /**
+     * Get favorite body types as collection (helper method)
+     */
+    public function getFavoriteBodyTypesAttribute()
+    {
+        if (empty($this->fav_body_type_ids)) {
+            return collect([]);
+        }
+        return BodyType::whereIn('id', $this->fav_body_type_ids)->get();
     }
 
     /**

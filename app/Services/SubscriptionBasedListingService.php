@@ -476,6 +476,16 @@ class SubscriptionBasedListingService
             ->where('car_listings.status', 'active')
             ->where('car_listings.is_featured', true);
 
+        // Filter by brand_ids if provided
+        if (!empty($filters['brand_ids']) && is_array($filters['brand_ids'])) {
+            $query->whereIn('car_listings.car_brand_id', $filters['brand_ids']);
+        }
+
+        // Filter by body_type_ids if provided
+        if (!empty($filters['body_type_ids']) && is_array($filters['body_type_ids'])) {
+            $query->whereIn('car_listings.car_body_type_id', $filters['body_type_ids']);
+        }
+
         // Only filter by city if city_id is provided (otherwise return all featured listings)
         if (!empty($filters['city_id'])) {
             $this->applyCityFilter($query, (int) $filters['city_id']);
