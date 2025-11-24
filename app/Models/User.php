@@ -31,6 +31,9 @@ class User extends Authenticatable
         'notifications_enabled',
         'marketing_emails_enabled',
         'notification_preferences',
+        'fav_brand_ids',
+        'fav_models_ids',
+        'fav_citie_ids',
         'last_login_at',
         'last_activity_at',
         'is_pending',
@@ -51,6 +54,9 @@ class User extends Authenticatable
         'notifications_enabled' => 'boolean',
         'marketing_emails_enabled' => 'boolean',
         'notification_preferences' => 'array',
+        'fav_brand_ids' => 'array',
+        'fav_models_ids' => 'array',
+        'fav_citie_ids' => 'array',
         'last_login_at' => 'datetime',
         'last_activity_at' => 'datetime',
     ];
@@ -236,6 +242,39 @@ class User extends Authenticatable
     public function devicePermissions()
     {
         return $this->hasOne(UserDevicePermission::class);
+    }
+
+    /**
+     * Get favorite brands as collection (helper method)
+     */
+    public function getFavoriteBrandsAttribute()
+    {
+        if (empty($this->fav_brand_ids)) {
+            return collect([]);
+        }
+        return CarBrand::whereIn('id', $this->fav_brand_ids)->get();
+    }
+
+    /**
+     * Get favorite models as collection (helper method)
+     */
+    public function getFavoriteModelsAttribute()
+    {
+        if (empty($this->fav_models_ids)) {
+            return collect([]);
+        }
+        return CarModel::whereIn('id', $this->fav_models_ids)->get();
+    }
+
+    /**
+     * Get favorite cities as collection (helper method)
+     */
+    public function getFavoriteCitiesAttribute()
+    {
+        if (empty($this->fav_citie_ids)) {
+            return collect([]);
+        }
+        return City::whereIn('id', $this->fav_citie_ids)->get();
     }
 
     /**

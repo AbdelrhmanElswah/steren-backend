@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Http\Requests\Auth\UpdatePasswordRequest;
 use App\Http\Requests\Auth\UpdateProfilePictureRequest;
+use App\Http\Requests\Auth\SetFavoritesRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Models\Media;
@@ -198,6 +199,63 @@ class UserProfileController extends Controller
             ]);
             
             return $this->errorResponse('Failed to update preferences: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Set user favorite preferences (brands, models, cities)
+     */
+    public function setFavorites(SetFavoritesRequest $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $validated = $request->validated();
+
+            DB::beginTransaction();
+
+            // Update favorite preferences
+            $updateData = [];
+            
+            if (isset($validated['fav_brand_ids'])) {
+                $updateData['fav_brand_ids'] = $validated['fav_brand_ids'];
+            }
+            
+            if (isset($validated['fav_models_ids'])) {
+                $updateData['fav_models_ids'] = $validated['fav_models_ids'];
+            }
+            
+            if (isset($validated['fav_citie_ids'])) {
+                $updateData['fav_citie_ids'] = $validated['fav_citie_ids'];
+            }
+
+            if (!empty($updateData)) {
+                $user->update($updateData);
+            }
+
+            DB::commit();
+
+            Log::info('User favorite preferences updated successfully', [
+                'user_id' => $user->id,
+                'updated_fields' => array_keys($updateData)
+            ]);
+
+            return $this->successResponse([
+                'user' => new UserResource($user),
+                'favorites' => [
+                    'brand_ids' => $user->fav_brand_ids ?? [],
+                    'model_ids' => $user->fav_models_ids ?? [],
+                    'city_ids' => $user->fav_citie_ids ?? [],
+                ]
+            ], 'Favorite preferences updated successfully');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to update favorite preferences', [
+                'user_id' => $request->user()->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return $this->errorResponse('Failed to update favorite preferences: ' . $e->getMessage(), 500);
         }
     }
 
