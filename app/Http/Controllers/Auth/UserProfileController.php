@@ -209,8 +209,78 @@ class UserProfileController extends Controller
         try {
             $user = auth()->user();
             
+            // Load dealer application relationships
+            $user->load(['latestDealerApplication.status', 'latestDealerApplication.subscriptionPlan', 'activeDealerApplication']);
+            
+            // Build dealer status data (similar to /dealer/status endpoint)
+            $latestApplication = $user->latestDealerApplication;
+            $activeApplication = $user->activeDealerApplication;
+            
+            $dealerStatus = [
+                'has_application' => $latestApplication !== null,
+            ];
+            
+            if ($latestApplication) {
+                $dealerStatus['application'] = [
+                    'id' => $latestApplication->id,
+                    'status' => $latestApplication->status?->name,
+                    'status_badge_color' => $latestApplication->status_badge_color,
+                    'seller_type' => $latestApplication->seller_type,
+                    'dealership_company_name' => $latestApplication->dealership_company_name,
+                    'subscription_plan' => $latestApplication->subscriptionPlan ? [
+                        'id' => $latestApplication->subscriptionPlan->id,
+                        'name' => $latestApplication->subscriptionPlan->name,
+                        'price' => $latestApplication->subscriptionPlan->price,
+                        'formatted_price' => $latestApplication->subscriptionPlan->formatted_price,
+                    ] : null,
+                    'payment_completed' => $latestApplication->payment_completed,
+                    'created_at' => $latestApplication->created_at,
+                    'reviewed_at' => $latestApplication->reviewed_at,
+                    'approved_at' => $latestApplication->approved_at,
+                    'expires_at' => $latestApplication->expires_at,
+                    'rejection_reason' => $latestApplication->rejection_reason,
+                    'days_until_expiration' => $latestApplication->days_until_expiration,
+                ];
+                $dealerStatus['is_active'] = $activeApplication ? $activeApplication->isActive() : false;
+                $dealerStatus['is_expiring_soon'] = $activeApplication ? $activeApplication->isExpiringSoon() : false;
+                $dealerStatus['is_expired'] = $latestApplication->isExpired();
+                
+                // Add specific messages based on status
+                switch ($latestApplication->status?->name) {
+                    case 'pending':
+                        $dealerStatus['message'] = 'Your application is pending review';
+                        break;
+                    case 'under_review':
+                        $dealerStatus['message'] = 'Your application is under review';
+                        break;
+                    case 'approved':
+                        if ($latestApplication->payment_completed) {
+                            if ($activeApplication && $activeApplication->isActive()) {
+                                $dealerStatus['message'] = 'You are now a verified dealer';
+                            } elseif ($latestApplication->isExpired()) {
+                                $dealerStatus['message'] = 'Your subscription has expired';
+                            } elseif ($activeApplication && $activeApplication->isExpiringSoon()) {
+                                $dealerStatus['message'] = 'Your subscription expires in ' . $latestApplication->days_until_expiration . ' days';
+                            }
+                        } else {
+                            $dealerStatus['message'] = 'Your application has been approved. Please complete payment to activate your dealer account';
+                        }
+                        break;
+                    case 'rejected':
+                        $dealerStatus['message'] = 'Your application was not approved';
+                        break;
+                }
+            } else {
+                $dealerStatus['application'] = null;
+                $dealerStatus['is_active'] = false;
+                $dealerStatus['is_expiring_soon'] = false;
+                $dealerStatus['is_expired'] = false;
+                $dealerStatus['message'] = 'No dealer application found';
+            }
+            
             return $this->successResponse([
                 'user' => new UserResource($user),
+                'dealer_status' => $dealerStatus,
             ], 'Profile information retrieved successfully');
 
         } catch (\Exception $e) {
