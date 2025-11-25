@@ -370,19 +370,27 @@ class UnifiedNotificationService
 
                 $notificationType = \App\Models\NotificationType::findByName('dealer_application_submitted');
                 if ($notificationType) {
-                    $firebaseResult = $this->firebaseService->sendToUser(
-                        $application->user_id,
-                        $title,
-                        $message,
-                        [
-                            'dealer_application_id' => $application->id,
-                            'company_name' => $companyName,
-                            'type' => 'dealer_application_submitted',
-                        ],
-                        $notificationType->id
-                    );
-
-                    $results['firebase'] = $firebaseResult;
+                    // Get user ID from relationship (DealerApplication uses partner_id, not user_id)
+                    $userId = $application->user?->id ?? $application->partner_id;
+                    if ($userId) {
+                        $userId = (int) $userId;
+                        if ($userId > 0) {
+                            $firebaseResult = $this->firebaseService->sendToUser(
+                                $userId,
+                                $title,
+                                $message,
+                                [
+                                    'dealer_application_id' => $application->id,
+                                    'company_name' => $companyName,
+                                    'type' => 'dealer_application_submitted',
+                                ],
+                                $notificationType->id
+                            );
+                            if (isset($firebaseResult)) {
+                                $results['firebase'] = $firebaseResult;
+                            }
+                        }
+                    }
                 }
 
             } catch (Exception $e) {
@@ -418,16 +426,23 @@ class UnifiedNotificationService
 
                 $notificationType = \App\Models\NotificationType::findByName('dealer_application_approved');
 
-                $firebaseResult = $this->firebaseService->sendToUser(
-                    $application->user_id,
-                    $title,
-                    $message,
-                    [
-                        'dealer_application_id' => $application->id,
-                        'type' => 'dealer_application_approved',
-                    ],
-                    $notificationType->id
-                );
+                // Get user ID from relationship (DealerApplication uses partner_id, not user_id)
+                $userId = $application->user?->id ?? $application->partner_id;
+                if ($userId) {
+                    $userId = (int) $userId;
+                    if ($userId > 0) {
+                        $firebaseResult = $this->firebaseService->sendToUser(
+                            $userId,
+                            $title,
+                            $message,
+                            [
+                                'dealer_application_id' => $application->id,
+                                'type' => 'dealer_application_approved',
+                            ],
+                            $notificationType->id
+                        );
+                    }
+                }
 
                 $results['firebase'] = $firebaseResult;
 
@@ -465,17 +480,24 @@ class UnifiedNotificationService
 
                 $notificationType = \App\Models\NotificationType::findByName('dealer_application_rejected');
 
-                $firebaseResult = $this->firebaseService->sendToUser(
-                    $application->user_id,
-                    $title,
-                    $message,
-                    [
-                        'dealer_application_id' => $application->id,
-                        'reason' => $reasonText,
-                        'type' => 'dealer_application_rejected',
-                    ],
-                    $notificationType->id
-                );
+                // Get user ID from relationship (DealerApplication uses partner_id, not user_id)
+                $userId = $application->user?->id ?? $application->partner_id;
+                if ($userId) {
+                    $userId = (int) $userId;
+                    if ($userId > 0) {
+                        $firebaseResult = $this->firebaseService->sendToUser(
+                            $userId,
+                            $title,
+                            $message,
+                            [
+                                'dealer_application_id' => $application->id,
+                                'reason' => $reasonText,
+                                'type' => 'dealer_application_rejected',
+                            ],
+                            $notificationType->id
+                        );
+                    }
+                }
 
                 $results['firebase'] = $firebaseResult;
 

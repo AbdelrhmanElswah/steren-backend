@@ -254,8 +254,19 @@ class DatabaseNotificationService
             $title = 'Application Submitted!';
             $message = "Your dealer application for {$companyName} has been submitted and is pending review.";
 
+            // Get user ID from relationship (DealerApplication uses partner_id, not user_id)
+            $userId = $application->user?->id ?? $application->partner_id;
+            if (!$userId) {
+                throw new Exception('Invalid user ID for dealer application notification: user relationship not loaded and partner_id is null');
+            }
+            // Ensure userId is an integer
+            $userId = (int) $userId;
+            if ($userId <= 0) {
+                throw new Exception('Invalid user ID for dealer application notification: user ID must be a positive integer');
+            }
+
             return $this->createNotification(
-                $application->user_id,
+                $userId,
                 'dealer_application_submitted',
                 $title,
                 $message,
@@ -290,8 +301,19 @@ class DatabaseNotificationService
             $title = 'Dealer Application Approved!';
             $message = "Congratulations! Your dealer application has been approved. You can now post car listings and manage your dealership.";
 
+            // Get user ID from relationship (DealerApplication uses partner_id, not user_id)
+            $userId = $application->user?->id ?? $application->partner_id;
+            if (!$userId) {
+                throw new Exception('Invalid user ID for dealer application notification: user relationship not loaded and partner_id is null');
+            }
+            // Ensure userId is an integer
+            $userId = (int) $userId;
+            if ($userId <= 0) {
+                throw new Exception('Invalid user ID for dealer application notification: user ID must be a positive integer');
+            }
+
             return $this->createNotification(
-                $application->user_id,
+                $userId,
                 'dealer_application_approved',
                 $title,
                 $message,
@@ -327,8 +349,19 @@ class DatabaseNotificationService
             $reasonText = $reason ?? 'No reason provided';
             $message = "Your dealer application was not approved. Reason: {$reasonText}. Please review the requirements and submit a new application.";
 
+            // Get user ID from relationship (DealerApplication uses partner_id, not user_id)
+            $userId = $application->user?->id ?? $application->partner_id;
+            if (!$userId) {
+                throw new Exception('Invalid user ID for dealer application notification: user relationship not loaded and partner_id is null');
+            }
+            // Ensure userId is an integer
+            $userId = (int) $userId;
+            if ($userId <= 0) {
+                throw new Exception('Invalid user ID for dealer application notification: user ID must be a positive integer');
+            }
+
             return $this->createNotification(
-                $application->user_id,
+                $userId,
                 'dealer_application_rejected',
                 $title,
                 $message,
