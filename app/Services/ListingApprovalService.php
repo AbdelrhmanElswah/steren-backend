@@ -190,14 +190,34 @@ class ListingApprovalService
 
             // Create notification for the user
             try {
+                // Refresh the listing to ensure we have the latest data
+                $listing->refresh();
+                
                 // Reload listing with relationships for notification
-                $listing->load(['brand', 'carModel']);
-                $this->notificationService->createListingApprovedNotification($listing);
+                $listing->load(['brand', 'carModel', 'user']);
+                
+                // Verify listing has a user_id before creating notification
+                if (!$listing->user_id) {
+                    Log::warning('Cannot create notification: listing has no user_id', [
+                        'listing_id' => $listing->id,
+                        'odoo_id' => $odooId
+                    ]);
+                } else {
+                    $this->notificationService->createListingApprovedNotification($listing);
+                    Log::info('Listing approval notification created successfully', [
+                        'listing_id' => $listing->id,
+                        'user_id' => $listing->user_id,
+                        'odoo_id' => $odooId
+                    ]);
+                }
             } catch (Exception $e) {
                 // Log error but don't fail the approval process
                 Log::error('Failed to create approval notification', [
                     'listing_id' => $listing->id,
-                    'error' => $e->getMessage()
+                    'odoo_id' => $odooId,
+                    'user_id' => $listing->user_id ?? null,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
                 ]);
             }
 
@@ -228,10 +248,8 @@ class ListingApprovalService
     public function rejectListingByOdooId(string $odooId, string $reason, ?int $rejectedBy = null): array
     {
         try {
-            // Optimize query - only select needed fields
-            $listing = CarListing::select('id', 'odoo_id', 'operator_decision', 'status', 'rejected_by', 'rejected_at', 'rejection_reason', 'approved_by', 'approved_at')
-                ->where('odoo_id', $odooId)
-                ->firstOrFail();
+            // Get full listing (need user_id for notifications)
+            $listing = CarListing::where('odoo_id', $odooId)->firstOrFail();
             
             if ($listing->operator_decision === 'rejected') {
                 throw new OdooServiceException('Listing is already rejected');
@@ -253,14 +271,34 @@ class ListingApprovalService
 
             // Create notification for the user
             try {
+                // Refresh the listing to ensure we have all fields (including user_id)
+                $listing->refresh();
+                
                 // Reload listing with relationships for notification
-                $listing->load(['brand', 'carModel']);
-                $this->notificationService->createListingRejectedNotification($listing, $reason);
+                $listing->load(['brand', 'carModel', 'user']);
+                
+                // Verify listing has a user_id before creating notification
+                if (!$listing->user_id) {
+                    Log::warning('Cannot create notification: listing has no user_id', [
+                        'listing_id' => $listing->id,
+                        'odoo_id' => $odooId
+                    ]);
+                } else {
+                    $this->notificationService->createListingRejectedNotification($listing, $reason);
+                    Log::info('Listing rejection notification created successfully', [
+                        'listing_id' => $listing->id,
+                        'user_id' => $listing->user_id,
+                        'odoo_id' => $odooId
+                    ]);
+                }
             } catch (Exception $e) {
                 // Log error but don't fail the rejection process
                 Log::error('Failed to create rejection notification', [
                     'listing_id' => $listing->id,
-                    'error' => $e->getMessage()
+                    'odoo_id' => $odooId,
+                    'user_id' => $listing->user_id ?? null,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
                 ]);
             }
 

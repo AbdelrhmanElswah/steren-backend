@@ -141,6 +141,11 @@ class DatabaseNotificationService
     public function createListingApprovedNotification($listing): Notification
     {
         try {
+            // Validate listing has a user_id
+            if (!$listing->user_id) {
+                throw new Exception('Cannot create notification: listing has no user_id. Listing ID: ' . ($listing->id ?? 'unknown'));
+            }
+
             // Get the notification type (should exist from seeder)
             $notificationType = NotificationType::findByName('listing_approved');
             if (!$notificationType) {
@@ -158,8 +163,14 @@ class DatabaseNotificationService
             $title = 'Listing Approved!';
             $message = "Great news! Your {$carName} listing has been approved and is now live. Buyers can now see and contact you about this vehicle.";
 
+            // Ensure user_id is an integer
+            $userId = (int) $listing->user_id;
+            if ($userId <= 0) {
+                throw new Exception('Invalid user_id for listing notification: ' . $listing->user_id);
+            }
+
             return $this->createNotification(
-                $listing->user_id,
+                $userId,
                 'listing_approved',
                 $title,
                 $message,
@@ -175,7 +186,9 @@ class DatabaseNotificationService
         } catch (Exception $e) {
             Log::error('Failed to create listing approved notification', [
                 'listing_id' => $listing->id ?? null,
-                'error' => $e->getMessage()
+                'user_id' => $listing->user_id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             throw $e;
         }
@@ -187,6 +200,11 @@ class DatabaseNotificationService
     public function createListingRejectedNotification($listing, string $reason = null): Notification
     {
         try {
+            // Validate listing has a user_id
+            if (!$listing->user_id) {
+                throw new Exception('Cannot create notification: listing has no user_id. Listing ID: ' . ($listing->id ?? 'unknown'));
+            }
+
             // Get the notification type (should exist from seeder)
             $notificationType = NotificationType::findByName('listing_rejected');
             if (!$notificationType) {
@@ -205,8 +223,14 @@ class DatabaseNotificationService
             $reasonText = $reason ?? 'No reason provided';
             $message = "Your {$carName} listing was not approved. Reason: {$reasonText}. Please review the requirements and submit a new listing.";
 
+            // Ensure user_id is an integer
+            $userId = (int) $listing->user_id;
+            if ($userId <= 0) {
+                throw new Exception('Invalid user_id for listing notification: ' . $listing->user_id);
+            }
+
             return $this->createNotification(
-                $listing->user_id,
+                $userId,
                 'listing_rejected',
                 $title,
                 $message,
@@ -214,6 +238,8 @@ class DatabaseNotificationService
                     'car_listing_id' => $listing->id,
                     'car_name' => $carName,
                     'reason' => $reasonText,
+                    'price' => $listing->price ?? null,
+                    'currency' => $listing->price_currency ?? 'USD',
                 ],
                 $notificationType->id
             );
@@ -221,7 +247,9 @@ class DatabaseNotificationService
         } catch (Exception $e) {
             Log::error('Failed to create listing rejected notification', [
                 'listing_id' => $listing->id ?? null,
-                'error' => $e->getMessage()
+                'user_id' => $listing->user_id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             throw $e;
         }
