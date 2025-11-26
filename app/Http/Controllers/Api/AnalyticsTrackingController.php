@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\CarListing;
 use App\Models\CarListingAnalytics;
+use App\Models\CarListingViewsTrack;
 use App\Models\UserAnalytics;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
@@ -16,11 +17,80 @@ class AnalyticsTrackingController extends Controller
     use ApiResponse;
 
     /**
-     * Track a view for a car listing
+     * Track a view for a car listing with spam prevention
      */
     public function trackView(Request $request, $carListingId): JsonResponse
     {
-        return $this->trackMetric($request, $carListingId, 'views');
+        try {
+            // Validate required ip_address in payload
+            $validator = Validator::make($request->all(), [
+                'ip_address' => 'required|ip',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->errorResponse('Validation failed', 422, $validator->errors());
+            }
+
+            // Validate car listing exists
+            $carListing = CarListing::findOrFail($carListingId);
+            $ipAddress = $request->input('ip_address');
+
+            // Check if there's a recent view from this IP (within last 2 hours)
+            $hasRecentView = CarListingViewsTrack::hasRecentView($carListingId, $ipAddress, 2);
+
+            if ($hasRecentView) {
+                // View already tracked in last 2 hours, don't increment but return success
+                $analytics = CarListingAnalytics::getAnalyticsSummary($carListingId);
+                
+                return $this->successResponse([
+                    'metric_type' => 'views',
+                    'car_listing_id' => $carListingId,
+                    'timestamp' => now()->toISOString(),
+                    'analytics' => $analytics,
+                    'total_views' => $analytics['views'] ?? 0,
+                    'view_incremented' => false,
+                    'message' => 'View already tracked within the last 2 hours',
+                ], 'View tracking skipped (spam prevention)');
+            }
+
+            // No recent view found, create tracking record and increment view
+            CarListingViewsTrack::createViewTrack($carListingId, $ipAddress);
+
+            // Prepare additional data
+            $additionalData = [
+                'user_agent' => $request->userAgent(),
+                'ip_address' => $ipAddress,
+                'timestamp' => now()->toISOString(),
+            ];
+
+            // Add authenticated user info if available
+            if (auth()->check()) {
+                $additionalData['user_id'] = auth()->id();
+            }
+
+            // Track the metric for the car listing
+            CarListingAnalytics::incrementMetric($carListingId, 'views', $additionalData);
+
+            // Track in user analytics for the listing owner (not the viewer)
+            if ($carListing->user_id) {
+                UserAnalytics::incrementMetric($carListing->user_id, 'views', $additionalData);
+            }
+
+            // Get updated analytics summary
+            $analytics = CarListingAnalytics::getAnalyticsSummary($carListingId);
+
+            return $this->successResponse([
+                'metric_type' => 'views',
+                'car_listing_id' => $carListingId,
+                'timestamp' => now()->toISOString(),
+                'analytics' => $analytics,
+                'total_views' => $analytics['views'] ?? 0,
+                'view_incremented' => true,
+            ], 'View tracked successfully');
+
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to track view: ' . $e->getMessage(), 500);
+        }
     }
 
     /**
