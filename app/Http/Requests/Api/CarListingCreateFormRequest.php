@@ -31,6 +31,7 @@ class CarListingCreateFormRequest extends FormRequest
             'gcc_import' => 'nullable|string|max:255',
             'car_body_type_id' => 'required|integer|exists:body_types,id',
             'engine_size' => 'nullable|numeric|min:0|max:10',
+            'engine_unit' => 'nullable|string|max:10',
             'fuel_type_id' => 'nullable|integer|exists:fuel_types,id',
             'cylinder_id' => 'nullable|integer|exists:cylinder_options,id',
             'transmission_id' => 'nullable|integer|exists:transmissions,id',

@@ -96,6 +96,10 @@ class SearchResultResource extends JsonResource
                 'name' => $this->carCondition?->name,
             ]),
             
+            // Engine specifications
+            'engine_size' => $this->engine_size,
+            'engine_unit' => $this->engine_unit,
+            
             // Media - using S3 URLs like Media model accessors
             'media' => $this->when(
                 $this->relationLoaded('media') && $this->media->isNotEmpty(),

@@ -121,6 +121,8 @@ class CarListingFormatterService
                 'id' => $listing->cylinder->id,
                 'name' => $listing->cylinder->name,
             ] : null,
+            'engine_size' => $listing->engine_size,
+            'engine_unit' => $listing->engine_unit,
             'media' => $mediaList, // All media with only media_link
             'media_count' => $mediaCount, // For UI gallery indicator (e.g., "1/12")
             'inspection_sides' => $inspectionSides,

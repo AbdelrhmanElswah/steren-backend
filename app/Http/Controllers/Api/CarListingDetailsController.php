@@ -276,6 +276,7 @@ class CarListingDetailsController extends Controller
                 // Engine and performance specs
                 'specifications' => [
                     'engine_size' => $listing->engine_size,
+                    'engine_unit' => $listing->engine_unit,
                     'engine_type' => $listing->engine_type,
                     'horsepower' => $listing->horsepower,
                     'torque' => $listing->torque,
@@ -601,6 +602,7 @@ class CarListingDetailsController extends Controller
                 // Engine and performance specs
                 'specifications' => [
                     'engine_size' => $listing->engine_size,
+                    'engine_unit' => $listing->engine_unit,
                     'engine_type' => $listing->engine_type,
                     'horsepower' => $listing->horsepower,
                     'torque' => $listing->torque,

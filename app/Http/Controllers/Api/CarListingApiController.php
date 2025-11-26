@@ -1246,6 +1246,7 @@ class CarListingApiController extends Controller
             'gcc_import' => $normalizedGccImport,
             'car_body_type_id' => $data['car_body_type_id'],
             'engine_size' => $data['engine_size'] ?? null,
+            'engine_unit' => $data['engine_unit'] ?? null,
             'fuel_type_id' => $data['fuel_type_id'] ?? null,
             'cylinder_id' => $data['cylinder_id'] ?? null,
             'transmission_id' => $data['transmission_id'] ?? null,

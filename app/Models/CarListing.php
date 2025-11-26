@@ -51,6 +51,7 @@ class CarListing extends Model
         'cylinder_id',
         // New fields
         'engine_size',
+        'engine_unit',
         'engine_type',
         'horsepower',
         'torque',
