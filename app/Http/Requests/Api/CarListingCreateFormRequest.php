@@ -93,7 +93,7 @@ class CarListingCreateFormRequest extends FormRequest
             'inspection_roof' => 'nullable|boolean',
             'inspection_front' => 'nullable|boolean',
             'inspection_back' => 'nullable|boolean',
-            'inspection_file' => 'nullable|file|mimes:pdf|max:10240', // 10MB max for PDF
+            'inspection_file' => 'nullable|file|max:10240', // 10MB max
         ];
     }
 
