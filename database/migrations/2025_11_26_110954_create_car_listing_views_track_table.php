@@ -18,9 +18,9 @@ return new class extends Migration
             $table->date('view_date');
             $table->timestamps();
             
-            // Index for efficient lookups
-            $table->index(['car_listing_id', 'ip_address', 'view_date']);
-            $table->index(['car_listing_id', 'ip_address', 'created_at']);
+            // Index for efficient lookups (using shorter names to avoid MySQL 64-char limit)
+            $table->index(['car_listing_id', 'ip_address', 'view_date'], 'clvt_listing_ip_date_idx');
+            $table->index(['car_listing_id', 'ip_address', 'created_at'], 'clvt_listing_ip_created_idx');
         });
     }
 
