@@ -258,8 +258,6 @@ These GET endpoints fetch data from local database (which was previously synced 
 | `GET /api/odoo/body-types` | `BodyTypeController::getBodyTypes()` | `body_types` |
 | `GET /api/odoo/cities` | `CityController::getCities()` | `cities` |
 | `GET /api/odoo/car-models` | `CarModelController::getCarModels()` | `car_models` |
-| `GET /api/odoo/locations` | `LocationController::getLocations()` | `locations` |
-| `GET /api/odoo/studios` | `StudioController::getStudios()` | `studios` |
 | `GET /api/odoo/subscription-plans` | `SubscriptionPlanController::getSubscriptionPlans()` | `subscription_plans` |
 | `GET /api/odoo/authorized-agencies` | `AuthorizedAgencyController::getAuthorizedAgencies()` | `authorized_agencies` |
 | `GET /api/odoo/budgets` | `BudgetController::getBudgets()` | `budgets` |
@@ -405,8 +403,6 @@ ODOO_BASE_URL=https://your-custom-odoo-instance.com
 | Carousels | ✅ | ❌ | ❌ | ❌ | `carousels` |
 | Authorized Agencies | ✅ | ❌ | ❌ | ✅ | `authorized_agencies` |
 | Cities | ❌ | ❌ | ❌ | ✅ | `cities` |
-| Locations | ❌ | ❌ | ❌ | ✅ | `locations` |
-| Studios | ❌ | ❌ | ❌ | ✅ | `studios` |
 
 ---
 

@@ -1424,8 +1424,6 @@ Decode VIN specifically formatted for car listing creation.
 | GET | `/body-types` | Get body types |
 | GET | `/cities` | Get cities |
 | GET | `/car-models` | Get car models |
-| GET | `/locations` | Get locations |
-| GET | `/studios` | Get studios |
 | GET | `/subscription-plans` | Get subscription plans |
 | GET | `/authorized-agencies` | Get authorized agencies |
 | GET | `/budgets` | Get budgets |
@@ -1441,8 +1439,6 @@ All POST routes support CRUD operations for the following entities:
 - `car-brands`
 - `carousels`
 - `car-models`
-- `locations`
-- `studios`
 - `users`
 - `body-types`
 - `subscription-plans`
