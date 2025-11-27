@@ -11,6 +11,7 @@ use App\Models\NewsArticle;
 use App\Services\CarBrandListingService;
 use App\Services\StudioListingService;
 use App\Services\CarListingFormatterService;
+use App\Services\SubscriptionBasedListingService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -24,7 +25,8 @@ class CarListingController extends Controller
     public function __construct(
         private CarBrandListingService $carBrandListingService,
         private StudioListingService $studioListingService,
-        private CarListingFormatterService $formatter
+        private CarListingFormatterService $formatter,
+        private SubscriptionBasedListingService $listingService
     ) {}
 
     /**
@@ -596,6 +598,18 @@ class CarListingController extends Controller
                 ->get();
 
                 $similarCars = $this->formatter->formatListings($similarListings);
+            }
+
+            // Fallback to top picks if no similar cars found
+            if (empty($similarCars)) {
+                $topPicks = $this->listingService->getGeneralTopPicks(3, []);
+                
+                // Exclude current listing from top picks
+                $topPicks = $topPicks->filter(function($topPick) use ($listing) {
+                    return $topPick->id !== $listing->id;
+                })->take(3);
+
+                $similarCars = $this->formatter->formatListings($topPicks);
             }
 
             $data = [
