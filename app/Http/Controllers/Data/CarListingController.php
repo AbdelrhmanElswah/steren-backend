@@ -552,12 +552,16 @@ class CarListingController extends Controller
                     'inspection_date' => $listing->inspection->inspection_date,
                     'status' => $listing->inspection->status,
                 ] : null,
-                'updated_at' => $listing->updated_at,
                 'vin' => $listing->vin,
+                'car_brand_id' => $listing->brand ? [
+                    'id' => $listing->brand->id,
+                    'name' => $listing->brand->name,
+                ] : null,
                 'car_model_id' => $listing->carModel ? [
                     'id' => $listing->carModel->id,
                     'name' => $listing->carModel->name,
                 ] : null,
+                'updated_at' => $listing->updated_at,
             ];
 
             // Get similar cars (same brand, up to 3 listings)
