@@ -111,6 +111,9 @@ class CarouselController extends Controller
                 ->when($request->filled('active_only'), function ($query) {
                     return $query->active()->withinDateRange();
                 })
+                ->when($request->filled('is_active'), function ($query) use ($request) {
+                    return $query->where('is_active', $request->is_active);
+                })
                 ->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('title', 'like', '%' . $request->search . '%')
                                 ->orWhere('description', 'like', '%' . $request->search . '%');

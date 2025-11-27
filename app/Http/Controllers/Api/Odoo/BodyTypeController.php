@@ -106,7 +106,7 @@ class BodyTypeController extends Controller
     {
         try {
             // Build cache key based on request parameters
-            $cacheKey = 'odoo_body_types_' . md5(serialize($request->only(['search', 'id', 'odoo_id'])));
+            $cacheKey = 'odoo_body_types_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'is_active'])));
             
             // Cache for 24 hours (86400 seconds)
             $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
@@ -121,6 +121,9 @@ class BodyTypeController extends Controller
                     })
                     ->when($request->filled('odoo_id'), function ($query) use ($request) {
                         $query->where('odoo_id', $request->odoo_id);
+                    })
+                    ->when($request->filled('is_active'), function ($query) use ($request) {
+                        $query->where('is_active', $request->is_active);
                     })
                     ->orderBy('name')
                     ->get();

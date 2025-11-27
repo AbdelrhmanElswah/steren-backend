@@ -21,8 +21,9 @@ class UpdateCarouselRequest extends FormRequest
             'link_url' => ['nullable', 'url', 'max:2048'],
             'start_date' => ['sometimes', 'date'],
             'end_date' => ['sometimes', 'date', 'after_or_equal:start_date'],
-            'is_active' => ['boolean'],
-            'sort_order' => ['integer', 'min:0'],
+            'is_active' => ['nullable', 'boolean'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'priority' => ['nullable', 'integer', 'min:0'],
             'media' => ['nullable', 'string'], // Base64 image
         ];
     }

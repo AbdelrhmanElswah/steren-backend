@@ -18,6 +18,7 @@ class GetCarouselsRequest extends FormRequest
             'id' => ['nullable', 'integer'],
             'odoo_id' => ['nullable', 'string'],
             'active_only' => ['nullable', 'boolean'],
+            'is_active' => ['nullable', 'boolean'],
             'sort_by' => ['nullable', 'string', 'in:title,start_date,end_date,created_at,sort_order'],
             'sort_order' => ['nullable', 'string', 'in:asc,desc'],
         ];

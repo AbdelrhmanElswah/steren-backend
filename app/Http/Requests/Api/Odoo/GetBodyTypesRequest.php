@@ -23,6 +23,7 @@ class GetBodyTypesRequest extends FormRequest
             'search' => 'sometimes|string|max:255',
             'id' => 'sometimes|integer|min:1',
             'odoo_id' => 'sometimes|string|max:255',
+            'is_active' => 'sometimes|boolean',
             'per_page' => 'sometimes|integer|min:1|max:100',
             'page' => 'sometimes|integer|min:1',
         ];

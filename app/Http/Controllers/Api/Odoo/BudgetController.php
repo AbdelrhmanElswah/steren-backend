@@ -70,9 +70,19 @@ class BudgetController extends Controller
     /**
      * Get all budgets for data retrieval
      */
-    public function getBudgets()
+    public function getBudgets(\Illuminate\Http\Request $request)
     {
-        $budgets = Budget::active()->ordered()->get();
+        $query = Budget::query();
+
+        // Filter by is_active if provided, otherwise default to active only
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->is_active);
+        } else {
+            // Default behavior: only return active budgets
+            $query->where('is_active', true);
+        }
+
+        $budgets = $query->ordered()->get();
 
         return $this->successResponse(
             BudgetResource::collection($budgets),

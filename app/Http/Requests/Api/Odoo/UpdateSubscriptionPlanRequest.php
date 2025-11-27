@@ -25,6 +25,7 @@ class UpdateSubscriptionPlanRequest extends FormRequest
             'max_listings' => 'nullable|integer|min:0',
             'max_photos' => 'nullable|integer|min:0',
             'subscriber_count' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
             'is_popular' => 'nullable|boolean',
             'is_featured' => 'nullable|boolean',
             'is_whatsapp_phone' => 'nullable|boolean',
@@ -36,6 +37,7 @@ class UpdateSubscriptionPlanRequest extends FormRequest
             'is_top_picks' => 'nullable|boolean',
             'is_priority_support' => 'nullable|boolean',
             'is_you_may_also_like' => 'nullable|boolean',
+            'sort_order' => 'nullable|integer|min:0',
         ];
     }
 }
