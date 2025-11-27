@@ -96,6 +96,7 @@ class CarouselController extends Controller
             $validated = $request->validated();
             $filters = [
                 'active_only' => $validated['active_only'] ?? false,
+                'is_active' => $validated['is_active'] ?? null,
                 'search' => $validated['search'] ?? null,
             ];
             
@@ -112,8 +113,16 @@ class CarouselController extends Controller
                             ->limit(1);
                     }]);
                 
+                // Filter by is_active: default to active only (is_active = 1) unless explicitly requested otherwise
+                if (isset($filters['is_active']) && $filters['is_active'] !== null) {
+                    $query->where('is_active', $filters['is_active']);
+                } else {
+                    // Default behavior: only return active carousels
+                    $query->where('is_active', true);
+                }
+                
                 if (isset($filters['active_only']) && $filters['active_only']) {
-                    $query->active()->withinDateRange();
+                    $query->withinDateRange();
                 }
                 
                 if (isset($filters['search']) && $filters['search']) {

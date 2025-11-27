@@ -23,6 +23,7 @@ class GetAllCarouselsRequest extends FormRequest
     {
         return [
             'active_only' => ['nullable', 'boolean'],
+            'is_active' => ['nullable', 'boolean'],
             'search' => ['nullable', 'string', 'max:255'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
