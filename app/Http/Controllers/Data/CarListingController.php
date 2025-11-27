@@ -10,6 +10,7 @@ use App\Models\CarTrim;
 use App\Models\NewsArticle;
 use App\Services\CarBrandListingService;
 use App\Services\StudioListingService;
+use App\Services\CarListingFormatterService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -22,7 +23,8 @@ class CarListingController extends Controller
 
     public function __construct(
         private CarBrandListingService $carBrandListingService,
-        private StudioListingService $studioListingService
+        private StudioListingService $studioListingService,
+        private CarListingFormatterService $formatter
     ) {}
 
     /**
@@ -548,7 +550,53 @@ class CarListingController extends Controller
                     'inspection_date' => $listing->inspection->inspection_date,
                     'status' => $listing->inspection->status,
                 ] : null,
+                'updated_at' => $listing->updated_at,
+                'vin' => $listing->vin,
+                'car_model_id' => $listing->carModel ? [
+                    'id' => $listing->carModel->id,
+                    'name' => $listing->carModel->name,
+                ] : null,
             ];
+
+            // Get similar cars (same brand, up to 3 listings)
+            $similarCars = [];
+            if ($listing->car_brand_id) {
+                $similarListings = CarListing::with([
+                    'brand:id,name,odoo_id',
+                    'carModel:id,name,car_brand_id',
+                    'bodyType:id,name',
+                    'city:id,name,odoo_id',
+                    'carCondition:id,name',
+                    'fuelType:id,name',
+                    'transmission:id,name',
+                    'exteriorColor:id,name',
+                    'driveType:id,name',
+                    'cylinder:id,name',
+                    'mileageType:id,name',
+                    'media' => function ($query) {
+                        $query->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
+                            ->orderBy('order');
+                    },
+                    'inspection' => function($inspectionQuery) {
+                        $inspectionQuery->select('id', 'car_listing_id', 'right_side', 'left_side', 'roof', 'front', 'back');
+                    },
+                    'user:id,full_name',
+                    'user.profilePictureMedia' => function($profileQuery) {
+                        $profileQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info')
+                            ->where('info', 'profile_picture');
+                    }
+                ])
+                ->where('car_brand_id', $listing->car_brand_id)
+                ->where('id', '!=', $listing->id)
+                ->where('status', 'active')
+                ->whereNull('sold_at')
+                ->orderByDesc('is_featured')
+                ->orderByDesc('created_at')
+                ->limit(3)
+                ->get();
+
+                $similarCars = $this->formatter->formatListings($similarListings);
+            }
 
             $data = [
                 'listing' => $formattedListing,
@@ -567,12 +615,10 @@ class CarListingController extends Controller
                     'mileage_efficiency' => $listing->formatted_mileage_efficiency,
                     'dimensions' => $listing->formatted_dimensions,
                 ],
-                'detailed_specifications' => $specificationsByType,
-                'features_by_category' => $featuresByCategory,
                 'features' => $listing->features ?? null,
                 'badges' => $listing->active_badges,
                 'status_badge' => $listing->status_badge,
-                'contact_methods' => \App\Models\ContactMethod::active()->ordered()->get(),
+                'similar_cars' => $similarCars,
             ];
 
             return $this->successResponse($data, 'Car listing details retrieved successfully');
