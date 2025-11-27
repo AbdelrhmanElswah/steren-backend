@@ -38,7 +38,7 @@ class LocationController extends Controller
         $this->LocationService->deleteByOdooId($odooId);
 
         return $this->noContentResponse('Location deleted successfully');
-    }public function restoreByOdooId(string $odooId)
+    }    public function restoreByOdooId(string $odooId)
     {
         $Location = $this->LocationService->restoreByOdooId($odooId);
 

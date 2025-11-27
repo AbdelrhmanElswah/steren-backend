@@ -62,16 +62,6 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('car-models/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'deleteByOdooId']);
     Route::post('car-models/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'restoreByOdooId']);
 
-    Route::post('locations', [App\Http\Controllers\Api\Odoo\LocationController::class, 'store']);
-    Route::post('locations/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\LocationController::class, 'updateByOdooId']);
-    Route::post('locations/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\LocationController::class, 'deleteByOdooId']);
-    Route::post('locations/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\LocationController::class, 'restoreByOdooId']);
-
-    Route::post('studios', [App\Http\Controllers\Api\Odoo\StudioController::class, 'store']);
-    Route::post('studios/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\StudioController::class, 'updateByOdooId']);
-    Route::post('studios/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\StudioController::class, 'deleteByOdooId']);
-    Route::post('studios/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\StudioController::class, 'restoreByOdooId']);
-
     Route::post('users', [App\Http\Controllers\Api\Odoo\UserController::class, 'store']);
     Route::post('users/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\UserController::class, 'updateByOdooId']);
     Route::post('users/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\UserController::class, 'deleteByOdooId']);
@@ -128,8 +118,6 @@ Route::prefix('odoo')->group(function () {
     Route::get('body-types', [App\Http\Controllers\Api\Odoo\BodyTypeController::class, 'getBodyTypes']);
     Route::get('cities', [App\Http\Controllers\Api\Odoo\CityController::class, 'getCities']);
     Route::get('car-models', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'getCarModels']);
-    Route::get('locations', [App\Http\Controllers\Api\Odoo\LocationController::class, 'getLocations']);
-    Route::get('studios', [App\Http\Controllers\Api\Odoo\StudioController::class, 'getStudios']);
     Route::get('subscription-plans', [App\Http\Controllers\Api\Odoo\SubscriptionPlanController::class, 'getSubscriptionPlans']);
     Route::get('authorized-agencies', [App\Http\Controllers\Api\Odoo\AuthorizedAgencyController::class, 'getAuthorizedAgencies']);
     Route::get('budgets', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'getBudgets']);

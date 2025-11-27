@@ -38,7 +38,7 @@ class StudioController extends Controller
         $this->StudioService->deleteByOdooId($odooId);
 
         return $this->noContentResponse('Studio deleted successfully');
-    }public function restoreByOdooId(string $odooId)
+    }    public function restoreByOdooId(string $odooId)
     {
         $Studio = $this->StudioService->restoreByOdooId($odooId);
 
