@@ -101,38 +101,51 @@ class SubscriptionPlanController extends Controller
     public function getSubscriptionPlans(GetSubscriptionPlansRequest $request): JsonResponse
     {
         try {
-            $plans = \App\Models\SubscriptionPlan::query()
-                ->when($request->filled('search'), function ($query) use ($request) {
-                    $query->where('name', 'like', '%' . $request->search . '%')
-                          ->orWhere('description', 'like', '%' . $request->search . '%');
-                })
-                ->when($request->filled('id'), function ($query) use ($request) {
-                    $query->where('id', $request->id);
-                })
-                ->when($request->filled('odoo_id'), function ($query) use ($request) {
-                    $query->where('odoo_id', $request->odoo_id);
-                })
-                ->when($request->filled('is_active'), function ($query) use ($request) {
-                    $query->where('is_active', $request->is_active);
-                })
-                ->when($request->filled('is_popular'), function ($query) use ($request) {
-                    $query->where('is_popular', $request->is_popular);
-                })
-                ->when($request->filled('is_featured'), function ($query) use ($request) {
-                    $query->where('is_featured', $request->is_featured);
-                })
-                ->when($request->filled('billing_cycle'), function ($query) use ($request) {
-                    $query->where('billing_cycle', $request->billing_cycle);
-                })
-                ->ordered()
-                ->get();
+            // Build cache key based on request parameters
+            $cacheKey = 'odoo_subscription_plans_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'is_active', 'is_popular', 'is_featured', 'billing_cycle'])));
+            
+            // Cache for 24 hours (86400 seconds)
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
+                $plans = \App\Models\SubscriptionPlan::query()
+                    ->when($request->filled('search'), function ($query) use ($request) {
+                        $query->where('name', 'like', '%' . $request->search . '%')
+                              ->orWhere('description', 'like', '%' . $request->search . '%');
+                    })
+                    ->when($request->filled('id'), function ($query) use ($request) {
+                        $query->where('id', $request->id);
+                    })
+                    ->when($request->filled('odoo_id'), function ($query) use ($request) {
+                        $query->where('odoo_id', $request->odoo_id);
+                    })
+                    ->when($request->filled('is_active'), function ($query) use ($request) {
+                        $query->where('is_active', $request->is_active);
+                    })
+                    ->when($request->filled('is_popular'), function ($query) use ($request) {
+                        $query->where('is_popular', $request->is_popular);
+                    })
+                    ->when($request->filled('is_featured'), function ($query) use ($request) {
+                        $query->where('is_featured', $request->is_featured);
+                    })
+                    ->when($request->filled('billing_cycle'), function ($query) use ($request) {
+                        $query->where('billing_cycle', $request->billing_cycle);
+                    })
+                    ->ordered()
+                    ->get();
 
-            $collection = SubscriptionPlanResource::collection($plans);
-            return $collection->additional([
+                $collection = SubscriptionPlanResource::collection($plans);
+                
+                return [
+                    'data' => $collection->resolve(),
+                    'total' => $plans->count()
+                ];
+            });
+
+            return response()->json([
                 'success' => true,
                 'message' => 'Subscription plans retrieved successfully',
-                'total' => $plans->count()
-            ])->response();
+                'data' => $result['data'],
+                'total' => $result['total'],
+            ]);
 
         } catch (\Exception $e) {
             Log::error('SubscriptionPlanController: Error fetching subscription plans', [

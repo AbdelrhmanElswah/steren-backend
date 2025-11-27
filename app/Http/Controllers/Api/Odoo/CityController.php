@@ -123,24 +123,36 @@ class CityController extends Controller
     public function getCities(GetCitiesRequest $request): JsonResponse
     {
         try {
-            $cities = \App\Models\City::when($request->filled('search'), function ($query) use ($request) {
-                    $query->where('name', 'like', '%' . $request->search . '%');
-                })
-                ->when($request->filled('id'), function ($query) use ($request) {
-                    $query->where('id', $request->id);
-                })
-                ->when($request->filled('odoo_id'), function ($query) use ($request) {
-                    $query->where('odoo_id', $request->odoo_id);
-                })
-                ->orderBy('name')
-                ->get();
+            // Build cache key based on request parameters
+            $cacheKey = 'odoo_cities_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'per_page', 'page'])));
+            
+            // Cache for 24 hours (86400 seconds)
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
+                $cities = \App\Models\City::when($request->filled('search'), function ($query) use ($request) {
+                        $query->where('name', 'like', '%' . $request->search . '%');
+                    })
+                    ->when($request->filled('id'), function ($query) use ($request) {
+                        $query->where('id', $request->id);
+                    })
+                    ->when($request->filled('odoo_id'), function ($query) use ($request) {
+                        $query->where('odoo_id', $request->odoo_id);
+                    })
+                    ->orderBy('name')
+                    ->get();
 
-            $collection = CityResource::collection($cities);
-            return $collection->additional([
+                $collection = CityResource::collection($cities);
+                return [
+                    'data' => $collection->resolve(),
+                    'total' => $cities->count()
+                ];
+            });
+
+            return response()->json([
                 'success' => true,
                 'message' => 'Cities retrieved successfully',
-                'total' => $cities->count()
-            ])->response();
+                'data' => $result['data'],
+                'total' => $result['total'],
+            ]);
 
         } catch (\Exception $e) {
             Log::error('CityController: Error fetching cities', [

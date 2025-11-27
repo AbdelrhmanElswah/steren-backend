@@ -72,22 +72,39 @@ class BudgetController extends Controller
      */
     public function getBudgets(\Illuminate\Http\Request $request)
     {
-        $query = Budget::query();
+        try {
+            // Build cache key based on request parameters
+            $cacheKey = 'odoo_budgets_' . md5(serialize($request->only(['is_active'])));
+            
+            // Cache for 24 hours (86400 seconds)
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
+                $query = Budget::query();
 
-        // Filter by is_active if provided, otherwise default to active only
-        if ($request->filled('is_active')) {
-            $query->where('is_active', $request->is_active);
-        } else {
-            // Default behavior: only return active budgets
-            $query->where('is_active', true);
+                // Filter by is_active if provided, otherwise default to active only
+                if ($request->filled('is_active')) {
+                    $query->where('is_active', $request->is_active);
+                } else {
+                    // Default behavior: only return active budgets
+                    $query->where('is_active', true);
+                }
+
+                $budgets = $query->ordered()->get();
+                
+                return BudgetResource::collection($budgets)->resolve();
+            });
+
+            return $this->successResponse(
+                $result,
+                'Budgets retrieved successfully'
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('BudgetController: Error fetching budgets', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->errorResponse('Failed to fetch budgets: ' . $e->getMessage(), 500);
         }
-
-        $budgets = $query->ordered()->get();
-
-        return $this->successResponse(
-            BudgetResource::collection($budgets),
-            'Budgets retrieved successfully'
-        );
     }
 }
 

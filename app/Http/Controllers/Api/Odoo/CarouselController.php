@@ -107,57 +107,69 @@ class CarouselController extends Controller
     public function getCarousels(GetCarouselsRequest $request): JsonResponse
     {
         try {
-            $query = \App\Models\Carousel::with('media')
-                ->when($request->filled('active_only'), function ($query) {
-                    return $query->active()->withinDateRange();
-                })
-                ->when($request->filled('is_active'), function ($query) use ($request) {
-                    return $query->where('is_active', $request->is_active);
-                })
-                ->when($request->filled('search'), function ($query) use ($request) {
-                    return $query->where('title', 'like', '%' . $request->search . '%')
-                                ->orWhere('description', 'like', '%' . $request->search . '%');
-                })
-                ->when($request->filled('id'), function ($query) use ($request) {
-                    return $query->where('id', $request->id);
-                })
-                ->when($request->filled('odoo_id'), function ($query) use ($request) {
-                    return $query->where('odoo_id', $request->odoo_id);
-                });
+            // Build cache key based on request parameters
+            $cacheKey = 'odoo_carousels_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'active_only', 'is_active', 'sort_by', 'sort_order'])));
+            
+            // Cache for 24 hours (86400 seconds)
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
+                $query = \App\Models\Carousel::with('media')
+                    ->when($request->filled('active_only'), function ($query) {
+                        return $query->active()->withinDateRange();
+                    })
+                    ->when($request->filled('is_active'), function ($query) use ($request) {
+                        return $query->where('is_active', $request->is_active);
+                    })
+                    ->when($request->filled('search'), function ($query) use ($request) {
+                        return $query->where('title', 'like', '%' . $request->search . '%')
+                                    ->orWhere('description', 'like', '%' . $request->search . '%');
+                    })
+                    ->when($request->filled('id'), function ($query) use ($request) {
+                        return $query->where('id', $request->id);
+                    })
+                    ->when($request->filled('odoo_id'), function ($query) use ($request) {
+                        return $query->where('odoo_id', $request->odoo_id);
+                    });
 
-            // Default ordering
-            if (!$request->filled('sort_by')) {
-                $query->ordered();
-            } else {
-                $sortBy = $request->sort_by;
-                $sortOrder = $request->get('sort_order', 'asc');
-                
-                switch ($sortBy) {
-                    case 'title':
-                        $query->orderBy('title', $sortOrder);
-                        break;
-                    case 'start_date':
-                        $query->orderBy('start_date', $sortOrder);
-                        break;
-                    case 'end_date':
-                        $query->orderBy('end_date', $sortOrder);
-                        break;
-                    case 'created_at':
-                        $query->orderBy('created_at', $sortOrder);
-                        break;
-                    default:
-                        $query->ordered();
+                // Default ordering
+                if (!$request->filled('sort_by')) {
+                    $query->ordered();
+                } else {
+                    $sortBy = $request->sort_by;
+                    $sortOrder = $request->get('sort_order', 'asc');
+                    
+                    switch ($sortBy) {
+                        case 'title':
+                            $query->orderBy('title', $sortOrder);
+                            break;
+                        case 'start_date':
+                            $query->orderBy('start_date', $sortOrder);
+                            break;
+                        case 'end_date':
+                            $query->orderBy('end_date', $sortOrder);
+                            break;
+                        case 'created_at':
+                            $query->orderBy('created_at', $sortOrder);
+                            break;
+                        default:
+                            $query->ordered();
+                    }
                 }
-            }
 
-            $carousels = $query->get();
+                $carousels = $query->get();
+                $collection = CarouselResource::collection($carousels);
+                
+                return [
+                    'data' => $collection->resolve(),
+                    'total' => $carousels->count()
+                ];
+            });
 
-            $collection = CarouselResource::collection($carousels);
-            return $collection->additional([
+            return response()->json([
                 'success' => true,
                 'message' => 'Carousels retrieved successfully',
-                'total' => $carousels->count()
-            ])->response();
+                'data' => $result['data'],
+                'total' => $result['total'],
+            ]);
 
         } catch (\Exception $e) {
             Log::error('CarouselController: Error fetching carousels', [
