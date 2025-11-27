@@ -85,9 +85,9 @@ class SubscriptionBasedListingController extends Controller
                 $formatter = app(\App\Services\CarListingFormatterService::class);
                 $formattedListings = [];
                 
-                // Fallback logic: brand+body_type+city -> brand+city -> city -> no filters
-                // Step 1: Try brand + body_type + city
-                if (!empty($favBrandIds) && !empty($favBodyTypeIds) && $cityId) {
+                // Priority logic: brands+body_types -> brands -> city -> no filters
+                // Step 1: Try brands AND body_types (both required, city optional)
+                if (!empty($favBrandIds) && !empty($favBodyTypeIds)) {
                     $testFilters = array_merge($filters, [
                         'brand_ids' => $favBrandIds,
                         'body_type_ids' => $favBodyTypeIds,
@@ -96,8 +96,8 @@ class SubscriptionBasedListingController extends Controller
                     $formattedListings = $formatter->formatListings($topPicks);
                 }
                 
-                // Step 2: Try brand + city (if no results from step 1)
-                if (empty($formattedListings) && !empty($favBrandIds) && $cityId) {
+                // Step 2: Try brands only (if no results from step 1)
+                if (empty($formattedListings) && !empty($favBrandIds)) {
                     $testFilters = array_merge($filters, [
                         'brand_ids' => $favBrandIds,
                     ]);
