@@ -321,6 +321,75 @@ class OdooService
         }
     }
 
+    public function updateClient(int $clientId, array $clientData): array
+    {
+        try {
+            $response = Http::timeout(30)->withHeaders([
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer ' . $this->apiKey,
+            ])->post($this->baseUrl . '/api/client/' . $clientId . '/update', $clientData);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                // Handle JSON response structure
+                if (isset($data['result']) && isset($data['result']['success'])) {
+                    return [
+                        'success' => $data['result']['success'],
+                        'message' => $data['result']['message'] ?? 'Client updated successfully',
+                        'data' => $data['result']['data'] ?? null
+                    ];
+                }
+
+                // If response doesn't have result wrapper, assume success
+                return [
+                    'success' => true,
+                    'message' => $data['message'] ?? 'Client updated successfully',
+                    'data' => $data
+                ];
+            }
+
+            if ($response->status() >= 500) {
+                throw new OdooConnectionException('Odoo service is temporarily unavailable');
+            }
+
+            $errorData = $response->json();
+            $errorMessage = 'Failed to update client in Odoo';
+            
+            if (isset($errorData['result']['message'])) {
+                $errorMessage = $errorData['result']['message'];
+            } elseif (isset($errorData['message'])) {
+                $errorMessage = $errorData['message'];
+            }
+            
+            Log::warning('Odoo client update failed', [
+                'client_id' => $clientId,
+                'client_data' => $clientData,
+                'status' => $response->status(),
+                'response' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $errorMessage
+            ];
+
+        } catch (OdooConnectionException $e) {
+            throw $e;
+        } catch (Exception $e) {
+            Log::error('Odoo client update failed', [
+                'client_id' => $clientId,
+                'client_data' => $clientData,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Unable to update client in Odoo: ' . $e->getMessage()
+            ];
+        }
+    }
+
     public function submitContactUs(array $contactData): array
     {
         try {

@@ -63,7 +63,6 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('car-models/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarModelController::class, 'restoreByOdooId']);
 
     Route::post('users', [App\Http\Controllers\Api\Odoo\UserController::class, 'store']);
-    Route::post('users/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\UserController::class, 'updateByOdooId']);
     Route::post('users/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\UserController::class, 'deleteByOdooId']);
     Route::post('users/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\UserController::class, 'restoreByOdooId']);
 

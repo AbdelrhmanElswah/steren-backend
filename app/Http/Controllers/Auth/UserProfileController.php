@@ -10,6 +10,7 @@ use App\Http\Requests\Auth\SetFavoritesRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Models\Media;
+use App\Services\OdooService;
 use App\Traits\ApiResponse;
 use App\Traits\HandlesFileUpload;
 use Illuminate\Http\Request;
@@ -22,6 +23,10 @@ use Illuminate\Support\Facades\Log;
 class UserProfileController extends Controller
 {
     use ApiResponse, HandlesFileUpload;
+
+    public function __construct(
+        private OdooService $odooService
+    ) {}
 
     /**
      * Update user profile information
@@ -59,6 +64,9 @@ class UserProfileController extends Controller
             }
 
             DB::commit();
+
+            // Sync to Odoo if user has partner_id/odoo_id
+            $this->syncToOdoo($user, $validated);
 
             Log::info('User profile updated successfully', [
                 'user_id' => $user->id,
@@ -144,6 +152,9 @@ class UserProfileController extends Controller
             ]);
 
             DB::commit();
+
+            // Sync profile picture to Odoo
+            $this->syncProfilePictureToOdoo($user, $media->public_url ?? $uploadResult['url']);
 
             Log::info('User profile picture updated successfully', [
                 'user_id' => $user->id,
@@ -411,6 +422,130 @@ class UserProfileController extends Controller
             ]);
             
             return $this->errorResponse('Failed to retrieve profile: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Sync user profile updates to Odoo
+     */
+    private function syncToOdoo(User $user, array $updatedFields): void
+    {
+        // Only sync if user has an Odoo client ID
+        if (!$user->partner_id && !$user->odoo_id) {
+            return;
+        }
+
+        try {
+            // Get Odoo client ID (prefer partner_id, fallback to odoo_id)
+            $clientId = $user->partner_id ?: $user->odoo_id;
+            
+            if (!$clientId) {
+                return;
+            }
+
+            // Prepare data for Odoo (only include fields that were updated)
+            $odooData = [];
+
+            if (isset($updatedFields['full_name'])) {
+                $odooData['full_name'] = $updatedFields['full_name'];
+            }
+
+            if (isset($updatedFields['phone'])) {
+                $odooData['phone'] = $updatedFields['phone'];
+            }
+
+            if (isset($updatedFields['email'])) {
+                $odooData['email'] = $updatedFields['email'];
+            }
+
+            if (isset($updatedFields['birthday'])) {
+                // Map birthday to birth_date in YYYY-MM-DD format
+                $birthday = $updatedFields['birthday'];
+                if ($birthday instanceof \Carbon\Carbon || $birthday instanceof \DateTime) {
+                    $odooData['birth_date'] = $birthday->format('Y-m-d');
+                } elseif (is_string($birthday)) {
+                    // Try to parse and format the date string
+                    try {
+                        $parsedDate = \Carbon\Carbon::parse($birthday);
+                        $odooData['birth_date'] = $parsedDate->format('Y-m-d');
+                    } catch (\Exception $e) {
+                        // If parsing fails, use as-is (assuming it's already in YYYY-MM-DD format)
+                        $odooData['birth_date'] = $birthday;
+                    }
+                } else {
+                    $odooData['birth_date'] = $birthday;
+                }
+            }
+
+            // Only call Odoo if there's data to sync
+            if (!empty($odooData)) {
+                $result = $this->odooService->updateClient((int) $clientId, $odooData);
+                
+                if ($result['success']) {
+                    Log::info('User profile synced to Odoo successfully', [
+                        'user_id' => $user->id,
+                        'client_id' => $clientId,
+                        'synced_fields' => array_keys($odooData)
+                    ]);
+                } else {
+                    Log::warning('Failed to sync user profile to Odoo', [
+                        'user_id' => $user->id,
+                        'client_id' => $clientId,
+                        'error' => $result['message'] ?? 'Unknown error'
+                    ]);
+                }
+            }
+
+        } catch (\Exception $e) {
+            // Don't fail the request if Odoo sync fails, just log it
+            Log::error('Error syncing user profile to Odoo', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Sync profile picture to Odoo
+     */
+    private function syncProfilePictureToOdoo(User $user, string $profilePictureUrl): void
+    {
+        // Only sync if user has an Odoo client ID
+        if (!$user->partner_id && !$user->odoo_id) {
+            return;
+        }
+
+        try {
+            // Get Odoo client ID (prefer partner_id, fallback to odoo_id)
+            $clientId = $user->partner_id ?: $user->odoo_id;
+            
+            if (!$clientId) {
+                return;
+            }
+
+            $result = $this->odooService->updateClient((int) $clientId, [
+                'profile_img' => $profilePictureUrl
+            ]);
+            
+            if ($result['success']) {
+                Log::info('Profile picture synced to Odoo successfully', [
+                    'user_id' => $user->id,
+                    'client_id' => $clientId
+                ]);
+            } else {
+                Log::warning('Failed to sync profile picture to Odoo', [
+                    'user_id' => $user->id,
+                    'client_id' => $clientId,
+                    'error' => $result['message'] ?? 'Unknown error'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            // Don't fail the request if Odoo sync fails, just log it
+            Log::error('Error syncing profile picture to Odoo', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 
