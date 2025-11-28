@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Http\Requests\Auth\UpdatePasswordRequest;
 use App\Http\Requests\Auth\UpdateProfilePictureRequest;
+use App\Http\Requests\Auth\UpdateProfileCompleteRequest;
 use App\Http\Requests\Auth\SetFavoritesRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
@@ -173,6 +174,173 @@ class UserProfileController extends Controller
             ]);
             
             return $this->errorResponse('Failed to update profile picture: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Update user profile information and picture in one request
+     */
+    public function updateProfileComplete(UpdateProfileCompleteRequest $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $validated = $request->validated();
+            $hasProfilePicture = $request->hasFile('profile_picture');
+
+            DB::beginTransaction();
+
+            // Update user information (if provided)
+            $profileData = [];
+            if (isset($validated['full_name'])) {
+                $profileData['full_name'] = $validated['full_name'];
+            }
+            if (isset($validated['email'])) {
+                $profileData['email'] = $validated['email'];
+            }
+            if (isset($validated['phone'])) {
+                $profileData['phone'] = $validated['phone'];
+            }
+            if (isset($validated['birthday'])) {
+                $profileData['birthday'] = $validated['birthday'];
+            }
+            if (isset($validated['notifications_enabled'])) {
+                $profileData['notifications_enabled'] = $validated['notifications_enabled'];
+            }
+            if (isset($validated['marketing_emails_enabled'])) {
+                $profileData['marketing_emails_enabled'] = $validated['marketing_emails_enabled'];
+            }
+
+            if (!empty($profileData)) {
+                $user->update($profileData);
+            }
+
+            // Update notification preferences if provided
+            if (isset($validated['notification_preferences'])) {
+                $user->update([
+                    'notification_preferences' => $validated['notification_preferences']
+                ]);
+            }
+
+            // Update language if provided
+            if (isset($validated['language_id'])) {
+                $user->update([
+                    'language_id' => $validated['language_id']
+                ]);
+            }
+
+            // Handle profile picture update if provided
+            $profilePictureUrl = null;
+            if ($hasProfilePicture) {
+                $file = $request->file('profile_picture');
+                
+                // Delete old profile picture/media if it exists
+                $this->deleteOldProfilePicture($user);
+
+                // Upload new profile picture to S3
+                $uploadResult = $this->uploadFileToS3($file, $user, 'profile-pictures');
+
+                // Create media record
+                $media = Media::create([
+                    'media' => $uploadResult['file_name'],
+                    'path_file_name' => $uploadResult['path'],
+                    'file_type' => $uploadResult['file_type'],
+                    'modelable_id' => $user->id,
+                    'modelable_type' => get_class($user),
+                    'info' => 'profile_picture',
+                    'order' => 0
+                ]);
+
+                $profilePictureUrl = $media->public_url ?? $uploadResult['url'];
+            }
+
+            DB::commit();
+
+            // Sync to Odoo if user has partner_id/odoo_id
+            // Prepare data for Odoo sync
+            $odooData = [];
+            
+            // Add profile fields that were updated
+            if (isset($validated['full_name'])) {
+                $odooData['full_name'] = $validated['full_name'];
+            }
+            if (isset($validated['phone'])) {
+                $odooData['phone'] = $validated['phone'];
+            }
+            if (isset($validated['email'])) {
+                $odooData['email'] = $validated['email'];
+            }
+            if (isset($validated['birthday'])) {
+                // Map birthday to birth_date in YYYY-MM-DD format
+                $birthday = $validated['birthday'];
+                if ($birthday instanceof \Carbon\Carbon || $birthday instanceof \DateTime) {
+                    $odooData['birth_date'] = $birthday->format('Y-m-d');
+                } elseif (is_string($birthday)) {
+                    try {
+                        $parsedDate = \Carbon\Carbon::parse($birthday);
+                        $odooData['birth_date'] = $parsedDate->format('Y-m-d');
+                    } catch (\Exception $e) {
+                        $odooData['birth_date'] = $birthday;
+                    }
+                } else {
+                    $odooData['birth_date'] = $birthday;
+                }
+            }
+
+            // Add profile picture URL if updated
+            if ($hasProfilePicture && $profilePictureUrl) {
+                $odooData['profile_img'] = $profilePictureUrl;
+            }
+
+            // Sync to Odoo if there's data to sync
+            if (!empty($odooData) && ($user->partner_id || $user->odoo_id)) {
+                $clientId = $user->partner_id ?: $user->odoo_id;
+                if ($clientId) {
+                    $result = $this->odooService->updateClient((int) $clientId, $odooData);
+                    
+                    if ($result['success']) {
+                        Log::info('User profile and picture synced to Odoo successfully', [
+                            'user_id' => $user->id,
+                            'client_id' => $clientId,
+                            'synced_fields' => array_keys($odooData)
+                        ]);
+                    } else {
+                        Log::warning('Failed to sync user profile to Odoo', [
+                            'user_id' => $user->id,
+                            'client_id' => $clientId,
+                            'error' => $result['message'] ?? 'Unknown error'
+                        ]);
+                    }
+                }
+            }
+
+            // Refresh user to get latest data
+            $user->refresh();
+            $user->load('profilePictureMedia');
+
+            Log::info('User profile and picture updated successfully', [
+                'user_id' => $user->id,
+                'updated_fields' => array_keys($validated),
+                'profile_picture_updated' => $hasProfilePicture
+            ]);
+
+            $responseData = [
+                'user' => new UserResource($user),
+            ];
+
+            if ($hasProfilePicture && $profilePictureUrl) {
+                $responseData['profile_picture'] = $profilePictureUrl;
+            }
+
+            return $this->successResponse($responseData, 'Profile updated successfully');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to update user profile and picture', [
+                'user_id' => $request->user()->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return $this->errorResponse('Failed to update profile: ' . $e->getMessage(), 500);
         }
     }
 
