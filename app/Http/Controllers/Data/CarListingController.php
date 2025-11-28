@@ -633,7 +633,6 @@ class CarListingController extends Controller
                     'mileage_efficiency' => $listing->formatted_mileage_efficiency,
                     'dimensions' => $listing->formatted_dimensions,
                 ],
-                'features' => $listing->features ?? null,
                 'badges' => $listing->active_badges,
                 'status_badge' => $listing->status_badge,
                 'similar_cars' => $similarCars,
