@@ -25,6 +25,8 @@ class UpdateUserRequest extends FormRequest
             'full_name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|max:255',
             'phone' => 'sometimes|string|max:20',
+            'birth_date' => 'sometimes|date|date_format:Y-m-d|before:today',
+            'profile_img' => 'sometimes|nullable|string|url|max:2048',
         ];
     }
 
@@ -35,7 +37,13 @@ class UpdateUserRequest extends FormRequest
             'partner_id.string' => 'Partner id must be a string',
             'full_name.string' => 'Full name must be a string',
             'email.string' => 'Email must be a string',
+            'email.email' => 'Email must be a valid email address',
             'phone.string' => 'Phone must be a string',
+            'birth_date.date' => 'Birth date must be a valid date',
+            'birth_date.date_format' => 'Birth date must be in YYYY-MM-DD format',
+            'birth_date.before' => 'Birth date must be before today',
+            'profile_img.url' => 'Profile image must be a valid URL',
+            'profile_img.max' => 'Profile image URL cannot exceed 2048 characters',
         ];
     }
 
@@ -47,6 +55,8 @@ class UpdateUserRequest extends FormRequest
             'full_name' => 'full name',
             'email' => 'email',
             'phone' => 'phone',
+            'birth_date' => 'birth date',
+            'profile_img' => 'profile image',
         ];
     }
 }
