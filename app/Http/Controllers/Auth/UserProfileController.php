@@ -696,7 +696,6 @@ class UserProfileController extends Controller
                         $authorizedAgencie['brand'] = [
                             'id' => $dealerApplication->brand->id,
                             'name' => $dealerApplication->brand->name,
-                            'odoo_id' => $dealerApplication->brand->odoo_id,
                         ];
                     }
                 }
