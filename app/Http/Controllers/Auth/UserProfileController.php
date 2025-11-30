@@ -422,16 +422,109 @@ class UserProfileController extends Controller
                 $responseData['profile_picture'] = $profilePictureUrl;
             }
 
+            // Add debug information to response (always enabled for debugging)
+            // Can be disabled by setting ENABLE_API_DEBUG=false in .env
+            $enableDebug = env('ENABLE_API_DEBUG', true);
+            if ($enableDebug !== false) {
+                $debugInfo = [
+                    'debug' => [
+                        'request_info' => [
+                            'content_type' => $request->header('Content-Type'),
+                            'method' => $request->method(),
+                            'has_profile_picture_file' => $hasProfilePicture,
+                        ],
+                        'field_detection' => [
+                            'request_has_full_name' => $request->has('full_name'),
+                            'request_has_email' => $request->has('email'),
+                            'request_has_phone' => $request->has('phone'),
+                            'request_has_birthday' => $request->has('birthday'),
+                            'request_has_notifications_enabled' => $request->has('notifications_enabled'),
+                            'request_has_marketing_emails_enabled' => $request->has('marketing_emails_enabled'),
+                            'request_has_current_password' => $request->has('current_password'),
+                            'request_has_new_password' => $request->has('new_password'),
+                        ],
+                        'request_input_values' => [
+                            'full_name' => $request->input('full_name'),
+                            'email' => $request->input('email'),
+                            'phone' => $request->input('phone'),
+                            'birthday' => $request->input('birthday'),
+                            'notifications_enabled' => $request->input('notifications_enabled'),
+                            'marketing_emails_enabled' => $request->input('marketing_emails_enabled'),
+                        ],
+                        'validation' => [
+                            'validated_keys' => array_keys($validated),
+                            'validated_fields_count' => count($validated),
+                            'has_full_name_in_validated' => array_key_exists('full_name', $validated),
+                            'has_email_in_validated' => array_key_exists('email', $validated),
+                            'has_phone_in_validated' => array_key_exists('phone', $validated),
+                            'has_birthday_in_validated' => array_key_exists('birthday', $validated),
+                            'has_notifications_enabled_in_validated' => array_key_exists('notifications_enabled', $validated),
+                            'has_marketing_emails_enabled_in_validated' => array_key_exists('marketing_emails_enabled', $validated),
+                        ],
+                        'profile_data_to_update' => [
+                            'fields_count' => count($profileData),
+                            'fields' => array_keys($profileData),
+                            'values' => $profileData, // Safe to show - already validated
+                        ],
+                        'update_status' => [
+                            'profile_data_updated' => !empty($profileData),
+                            'password_update_attempted' => isset($validated['new_password']),
+                            'password_update_successful' => isset($validated['new_password']) && isset($validated['current_password']),
+                            'profile_picture_updated' => $hasProfilePicture,
+                            'notification_preferences_updated' => isset($validated['notification_preferences']),
+                            'language_updated' => isset($validated['language_id']),
+                        ],
+                        'request_all_keys' => array_keys($request->all()),
+                        'request_all_count' => count($request->all()),
+                    ]
+                ];
+                
+                // Don't expose password values in debug output
+                if (isset($validated['current_password'])) {
+                    $debugInfo['debug']['validation']['has_current_password'] = true;
+                    $debugInfo['debug']['validation']['current_password_length'] = strlen($validated['current_password']);
+                }
+                if (isset($validated['new_password'])) {
+                    $debugInfo['debug']['validation']['has_new_password'] = true;
+                    $debugInfo['debug']['validation']['new_password_length'] = strlen($validated['new_password']);
+                }
+                
+                $responseData = array_merge($responseData, $debugInfo);
+            }
+
             return $this->successResponse($responseData, 'Profile updated successfully');
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to update user profile and picture', [
                 'user_id' => $request->user()->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
-            return $this->errorResponse('Failed to update profile: ' . $e->getMessage(), 500);
+            $errorResponse = [
+                'message' => 'Failed to update profile: ' . $e->getMessage(),
+            ];
+            
+            // Add debug information to error response (always enabled for debugging)
+            // Can be disabled by setting ENABLE_API_DEBUG=false in .env
+            $enableDebug = env('ENABLE_API_DEBUG', true);
+            if ($enableDebug !== false) {
+                $errorResponse['debug'] = [
+                    'error' => $e->getMessage(),
+                    'error_class' => get_class($e),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'request_info' => [
+                        'content_type' => $request->header('Content-Type'),
+                        'method' => $request->method(),
+                        'validated_keys' => array_keys($request->validated()),
+                        'request_all_keys' => array_keys($request->all()),
+                    ],
+                ];
+            }
+            
+            return $this->errorResponse($errorResponse['message'], 500, $errorResponse['debug'] ?? []);
         }
     }
 
