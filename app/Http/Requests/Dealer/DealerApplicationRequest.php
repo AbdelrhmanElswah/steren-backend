@@ -44,6 +44,11 @@ class DealerApplicationRequest extends FormRequest
                 'max:255',
                 Rule::requiredIf($this->input('seller_type') === 'authorized')
             ],
+            'brand_id' => [
+                'nullable',
+                'integer',
+                'exists:car_brands,id',
+            ],
             'authorization_letter' => [
                 'nullable',
                 'file',

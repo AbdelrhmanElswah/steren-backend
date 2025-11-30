@@ -12,6 +12,7 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Models\Media;
 use App\Models\AuthorizedAgency;
+use App\Models\DealerApplication;
 use App\Services\OdooService;
 use App\Traits\ApiResponse;
 use App\Traits\HandlesFileUpload;
@@ -610,15 +611,8 @@ class UserProfileController extends Controller
             $latestApplication = $user->latestDealerApplication;
             $activeApplication = $user->activeDealerApplication;
             
-            // Check if user is an authorized agency
-            $isAuthorizedAgency = false;
-            if ($user->partner_id) {
-                $isAuthorizedAgency = AuthorizedAgency::where('partner_id', $user->partner_id)->exists();
-            }
-            
             $dealerStatus = [
                 'has_application' => $latestApplication !== null,
-                'is_authorized_agencie' => $isAuthorizedAgency,
             ];
             
             if ($latestApplication) {
@@ -679,9 +673,39 @@ class UserProfileController extends Controller
                 $dealerStatus['message'] = 'No dealer application found';
             }
             
+            // Build authorized agency data
+            $authorizedAgencie = [
+                'is_authorized_agencie' => false,
+                'brand' => null,
+            ];
+            
+            if ($user->partner_id) {
+                // Check if user is an authorized agency
+                $authorizedAgency = AuthorizedAgency::where('partner_id', $user->partner_id)->first();
+                
+                if ($authorizedAgency) {
+                    $authorizedAgencie['is_authorized_agencie'] = true;
+                    
+                    // Get dealer application by partner_id to find the brand
+                    $dealerApplication = DealerApplication::where('partner_id', $user->partner_id)
+                        ->with('brand')
+                        ->latest()
+                        ->first();
+                    
+                    if ($dealerApplication && $dealerApplication->brand) {
+                        $authorizedAgencie['brand'] = [
+                            'id' => $dealerApplication->brand->id,
+                            'name' => $dealerApplication->brand->name,
+                            'odoo_id' => $dealerApplication->brand->odoo_id,
+                        ];
+                    }
+                }
+            }
+            
             return $this->successResponse([
                 'user' => new UserResource($user),
                 'dealer_status' => $dealerStatus,
+                'authorized_agencie' => $authorizedAgencie,
             ], 'Profile information retrieved successfully');
 
         } catch (\Exception $e) {

@@ -24,6 +24,7 @@ class DealerApplication extends Model
         'city_address',
         'automotive_brand_represented',
         'business_license_number',
+        'brand_id',
         'status_id',
         'rejection_reason',
         'reviewed_at',
@@ -120,6 +121,14 @@ class DealerApplication extends Model
     public function subscriptionPlan()
     {
         return $this->belongsTo(SubscriptionPlan::class);
+    }
+
+    /**
+     * Get the brand
+     */
+    public function brand()
+    {
+        return $this->belongsTo(CarBrand::class, 'brand_id');
     }
 
     /**
