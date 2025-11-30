@@ -39,6 +39,11 @@ class UpdateProfileCompleteRequest extends FormRequest
             
             // Profile picture (optional)
             'profile_picture' => 'sometimes|file|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
+            
+            // Password update fields (optional, but all required together if updating password)
+            'current_password' => 'sometimes|required_with:new_password|string',
+            'new_password' => 'sometimes|required_with:current_password|string|min:8|confirmed',
+            'new_password_confirmation' => 'sometimes|required_with:new_password|string|min:8',
         ];
     }
 
@@ -61,6 +66,15 @@ class UpdateProfileCompleteRequest extends FormRequest
             'profile_picture.image' => 'Profile picture must be an image',
             'profile_picture.mimes' => 'Profile picture must be a JPEG, PNG, JPG, GIF, or WebP file',
             'profile_picture.max' => 'Profile picture cannot exceed 5MB',
+            'current_password.required_with' => 'Current password is required when updating password',
+            'current_password.string' => 'Current password must be a string',
+            'new_password.required_with' => 'New password is required when updating password',
+            'new_password.string' => 'New password must be a string',
+            'new_password.min' => 'New password must be at least 8 characters',
+            'new_password.confirmed' => 'New password confirmation does not match',
+            'new_password_confirmation.required_with' => 'New password confirmation is required',
+            'new_password_confirmation.string' => 'New password confirmation must be a string',
+            'new_password_confirmation.min' => 'New password confirmation must be at least 8 characters',
         ];
     }
 
@@ -76,7 +90,34 @@ class UpdateProfileCompleteRequest extends FormRequest
             'notification_preferences' => 'notification preferences',
             'language_id' => 'language',
             'profile_picture' => 'profile picture',
+            'current_password' => 'current password',
+            'new_password' => 'new password',
+            'new_password_confirmation' => 'new password confirmation',
         ];
+    }
+
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            // If any password field is provided, all three must be provided
+            $hasCurrentPassword = $this->has('current_password');
+            $hasNewPassword = $this->has('new_password');
+            $hasNewPasswordConfirmation = $this->has('new_password_confirmation');
+
+            // Check if any password field is provided
+            if ($hasCurrentPassword || $hasNewPassword || $hasNewPasswordConfirmation) {
+                // If any is provided, all must be provided
+                if (!$hasCurrentPassword || !$hasNewPassword || !$hasNewPasswordConfirmation) {
+                    $validator->errors()->add(
+                        'current_password',
+                        'To update password, you must provide current_password, new_password, and new_password_confirmation together.'
+                    );
+                }
+            }
+        });
     }
 }
 

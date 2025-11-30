@@ -228,6 +228,24 @@ class UserProfileController extends Controller
                 ]);
             }
 
+            // Handle password update if provided
+            if (isset($validated['new_password'])) {
+                // Verify current password
+                if (!Hash::check($validated['current_password'], $user->password)) {
+                    DB::rollBack();
+                    return $this->errorResponse('Current password is incorrect', 400);
+                }
+
+                // Update password
+                $user->update([
+                    'password' => Hash::make($validated['new_password'])
+                ]);
+
+                Log::info('User password updated via profile complete', [
+                    'user_id' => $user->id
+                ]);
+            }
+
             // Handle profile picture update if provided
             $profilePictureUrl = null;
             if ($hasProfilePicture) {
