@@ -162,10 +162,13 @@ class AuthService
 
     public function login(string $identifier, string $password): array
     {
-        $user = User::query()
-            ->when(str_contains($identifier, '@'), fn ($q) => $q->where('email', $identifier))
-            ->when(!str_contains($identifier, '@'), fn ($q) => $q->orWhere('phone', $identifier))
-            ->first();
+        // Check if identifier is an email
+        if (str_contains($identifier, '@')) {
+            $user = User::where('email', $identifier)->first();
+        } else {
+            // For phone numbers, use flexible matching
+            $user = $this->findUserByPhone($identifier);
+        }
 
         if (!$user || !Hash::check($password, (string) $user->password)) {
             throw new AuthenticationException('Invalid credentials');
@@ -178,6 +181,131 @@ class AuthService
             'user' => $user,
             'token' => $token,
         ];
+    }
+
+    /**
+     * Find user by phone number with flexible format matching
+     * Handles various phone number formats:
+     * - +9641559442525
+     * - 9641559442525
+     * - 1559442525
+     */
+    private function findUserByPhone(string $phone): ?User
+    {
+        // Normalize input phone (remove all non-numeric)
+        $cleanInput = preg_replace('/[^0-9]/', '', $phone);
+        
+        if (empty($cleanInput)) {
+            return null;
+        }
+        
+        // Get all phone variations to try (exact matches first - fastest)
+        $phoneVariations = $this->getPhoneVariations($phone);
+        
+        // First, try exact matches with all variations
+        $user = User::whereIn('phone', $phoneVariations)->first();
+        if ($user) {
+            return $user;
+        }
+        
+        // Prepare search patterns for flexible matching
+        $searchPatterns = [];
+        
+        // If input has country code, also search without it
+        if (str_starts_with($cleanInput, '964') && strlen($cleanInput) > 3) {
+            $withoutCountryCode = substr($cleanInput, 3);
+            $searchPatterns[] = $withoutCountryCode;
+            $searchPatterns[] = $cleanInput;
+        } else {
+            // If input doesn't have country code, search with and without
+            $searchPatterns[] = $cleanInput;
+            $withCountryCode = '964' . $cleanInput;
+            $searchPatterns[] = $withCountryCode;
+        }
+        
+        // Query potential matches using LIKE (more flexible than exact match)
+        $candidates = User::whereNotNull('phone')
+            ->where('phone', '!=', '')
+            ->where(function ($query) use ($searchPatterns) {
+                foreach ($searchPatterns as $pattern) {
+                    $query->orWhere('phone', 'like', '%' . $pattern)
+                          ->orWhere('phone', 'like', '%+' . $pattern);
+                }
+            })
+            ->get();
+        
+        // Verify each candidate with normalized comparison
+        foreach ($candidates as $candidate) {
+            $storedClean = preg_replace('/[^0-9]/', '', $candidate->phone);
+            
+            // Exact normalized match
+            if ($storedClean === $cleanInput) {
+                return $candidate;
+            }
+            
+            // Match when stored has country code but input doesn't
+            if (str_starts_with($storedClean, '964') && strlen($storedClean) > 3) {
+                $storedWithoutCountry = substr($storedClean, 3);
+                if ($storedWithoutCountry === $cleanInput) {
+                    return $candidate;
+                }
+            }
+            
+            // Match when input has country code but stored doesn't
+            if (str_starts_with($cleanInput, '964') && strlen($cleanInput) > 3) {
+                $inputWithoutCountry = substr($cleanInput, 3);
+                if ($inputWithoutCountry === $storedClean) {
+                    return $candidate;
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Generate all possible phone number variations for flexible matching
+     * 
+     * Examples:
+     * Input: "9641559442525" -> Returns: ["9641559442525", "+9641559442525"]
+     * Input: "1559442525" -> Returns: ["1559442525", "9641559442525", "+9641559442525"]
+     * Input: "+9641559442525" -> Returns: ["+9641559442525", "9641559442525"]
+     */
+    private function getPhoneVariations(string $phone): array
+    {
+        // Remove all non-numeric characters to get clean phone
+        $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+        
+        $variations = [];
+        
+        // Add exact input as-is (preserve original format with + if present)
+        if ($phone !== $cleanPhone) {
+            $variations[] = $phone; // Original with + or other characters
+        }
+        
+        // Add clean version (digits only)
+        $variations[] = $cleanPhone;
+        
+        // If the clean phone doesn't start with country code, add variations with country code
+        if (!str_starts_with($cleanPhone, '964')) {
+            // Add with country code (no +)
+            $variations[] = '964' . $cleanPhone;
+            // Add with country code (with +)
+            $variations[] = '+964' . $cleanPhone;
+        } else {
+            // If it starts with 964, also try with + prefix
+            $variations[] = '+' . $cleanPhone;
+            
+            // Also try without country code (remove 964 prefix)
+            if (strlen($cleanPhone) > 3) {
+                $variations[] = substr($cleanPhone, 3); // Remove 964 prefix
+            }
+        }
+        
+        // Remove duplicates and empty values
+        $variations = array_filter(array_unique($variations));
+        
+        return array_values($variations);
     }
 
     public function sendOtp(string $phone): array
