@@ -469,27 +469,65 @@ class AuthService
         $user = User::query()->where('phone', $phone)->first();
         
         if (!$user) {
+            Log::warning('Password reset attempt for non-existent phone', [
+                'phone' => $phone,
+            ]);
             throw ValidationException::withMessages([
                 'phone' => ['This phone number is not registered in our system.'],
             ]);
         }
 
+        Log::info('Password reset - User found', [
+            'user_id' => $user->id,
+            'phone' => $phone,
+            'email' => $user->email,
+            'stored_phone' => $user->phone,
+        ]);
+
         // Check if password reset OTP was verified
         if (!$this->isPasswordResetVerified($phone)) {
+            Log::warning('Password reset attempt without OTP verification', [
+                'user_id' => $user->id,
+                'phone' => $phone,
+                'email' => $user->email,
+            ]);
             throw ValidationException::withMessages([
                 'phone' => ['Please verify the OTP code first before resetting your password.'],
             ]);
         }
 
-        // Update password
-        $user->update(['password' => Hash::make($newPassword)]);
+        // Store old password hash for logging
+        $oldPasswordHash = $user->password;
+        $newPasswordHash = Hash::make($newPassword);
+
+        // Update password in a transaction to ensure it's persisted
+        DB::transaction(function () use ($user, $newPasswordHash, $newPassword) {
+            $user->password = $newPasswordHash;
+            $user->save();
+        });
+
+        // Refresh user to get latest data from database
+        $user->refresh();
+
+        // Verify the password was actually updated by checking if new password works
+        if (!Hash::check($newPassword, $user->password)) {
+            Log::error('Password verification failed after reset', [
+                'user_id' => $user->id,
+                'phone' => $phone,
+                'email' => $user->email,
+            ]);
+            throw new \Exception('Password update verification failed. Please try again.');
+        }
 
         // Clear the password reset verification flag
         $this->clearPasswordResetVerification($phone);
 
-        Log::info('Password reset completed', [
+        Log::info('Password reset completed successfully', [
             'user_id' => $user->id,
             'phone' => $phone,
+            'email' => $user->email,
+            'password_updated' => true,
+            'password_verification' => true,
         ]);
 
         return ['updated' => true, 'user' => $user];

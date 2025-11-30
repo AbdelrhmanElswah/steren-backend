@@ -175,7 +175,7 @@ Complete a pending account (e.g., after social login missing required fields).
 ## 🔑 Password Management
 
 ### 10. **POST** `/api/auth/password/forgot`
-Request password reset code.
+Request password reset OTP code.
 
 **Auth Required:** ❌ No
 
@@ -187,14 +187,26 @@ Request password reset code.
 ```
 
 **Response:**
-- Returns reset code sent status
+```json
+{
+  "success": true,
+  "message": "Reset code sent",
+  "data": {
+    "sent": true,
+    "otp": "1234"
+  }
+}
+```
 
-**Note:** Sends OTP/reset code to the phone number for password reset.
+**Note:** 
+- Sends OTP/reset code to the phone number for password reset
+- Returns OTP code in response (for testing purposes only, will be removed in production)
+- OTP is sent via WhatsApp for Iraq numbers
 
 ---
 
-### 11. **POST** `/api/auth/password/reset`
-Complete password reset using code.
+### 11. **POST** `/api/auth/password/verify-otp`
+Verify OTP code for password reset.
 
 **Auth Required:** ❌ No
 
@@ -202,19 +214,54 @@ Complete password reset using code.
 ```json
 {
   "phone": "9647502171212",
-  "code": "123456",
-  "password": "newpassword123"
+  "code": "1234"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "OTP verified successfully",
+  "data": {
+    "verified": true
+  }
+}
+```
+
+**Note:** 
+- Verifies the OTP code sent to phone for password reset
+- Must be called before `/api/auth/password/reset`
+- Accepts test code "1234" for testing purposes (will be removed in production)
+- Verification status is stored in cache for 10 minutes
+
+---
+
+### 12. **POST** `/api/auth/password/reset`
+Complete password reset with new password.
+
+**Auth Required:** ❌ No
+
+**Request Body:**
+```json
+{
+  "phone": "9647502171212",
+  "password": "newpassword123",
+  "password_confirmation": "newpassword123"
 }
 ```
 
 **Response:**
 - Success message
 
-**Note:** Resets password after verifying the reset code sent to phone.
+**Note:** 
+- Resets password after OTP has been verified
+- Requires phone number to be verified first via `/api/auth/password/verify-otp`
+- Password must be confirmed with `password_confirmation` field
 
 ---
 
-### 12. **PUT** `/api/auth/profile/password`
+### 13. **PUT** `/api/auth/profile/password`
 Update password for authenticated user.
 
 **Auth Required:** ✅ Yes (Sanctum)
@@ -531,6 +578,7 @@ Get current authenticated user (Laravel default route).
 - `POST /api/auth/send-otp`
 - `POST /api/auth/social-login`
 - `POST /api/auth/password/forgot`
+- `POST /api/auth/password/verify-otp`
 - `POST /api/auth/password/reset`
 - `POST /api/client/create`
 - `GET /api/client/partner/{partnerId}`
@@ -572,8 +620,9 @@ Get current authenticated user (Laravel default route).
 2. If pending: `POST /api/auth/complete-pending-account` → Completes account
 
 ### Password Reset Flow:
-1. `POST /api/auth/password/forgot` → Sends reset code
-2. `POST /api/auth/password/reset` → Resets password with code
+1. `POST /api/auth/password/forgot` → Sends OTP code (returns OTP for testing)
+2. `POST /api/auth/password/verify-otp` → Verifies OTP code (accepts "1234" for testing)
+3. `POST /api/auth/password/reset` → Updates password (only phone + new password needed)
 
 ### Profile Update Flow:
 1. `PUT /api/auth/profile` or `PUT /api/auth/profile/complete` → Updates Laravel DB
@@ -615,5 +664,10 @@ Authorization: Bearer {token}
 
 5. **Password Security**:
    - Password changes require current password verification
-   - Password reset uses phone-based OTP verification
+   - Password reset uses phone-based OTP verification in 3 steps:
+     1. Request OTP via `/api/auth/password/forgot`
+     2. Verify OTP via `/api/auth/password/verify-otp`
+     3. Reset password via `/api/auth/password/reset`
+   - Test bypass code "1234" is accepted for OTP verification (testing only)
+   - OTP codes are returned in response for testing (will be removed in production)
 
