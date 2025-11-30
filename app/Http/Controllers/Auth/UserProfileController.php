@@ -688,7 +688,10 @@ class UserProfileController extends Controller
                     
                     // Get dealer application by partner_id to find the brand
                     $dealerApplication = DealerApplication::where('partner_id', $user->partner_id)
-                        ->with('brand')
+                        ->with(['brand.carModels' => function ($query) {
+                            $query->select('id', 'name', 'car_brand_id')
+                                  ->orderBy('name');
+                        }])
                         ->latest()
                         ->first();
                     
@@ -696,6 +699,12 @@ class UserProfileController extends Controller
                         $authorizedAgencie['brand'] = [
                             'id' => $dealerApplication->brand->id,
                             'name' => $dealerApplication->brand->name,
+                            'models' => $dealerApplication->brand->carModels->map(function ($model) {
+                                return [
+                                    'id' => $model->id,
+                                    'name' => $model->name,
+                                ];
+                            })->values()->toArray(),
                         ];
                     }
                 }
