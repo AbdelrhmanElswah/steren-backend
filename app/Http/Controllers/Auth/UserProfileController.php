@@ -191,8 +191,16 @@ class UserProfileController extends Controller
             Log::info('Profile complete update request received', [
                 'user_id' => $user->id,
                 'validated_keys' => array_keys($validated),
+                'validated_data' => $validated,
                 'has_profile_picture' => $hasProfilePicture,
                 'request_all' => $request->all(),
+                'request_has_full_name' => $request->has('full_name'),
+                'request_has_email' => $request->has('email'),
+                'request_has_phone' => $request->has('phone'),
+                'request_has_birthday' => $request->has('birthday'),
+                'request_input_full_name' => $request->input('full_name'),
+                'request_input_email' => $request->input('email'),
+                'content_type' => $request->header('Content-Type'),
             ]);
 
             DB::beginTransaction();
@@ -228,25 +236,31 @@ class UserProfileController extends Controller
             }
 
             // Update user information (if provided)
-            // Build profile data array from validated fields
+            // If a field is in $validated, it means it was sent AND passed validation
+            // Use array_key_exists to check presence, not isset (which returns false for null values)
             $profileData = [];
             
-            // Check if field exists in validated array (meaning it was sent and passed validation)
+            // Check if field exists in validated array (was sent and passed validation)
             if (array_key_exists('full_name', $validated)) {
                 $profileData['full_name'] = $validated['full_name'];
             }
+            
             if (array_key_exists('email', $validated)) {
                 $profileData['email'] = $validated['email'];
             }
+            
             if (array_key_exists('phone', $validated)) {
                 $profileData['phone'] = $validated['phone'];
             }
+            
             if (array_key_exists('birthday', $validated)) {
                 $profileData['birthday'] = $validated['birthday'];
             }
+            
             if (array_key_exists('notifications_enabled', $validated)) {
                 $profileData['notifications_enabled'] = $validated['notifications_enabled'];
             }
+            
             if (array_key_exists('marketing_emails_enabled', $validated)) {
                 $profileData['marketing_emails_enabled'] = $validated['marketing_emails_enabled'];
             }

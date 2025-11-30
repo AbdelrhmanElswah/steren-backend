@@ -97,6 +97,30 @@ class UpdateProfileCompleteRequest extends FormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     * This is especially important for multipart/form-data requests.
+     */
+    protected function prepareForValidation(): void
+    {
+        // Convert string boolean values to actual booleans for multipart/form-data
+        // This ensures boolean fields are properly validated
+        $data = [];
+        
+        if ($this->has('notifications_enabled')) {
+            $data['notifications_enabled'] = filter_var($this->input('notifications_enabled'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        }
+        
+        if ($this->has('marketing_emails_enabled')) {
+            $data['marketing_emails_enabled'] = filter_var($this->input('marketing_emails_enabled'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        }
+        
+        // Merge the converted data back into the request
+        if (!empty($data)) {
+            $this->merge($data);
+        }
+    }
+
+    /**
      * Configure the validator instance.
      */
     public function withValidator($validator)
