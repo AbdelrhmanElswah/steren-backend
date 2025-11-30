@@ -392,13 +392,13 @@ class AuthService
     {
         $user = User::query()->where('phone', $phone)->first();
         
-        // For security, always return success even if user doesn't exist
-        // This prevents user enumeration attacks
         if (!$user) {
             Log::info('Password reset requested for non-existent phone number', [
                 'phone' => $phone,
             ]);
-            return ['sent' => true];
+            throw ValidationException::withMessages([
+                'phone' => ['This phone number is not registered in our system.'],
+            ]);
         }
 
         $otp = $this->generateOtp();
@@ -417,11 +417,24 @@ class AuthService
             }
         }
 
+        Log::info('Password reset OTP sent', [
+            'user_id' => $user->id,
+            'phone' => $phone,
+        ]);
+
         return ['sent' => true, 'user' => $user];
     }
 
     public function completePasswordReset(string $phone, string $code, string $newPassword): array
     {
+        $user = User::query()->where('phone', $phone)->first();
+        
+        if (!$user) {
+            throw ValidationException::withMessages([
+                'phone' => ['This phone number is not registered in our system.'],
+            ]);
+        }
+
         if (!$this->validateOtp($this->phoneKey($phone), $code)) {
             throw ValidationException::withMessages([
                 'code' => ['Invalid code'],
@@ -429,8 +442,12 @@ class AuthService
         }
         $this->clearOtp($this->phoneKey($phone));
 
-        $user = User::query()->where('phone', $phone)->firstOrFail();
         $user->update(['password' => Hash::make($newPassword)]);
+
+        Log::info('Password reset completed', [
+            'user_id' => $user->id,
+            'phone' => $phone,
+        ]);
 
         return ['updated' => true, 'user' => $user];
     }
@@ -732,6 +749,7 @@ class AuthService
         $normalized = preg_replace('/[^0-9]/', '', $phone);
         return str_starts_with($normalized, '964');
     }
+
 }
 
 
