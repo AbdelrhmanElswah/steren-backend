@@ -187,31 +187,84 @@ class UserProfileController extends Controller
             $validated = $request->validated();
             $hasProfilePicture = $request->hasFile('profile_picture');
 
+            // Log what we received for debugging
+            Log::info('Profile complete update request received', [
+                'user_id' => $user->id,
+                'validated_keys' => array_keys($validated),
+                'has_profile_picture' => $hasProfilePicture,
+                'request_all' => $request->all(),
+            ]);
+
             DB::beginTransaction();
 
+            // FIRST: Validate password BEFORE updating anything else
+            // If password update is requested, verify current password FIRST
+            // This ensures if password is wrong, nothing else gets updated
+            if (isset($validated['new_password'])) {
+                // Verify current password BEFORE any updates
+                if (!Hash::check($validated['current_password'], $user->password)) {
+                    DB::rollBack();
+                    Log::warning('Password update failed - current password incorrect', [
+                        'user_id' => $user->id
+                    ]);
+                    return $this->errorResponse('Current password is incorrect', 400);
+                }
+                
+                Log::info('Password validation passed, proceeding with updates', [
+                    'user_id' => $user->id
+                ]);
+            }
+
             // Update user information (if provided)
+            // Build profile data array from validated fields
             $profileData = [];
-            if (isset($validated['full_name'])) {
+            
+            // Check if field exists in validated array (meaning it was sent and passed validation)
+            if (array_key_exists('full_name', $validated)) {
                 $profileData['full_name'] = $validated['full_name'];
             }
-            if (isset($validated['email'])) {
+            if (array_key_exists('email', $validated)) {
                 $profileData['email'] = $validated['email'];
             }
-            if (isset($validated['phone'])) {
+            if (array_key_exists('phone', $validated)) {
                 $profileData['phone'] = $validated['phone'];
             }
-            if (isset($validated['birthday'])) {
+            if (array_key_exists('birthday', $validated)) {
                 $profileData['birthday'] = $validated['birthday'];
             }
-            if (isset($validated['notifications_enabled'])) {
+            if (array_key_exists('notifications_enabled', $validated)) {
                 $profileData['notifications_enabled'] = $validated['notifications_enabled'];
             }
-            if (isset($validated['marketing_emails_enabled'])) {
+            if (array_key_exists('marketing_emails_enabled', $validated)) {
                 $profileData['marketing_emails_enabled'] = $validated['marketing_emails_enabled'];
             }
 
             if (!empty($profileData)) {
+                Log::info('Updating user profile data', [
+                    'user_id' => $user->id,
+                    'profile_data' => $profileData,
+                    'validated_keys' => array_keys($validated),
+                    'request_input' => $request->only(['full_name', 'email', 'phone', 'birthday'])
+                ]);
+                
                 $user->update($profileData);
+                
+                // Verify update succeeded
+                $user->refresh();
+                Log::info('User profile updated - verification', [
+                    'user_id' => $user->id,
+                    'updated_email' => $user->email,
+                    'updated_phone' => $user->phone,
+                    'updated_birthday' => $user->birthday,
+                ]);
+            } else {
+                Log::warning('No profile data to update', [
+                    'user_id' => $user->id,
+                    'validated_keys' => array_keys($validated),
+                    'validated_data' => $validated,
+                    'request_input' => $request->only(['full_name', 'email', 'phone', 'birthday']),
+                    'request_all' => $request->all()
+                ]);
             }
 
             // Update notification preferences if provided
@@ -228,15 +281,9 @@ class UserProfileController extends Controller
                 ]);
             }
 
-            // Handle password update if provided
+            // Update password if provided (validation already done above)
             if (isset($validated['new_password'])) {
-                // Verify current password
-                if (!Hash::check($validated['current_password'], $user->password)) {
-                    DB::rollBack();
-                    return $this->errorResponse('Current password is incorrect', 400);
-                }
-
-                // Update password
+                // Password was already validated above, now update it
                 $user->update([
                     'password' => Hash::make($validated['new_password'])
                 ]);

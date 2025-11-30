@@ -334,10 +334,11 @@ $data = json_decode($response->getBody(), true);
 
 1. **All fields are optional** - You can update any combination of fields
 2. **Password update requires all three password fields** - `current_password`, `new_password`, and `new_password_confirmation` must all be provided together
-3. **Password validation** - Current password must be correct, new password must be at least 8 characters and match confirmation
-4. **Odoo sync** - All profile updates (except password) are automatically synced to Odoo if user has `partner_id` or `odoo_id`
-5. **File upload** - Profile picture must be JPEG, PNG, JPG, GIF, or WebP format, max 5MB
-6. **Transaction safety** - All updates happen in a database transaction, so either all updates succeed or all fail
+3. **Password validation happens FIRST** - If password update is requested, current password is validated BEFORE any other updates. If password is incorrect, the entire request fails and nothing is updated (transaction rollback)
+4. **Password validation** - Current password must be correct, new password must be at least 8 characters and match confirmation
+5. **Odoo sync** - All profile updates (except password) are automatically synced to Odoo if user has `partner_id` or `odoo_id`
+6. **File upload** - Profile picture must be JPEG, PNG, JPG, GIF, or WebP format, max 5MB
+7. **Transaction safety** - All updates happen in a database transaction. Password validation happens first - if it fails, nothing else is updated
 
 ---
 
