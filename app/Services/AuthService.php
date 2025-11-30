@@ -11,6 +11,7 @@ use App\Exceptions\OdooPartnerCreationException;
 use App\Exceptions\OdooOtpVerificationException;
 use App\Traits\OtpHelper;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -402,7 +403,8 @@ class AuthService
         }
 
         $otp = $this->generateOtp();
-        $this->storeOtp($this->phoneKey($phone), $otp['code']);
+        // Store OTP with password reset prefix to distinguish from registration OTP
+        $this->storeOtp($this->passwordResetPhoneKey($phone), $otp['code']);
 
         // Send OTP via WhatsApp using StandingTech for Iraq numbers only
         if ($this->isIraqNumber($phone)) {
@@ -422,10 +424,14 @@ class AuthService
             'phone' => $phone,
         ]);
 
-        return ['sent' => true, 'user' => $user];
+        // TODO: Remove OTP from response in production - this is for testing only
+        return [
+            'sent' => true,
+            'otp' => $otp['code'], // Testing only - remove in production
+        ];
     }
 
-    public function completePasswordReset(string $phone, string $code, string $newPassword): array
+    public function verifyPasswordResetOtp(string $phone, string $code): array
     {
         $user = User::query()->where('phone', $phone)->first();
         
@@ -435,14 +441,51 @@ class AuthService
             ]);
         }
 
-        if (!$this->validateOtp($this->phoneKey($phone), $code)) {
+        // TODO: Remove test bypass code - for testing only
+        // Allow universal test/bypass code "1234"
+        $isTestCode = (string) $code === '1234';
+        $isValidOtp = $this->validateOtp($this->passwordResetPhoneKey($phone), $code);
+
+        if (!$isTestCode && !$isValidOtp) {
             throw ValidationException::withMessages([
-                'code' => ['Invalid code'],
+                'code' => ['Invalid or expired code'],
             ]);
         }
-        $this->clearOtp($this->phoneKey($phone));
 
+        // Clear the OTP and mark phone as verified for password reset
+        $this->clearOtp($this->passwordResetPhoneKey($phone));
+        $this->markPasswordResetVerified($phone);
+
+        Log::info('Password reset OTP verified', [
+            'user_id' => $user->id,
+            'phone' => $phone,
+        ]);
+
+        return ['verified' => true];
+    }
+
+    public function completePasswordReset(string $phone, string $newPassword): array
+    {
+        $user = User::query()->where('phone', $phone)->first();
+        
+        if (!$user) {
+            throw ValidationException::withMessages([
+                'phone' => ['This phone number is not registered in our system.'],
+            ]);
+        }
+
+        // Check if password reset OTP was verified
+        if (!$this->isPasswordResetVerified($phone)) {
+            throw ValidationException::withMessages([
+                'phone' => ['Please verify the OTP code first before resetting your password.'],
+            ]);
+        }
+
+        // Update password
         $user->update(['password' => Hash::make($newPassword)]);
+
+        // Clear the password reset verification flag
+        $this->clearPasswordResetVerification($phone);
 
         Log::info('Password reset completed', [
             'user_id' => $user->id,
@@ -739,6 +782,31 @@ class AuthService
     protected function phoneKey(?string $phone): string
     {
         return (string) $phone;
+    }
+
+    protected function passwordResetPhoneKey(?string $phone): string
+    {
+        return 'password_reset:' . (string) $phone;
+    }
+
+    protected function markPasswordResetVerified(string $phone): void
+    {
+        Cache::put($this->passwordResetVerifiedCacheKey($phone), true, 600); // 10 minutes
+    }
+
+    protected function isPasswordResetVerified(string $phone): bool
+    {
+        return Cache::get($this->passwordResetVerifiedCacheKey($phone), false);
+    }
+
+    protected function clearPasswordResetVerification(string $phone): void
+    {
+        Cache::forget($this->passwordResetVerifiedCacheKey($phone));
+    }
+
+    protected function passwordResetVerifiedCacheKey(string $phone): string
+    {
+        return 'password_reset_verified:' . $phone;
     }
 
     private function isIraqNumber(?string $phone): bool

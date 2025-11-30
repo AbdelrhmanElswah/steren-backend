@@ -13,6 +13,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SendOtpRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
 use App\Http\Requests\Auth\StartPasswordResetRequest;
+use App\Http\Requests\Auth\VerifyPasswordResetOtpRequest;
 use App\Http\Requests\Auth\CompletePasswordResetRequest;
 use App\Http\Requests\Auth\UpdatePartnerRequest;
 use App\Exceptions\OdooConnectionException;
@@ -145,11 +146,18 @@ class AuthController extends Controller
         return $this->successResponse(['sent' => $result['sent']], 'Reset code sent');
     }
 
+    public function verifyPasswordResetOtp(VerifyPasswordResetOtpRequest $request)
+    {
+        $validated = $request->validated();
+        $result = $this->authService->verifyPasswordResetOtp($validated['phone'], $validated['code']);
+        return $this->successResponse(['verified' => $result['verified']], 'OTP verified successfully');
+    }
+
     public function completePasswordReset(CompletePasswordResetRequest $request)
     {
         $validated = $request->validated();
-        $this->authService->completePasswordReset($validated['phone'], $validated['code'], $validated['password']);
-        return $this->successResponse(null, 'Password updated');
+        $this->authService->completePasswordReset($validated['phone'], $validated['password']);
+        return $this->successResponse(null, 'Password updated successfully');
     }
 
     public function getPartnerInfo(Request $request)

@@ -139,6 +139,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/verify-otp', [App\Http\Controllers\Auth\AuthController::class, 'verifyOtp'])->middleware('auth:sanctum');
     Route::post('/social-login', [App\Http\Controllers\Auth\SocialAuthController::class, 'socialLogin']);
     Route::post('/password/forgot', [App\Http\Controllers\Auth\AuthController::class, 'startPasswordReset']);
+    Route::post('/password/verify-otp', [App\Http\Controllers\Auth\AuthController::class, 'verifyPasswordResetOtp']);
     Route::post('/password/reset', [App\Http\Controllers\Auth\AuthController::class, 'completePasswordReset']);
 
     Route::middleware('auth:sanctum')->group(function () {

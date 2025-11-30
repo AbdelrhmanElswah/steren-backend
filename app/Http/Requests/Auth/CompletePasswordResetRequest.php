@@ -15,8 +15,7 @@ class CompletePasswordResetRequest extends FormRequest
     {
         return [
             'phone' => ['required', 'string', 'max:32'],
-            'code' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:6'],
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
         ];
     }
 }
