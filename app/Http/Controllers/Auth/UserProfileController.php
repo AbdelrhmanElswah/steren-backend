@@ -198,14 +198,26 @@ class UserProfileController extends Controller
             DB::beginTransaction();
 
             // FIRST: Validate password BEFORE updating anything else
-            // If password update is requested, verify current password FIRST
-            // This ensures if password is wrong, nothing else gets updated
-            if (isset($validated['new_password'])) {
-                // Verify current password BEFORE any updates
+            // Check if password update is requested (all 3 fields must be in validated for this to work)
+            if (isset($validated['new_password']) && isset($validated['current_password']) && isset($validated['new_password_confirmation'])) {
+                // All 3 password fields are present - verify current password BEFORE any updates
+                // Check if user has a password set
+                if (!$user->password) {
+                    DB::rollBack();
+                    Log::warning('Password update failed - user has no password set', [
+                        'user_id' => $user->id
+                    ]);
+                    return $this->errorResponse('No password is set for this account. Please use password reset instead.', 400);
+                }
+                
+                // Verify current password matches - THIS MUST HAPPEN BEFORE ANY OTHER UPDATES
                 if (!Hash::check($validated['current_password'], $user->password)) {
                     DB::rollBack();
                     Log::warning('Password update failed - current password incorrect', [
-                        'user_id' => $user->id
+                        'user_id' => $user->id,
+                        'password_check_failed' => true,
+                        'has_user_password' => !empty($user->password),
+                        'password_field_sent' => true
                     ]);
                     return $this->errorResponse('Current password is incorrect', 400);
                 }
