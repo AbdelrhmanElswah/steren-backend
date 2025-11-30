@@ -184,6 +184,7 @@ class UserProfileController extends Controller
     {
         try {
             $user = $request->user();
+            
             $validated = $request->validated();
             $hasProfilePicture = $request->hasFile('profile_picture');
 

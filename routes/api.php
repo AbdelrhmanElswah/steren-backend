@@ -158,7 +158,8 @@ Route::prefix('auth')->group(function () {
         // User Profile Management routes
         Route::get('/profile', [App\Http\Controllers\Auth\UserProfileController::class, 'getProfile']);
         Route::put('/profile', [App\Http\Controllers\Auth\UserProfileController::class, 'updateProfile']);
-        Route::put('/profile/complete', [App\Http\Controllers\Auth\UserProfileController::class, 'updateProfileComplete']);
+        // Use POST for multipart/form-data (PUT doesn't work with multipart/form-data in PHP/Laravel)
+        Route::post('/profile/complete', [App\Http\Controllers\Auth\UserProfileController::class, 'updateProfileComplete']);
         Route::put('/profile/password', [App\Http\Controllers\Auth\UserProfileController::class, 'updatePassword']);
         Route::post('/profile/picture', [App\Http\Controllers\Auth\UserProfileController::class, 'updateProfilePicture']);
         Route::put('/profile/preferences', [App\Http\Controllers\Auth\UserProfileController::class, 'updatePreferences']);
