@@ -192,16 +192,15 @@ Request password reset OTP code.
   "success": true,
   "message": "Reset code sent",
   "data": {
-    "sent": true,
-    "otp": "1234"
+    "sent": true
   }
 }
 ```
 
 **Note:** 
 - Sends OTP/reset code to the phone number for password reset
-- Returns OTP code in response (for testing purposes only, will be removed in production)
 - OTP is sent via WhatsApp for Iraq numbers
+- OTP code is not returned in the response for security reasons
 
 ---
 
@@ -669,5 +668,4 @@ Authorization: Bearer {token}
      2. Verify OTP via `/api/auth/password/verify-otp`
      3. Reset password via `/api/auth/password/reset`
    - Test bypass code "1234" is accepted for OTP verification (testing only)
-   - OTP codes are returned in response for testing (will be removed in production)
 

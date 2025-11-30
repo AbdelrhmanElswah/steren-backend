@@ -544,10 +544,8 @@ class AuthService
             }
         }
 
-        // TODO: Remove OTP from response in production - this is for testing only
         return [
             'sent' => true,
-            'otp' => $otp['code'], // Testing only - remove in production
         ];
     }
 
