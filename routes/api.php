@@ -131,6 +131,9 @@ Route::prefix('client')->group(function () {
 // Contact Us Routes - Public (no authentication required)
 Route::post('contact-us', [App\Http\Controllers\Api\ContactUsController::class, 'store']);
 
+// Home Page Data - Aggregated endpoint (optional auth for personalized data)
+Route::get('home', [App\Http\Controllers\Api\HomePageController::class, 'getHomePageData']);
+
 // Auth Routes
 Route::prefix('auth')->group(function () {
     Route::post('/register', [App\Http\Controllers\Auth\AuthController::class, 'register']);
