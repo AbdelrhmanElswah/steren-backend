@@ -11,6 +11,7 @@ use App\Http\Requests\Auth\SetFavoritesRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Models\Media;
+use App\Models\AuthorizedAgency;
 use App\Services\OdooService;
 use App\Traits\ApiResponse;
 use App\Traits\HandlesFileUpload;
@@ -609,8 +610,15 @@ class UserProfileController extends Controller
             $latestApplication = $user->latestDealerApplication;
             $activeApplication = $user->activeDealerApplication;
             
+            // Check if user is an authorized agency
+            $isAuthorizedAgency = false;
+            if ($user->partner_id) {
+                $isAuthorizedAgency = AuthorizedAgency::where('partner_id', $user->partner_id)->exists();
+            }
+            
             $dealerStatus = [
                 'has_application' => $latestApplication !== null,
+                'is_authorized_agencie' => $isAuthorizedAgency,
             ];
             
             if ($latestApplication) {
