@@ -297,6 +297,7 @@ class DealerVerificationService
 
         if ($data['seller_type'] === 'authorized') {
             $applicationData['automotive_brand_represented'] = $data['automotive_brand_represented'] ?? null;
+            $applicationData['brand_id'] = $data['brand_id'] ?? null;
             $applicationData['business_license_number'] = $data['business_license_number'] ?? null;
 
             if (isset($data['authorization_letter']) && $data['authorization_letter'] instanceof \Illuminate\Http\UploadedFile) {
@@ -518,6 +519,15 @@ class DealerVerificationService
         ];
 
         if ($data['seller_type'] === 'authorized') {
+            // If brand_id is provided, get the Odoo brand_id from CarBrand model
+            if (isset($data['brand_id']) && !empty($data['brand_id'])) {
+                $carBrand = \App\Models\CarBrand::find($data['brand_id']);
+                if ($carBrand && $carBrand->odoo_id) {
+                    $payload['brand_id'] = $carBrand->odoo_id;
+                }
+            }
+            
+            // Keep automotive_brand as fallback for backward compatibility
             $payload['automotive_brand'] = $data['automotive_brand_represented'] ?? null;
             $payload['business_license_name'] = $data['business_license_number'] ?? null;
 

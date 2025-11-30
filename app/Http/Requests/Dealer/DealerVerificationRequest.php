@@ -29,6 +29,7 @@ class DealerVerificationRequest extends FormRequest
             'email' => 'required|email|max:255',
             'city_address' => 'required|string|max:500',
             'subscription_plan_id' => 'required|exists:subscription_plans,id',
+            'brand_id' => 'nullable|integer|exists:car_brands,id',
             'automotive_brand_represented' => 'nullable|string|max:255',
             'business_license_number' => 'nullable|string|max:255',
             'vehicles_in_stock' => 'nullable|numeric|min:0|max:9999',
