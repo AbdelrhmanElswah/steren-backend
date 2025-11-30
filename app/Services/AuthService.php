@@ -390,7 +390,17 @@ class AuthService
 
     public function startPasswordReset(string $phone): array
     {
-        $user = User::query()->where('phone', $phone)->firstOrFail();
+        $user = User::query()->where('phone', $phone)->first();
+        
+        // For security, always return success even if user doesn't exist
+        // This prevents user enumeration attacks
+        if (!$user) {
+            Log::info('Password reset requested for non-existent phone number', [
+                'phone' => $phone,
+            ]);
+            return ['sent' => true];
+        }
+
         $otp = $this->generateOtp();
         $this->storeOtp($this->phoneKey($phone), $otp['code']);
 
