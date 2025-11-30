@@ -143,7 +143,7 @@ class AuthController extends Controller
     public function startPasswordReset(StartPasswordResetRequest $request)
     {
         $result = $this->authService->startPasswordReset($request->validated()['phone']);
-        return $this->successResponse(['sent' => $result['sent']], 'Reset code sent');
+        return $this->successResponse($result, 'Reset code sent');
     }
 
     public function verifyPasswordResetOtp(VerifyPasswordResetOtpRequest $request)
