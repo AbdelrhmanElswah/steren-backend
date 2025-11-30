@@ -62,6 +62,7 @@ class CarListingCreateFormRequest extends FormRequest
             'length' => 'nullable|numeric|min:0',
             'width' => 'nullable|numeric|min:0',
             'height' => 'nullable|numeric|min:0',
+            'forced_induction' => 'nullable|string|max:50',
             'status' => 'nullable|string|max:50',
             'status_id' => 'nullable|integer|exists:statuses,id',
             'operator_decision' => 'nullable|string|max:50',

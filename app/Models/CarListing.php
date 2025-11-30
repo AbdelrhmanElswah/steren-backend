@@ -62,6 +62,7 @@ class CarListing extends Model
         'length',
         'width',
         'height',
+        'forced_induction',
         'status',
         'status_id',
         'operator_decision',

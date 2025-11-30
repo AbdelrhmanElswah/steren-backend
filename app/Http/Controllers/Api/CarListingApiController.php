@@ -1277,6 +1277,7 @@ class CarListingApiController extends Controller
             'length' => $data['length'] ?? null,
             'width' => $data['width'] ?? null,
             'height' => $data['height'] ?? null,
+            'forced_induction' => $data['forced_induction'] ?? null,
             'status' => $data['status'] ?? 'pending',
             'status_id' => $data['status_id'] ?? null,
             'operator_decision' => $data['operator_decision'] ?? 'pending',

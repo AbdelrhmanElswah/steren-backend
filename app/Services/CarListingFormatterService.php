@@ -123,6 +123,7 @@ class CarListingFormatterService
             ] : null,
             'engine_size' => $listing->engine_size,
             'engine_unit' => $listing->engine_unit,
+            'forced_induction' => $listing->forced_induction,
             'media' => $mediaList, // All media with only media_link
             'media_count' => $mediaCount, // For UI gallery indicator (e.g., "1/12")
             'inspection_sides' => $inspectionSides,

@@ -40,6 +40,7 @@ class CarListingResource extends JsonResource
             'status' => $this->status,
             'views' => $this->views,
             'formatted_views' => $this->formatted_views,
+            'forced_induction' => $this->forced_induction,
             'city' => $this->whenLoaded('city', [
                 'id' => $this->city?->id,
                 'name' => $this->city?->name,

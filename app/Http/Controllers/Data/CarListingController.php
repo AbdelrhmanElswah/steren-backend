@@ -622,6 +622,7 @@ class CarListingController extends Controller
                     'engine_size' => $listing->engine_size,
                     'engine_unit' => $listing->engine_unit,
                     'engine_type' => $listing->engine_type,
+                    'forced_induction' => $listing->forced_induction,
                     'horsepower' => $listing->horsepower,
                     'torque' => $listing->torque,
                     'transmission' => $listing->transmission?->name,
