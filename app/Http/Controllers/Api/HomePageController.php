@@ -43,7 +43,8 @@ class HomePageController extends Controller
             $cacheKey = 'home_page_data_' . $userId . '_' . ($cityId ?? 'all') . '_' . $topPicksLimit;
 
             // Cache for 1 hour (3600 seconds) - shorter cache for personalized data
-            // Note: unread_count is excluded from cache and fetched fresh every time
+            // Note: unread_count and top_picks are excluded from cache and fetched fresh every time
+            // top_picks depends on user favorites, so it needs to be personalized per request
             $data = Cache::remember($cacheKey, 3600, function () use ($user, $cityId, $topPicksLimit) {
                 return [
                     'brands' => $this->getBrands(),
@@ -52,13 +53,14 @@ class HomePageController extends Controller
                     'cities' => $this->getCities(),
                     'budgets' => $this->getBudgets(),
                     'carousels' => $this->getCarousels(),
-                    'top_picks' => $this->getTopPicks($user, $cityId, $topPicksLimit),
                     'studios' => $this->getStudios($cityId),
                 ];
             });
 
-            // Fetch unread_count fresh every time (not cached)
+            // Fetch unread_count and top_picks fresh every time (not cached)
+            // These depend on the authenticated user's data
             $data['unread_count'] = $this->getUnreadCount($user);
+            $data['top_picks'] = $this->getTopPicks($user, $cityId, $topPicksLimit);
 
             return $this->successResponse($data, 'Home page data retrieved successfully');
         } catch (\Exception $e) {
