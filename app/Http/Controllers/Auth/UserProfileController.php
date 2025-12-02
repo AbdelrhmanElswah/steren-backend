@@ -605,7 +605,15 @@ class UserProfileController extends Controller
             $user = auth()->user();
             
             // Load dealer application relationships
-            $user->load(['latestDealerApplication.status', 'latestDealerApplication.subscriptionPlan', 'activeDealerApplication']);
+            $user->load([
+                'latestDealerApplication.status', 
+                'latestDealerApplication.subscriptionPlan',
+                'latestDealerApplication.brand.carModels' => function ($query) {
+                    $query->select('id', 'name', 'car_brand_id')
+                          ->orderBy('name');
+                },
+                'activeDealerApplication'
+            ]);
             
             // Build dealer status data (similar to /dealer/status endpoint)
             $latestApplication = $user->latestDealerApplication;
@@ -673,37 +681,32 @@ class UserProfileController extends Controller
             }
             
             // Build authorized agency data
-            $authorizedAgencie = [
-                'is_authorized_agencie' => false,
+            $authorizedAgency = [
+                'is_authorized_agency' => false,
                 'brand' => null,
             ];
             
             if ($user->partner_id) {
                 // Check if user is an authorized agency
-                $authorizedAgency = AuthorizedAgency::where('partner_id', $user->partner_id)->first();
+                $authorizedAgencyRecord = AuthorizedAgency::where('partner_id', $user->partner_id)->first();
                 
-                if ($authorizedAgency) {
-                    $authorizedAgencie['is_authorized_agencie'] = true;
+                if ($authorizedAgencyRecord) {
+                    $authorizedAgency['is_authorized_agency'] = true;
                     
-                    // Get dealer application by partner_id to find the brand
-                    $dealerApplication = DealerApplication::where('partner_id', $user->partner_id)
-                        ->with(['brand.carModels' => function ($query) {
-                            $query->select('id', 'name', 'car_brand_id')
-                                  ->orderBy('name');
-                        }])
-                        ->latest()
-                        ->first();
+                    // Use the already loaded latestDealerApplication (brand relationship is already loaded)
+                    $dealerApplication = $latestApplication;
                     
-                    if ($dealerApplication && $dealerApplication->brand) {
-                        $authorizedAgencie['brand'] = [
+                    // Check if dealer application has brand_id and brand is loaded
+                    if ($dealerApplication && $dealerApplication->brand_id && $dealerApplication->brand) {
+                        $authorizedAgency['brand'] = [
                             'id' => $dealerApplication->brand->id,
                             'name' => $dealerApplication->brand->name,
-                            'models' => $dealerApplication->brand->carModels->map(function ($model) {
+                            'models' => $dealerApplication->brand->carModels ? $dealerApplication->brand->carModels->map(function ($model) {
                                 return [
                                     'id' => $model->id,
                                     'name' => $model->name,
                                 ];
-                            })->values()->toArray(),
+                            })->values()->toArray() : [],
                         ];
                     }
                 }
@@ -712,7 +715,7 @@ class UserProfileController extends Controller
             return $this->successResponse([
                 'user' => new UserResource($user),
                 'dealer_status' => $dealerStatus,
-                'authorized_agencie' => $authorizedAgencie,
+                'authorized_agency' => $authorizedAgency,
             ], 'Profile information retrieved successfully');
 
         } catch (\Exception $e) {
