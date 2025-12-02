@@ -11,11 +11,7 @@ class CityResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'odoo_id' => $this->odoo_id,
             'name' => $this->name,
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
-            'deleted_at' => $this->deleted_at?->toISOString(),
         ];
     }
 }
