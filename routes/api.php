@@ -357,7 +357,7 @@ Route::prefix('dealer')->middleware(['auth:sanctum', 'phone.verified'])->group(f
     // Application Management
     Route::get('/status', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'status']);
     Route::get('/subscription-plans', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'subscriptionPlans']);
-    Route::post('/application', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'store']);
+    // Note: POST /application removed - use /api/verification/submit instead (syncs to Odoo)
     Route::get('/application/{id}', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'show']);
     Route::put('/application/{id}', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'update']);
     Route::delete('/application/{id}', [App\Http\Controllers\Api\Dealer\DealerApplicationController::class, 'destroy']);
