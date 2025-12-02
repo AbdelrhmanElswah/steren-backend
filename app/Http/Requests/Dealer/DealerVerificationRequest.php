@@ -22,7 +22,7 @@ class DealerVerificationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'partner_id' => 'required|integer',
+            // Note: partner_id is automatically retrieved from authenticated user, not from request
             'seller_type' => 'required|string|in:authorized,independent',
             'dealership_company_name' => 'required|string|max:255',
             'owner_manager_name' => 'required|string|max:255',
@@ -81,8 +81,6 @@ class DealerVerificationRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'partner_id.required' => 'Partner ID is required.',
-            'partner_id.integer' => 'Partner ID must be a valid integer.',
             'seller_type.required' => 'Please select your seller type.',
             'seller_type.in' => 'Invalid seller type selected. Valid values are: authorized, independent.',
             'dealership_company_name.required' => 'Dealership name is required.',
@@ -112,7 +110,6 @@ class DealerVerificationRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'partner_id' => 'partner ID',
             'seller_type' => 'seller type',
             'dealership_company_name' => 'dealership name',
             'owner_manager_name' => 'owner/manager name',

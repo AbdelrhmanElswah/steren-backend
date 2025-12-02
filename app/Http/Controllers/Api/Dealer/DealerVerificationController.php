@@ -35,6 +35,9 @@ class DealerVerificationController extends Controller
             $data = $request->validated();
             $user = $request->user();
             
+            // Add partner_id from authenticated user (not from request for security)
+            $data['partner_id'] = $user->partner_id ?? $user->id;
+            
             $result = $this->dealerVerificationService->submitVerification($data, $user);
 
             $message = $result['synced_with_odoo'] ?? false 

@@ -26,8 +26,8 @@
 ## `/api/verification/submit` Payload
 
 **Required Fields:**
-- `partner_id` (integer) - **MUST be provided**
 - `seller_type` (string: 'authorized' or 'independent')
+- **Note**: `partner_id` is automatically retrieved from the authenticated user's token - do NOT send it in the request
 - `dealership_company_name` (string)
 - `owner_manager_name` (string)
 - `email` (string)
@@ -60,7 +60,6 @@ POST /api/verification/submit
 Content-Type: multipart/form-data
 Authorization: Bearer {token}
 
-partner_id: 123
 seller_type: authorized
 dealership_company_name: ABC Motors
 owner_manager_name: John Doe
@@ -80,7 +79,7 @@ business_license: [file]
 
 ## Important Notes
 
-1. **Partner ID**: Must be provided. Get it from authenticated user: `$user->partner_id`
+1. **Partner ID**: Automatically retrieved from authenticated user's token (not required in request)
 2. **Subscription Plan ID**: Must be provided (no default)
 3. **File Uploads**: Supports both `authorization_letter` and `business_license` files
 4. **Odoo Sync**: Automatically syncs to Odoo after creating the application

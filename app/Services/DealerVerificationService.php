@@ -58,17 +58,23 @@ class DealerVerificationService
                 $data['automotive_brand_represented'] = $data['automotive_brand'];
             }
 
-            $user = $authenticatedUser ?? User::where('partner_id', $data['partner_id'])->first();
+            // Use authenticated user if provided, otherwise fallback to partner_id lookup (for backward compatibility)
+            $user = $authenticatedUser;
+            
+            if (!$user && isset($data['partner_id'])) {
+                $user = User::where('partner_id', $data['partner_id'])->first();
+            }
 
             if (!$user) {
-                throw new OdooServiceException('User not found for partner ID: ' . ($data['partner_id'] ?? 'N/A'));
+                throw new OdooServiceException('User not found. Authentication required.');
             }
 
             if ($user->is_dealer) {
                 throw new OdooServiceException('User is already a verified dealer');
             }
 
-            $data['partner_id'] = $user->partner_id;
+            // Ensure partner_id is set from authenticated user (security: don't trust request data)
+            $data['partner_id'] = $user->partner_id ?? $user->id;
 
             Log::info('Looking up subscription plan', [
                 'requested_plan_id' => $data['subscription_plan_id'],

@@ -36,8 +36,8 @@ Add these headers in Postman:
 
 | Key | Type | Value | Required |
 |-----|------|-------|----------|
-| `partner_id` | Text | `123` (user's partner_id) | ✅ Yes |
 | `seller_type` | Text | `authorized` or `independent` | ✅ Yes |
+| **Note**: `partner_id` is automatically retrieved from the authenticated user's token - do NOT send it in the request |
 | `dealership_company_name` | Text | `ABC Motors` | ✅ Yes |
 | `owner_manager_name` | Text | `John Doe` | ✅ Yes |
 | `phone_number` | Text | `9647501234567` | ❌ No |
@@ -64,7 +64,6 @@ Accept: application/json
 
 **Body** (form-data):
 ```
-partner_id: 123
 seller_type: independent
 dealership_company_name: ABC Motors
 owner_manager_name: John Doe
