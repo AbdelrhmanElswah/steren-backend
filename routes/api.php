@@ -392,6 +392,17 @@ Route::prefix('verification')->group(function () {
     // Public route for Odoo webhook
     Route::post('/update-status', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'updateStatus']);
 
+    // Test route to verify routing works (remove after debugging)
+    Route::get('/test', function () {
+        return response()->json([
+            'success' => true,
+            'message' => 'Verification route is working',
+            'path' => request()->path(),
+            'url' => request()->url(),
+            'method' => request()->method()
+        ]);
+    });
+
     // Protected routes for authenticated users
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/submit', [App\Http\Controllers\Api\Dealer\DealerVerificationController::class, 'submit']);
