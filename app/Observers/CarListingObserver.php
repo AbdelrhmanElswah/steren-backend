@@ -96,4 +96,65 @@ class CarListingObserver
             }
         }
     }
+
+    /**
+     * Handle the CarListing "deleting" event (soft delete).
+     * Delete all associated media records (cascade delete).
+     * MediaObserver will handle S3 file deletion.
+     */
+    public function deleting(CarListing $carListing): void
+    {
+        try {
+            // Load media relationship if not already loaded
+            if (!$carListing->relationLoaded('media')) {
+                $carListing->load('media');
+            }
+
+            // Delete all media records
+            // This will trigger MediaObserver::deleting() for each media record
+            // which will delete the S3 files
+            $carListing->media()->delete();
+
+            Log::info('CarListing media deleted (cascade)', [
+                'car_listing_id' => $carListing->id,
+                'media_count' => $carListing->media->count(),
+            ]);
+        } catch (\Exception $e) {
+            // Log error but don't prevent deletion of the car listing
+            Log::error('Failed to delete CarListing media during cascade delete', [
+                'car_listing_id' => $carListing->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Handle the CarListing "forceDeleting" event (hard delete).
+     * Delete all associated media records (cascade delete).
+     * MediaObserver will handle S3 file deletion.
+     */
+    public function forceDeleting(CarListing $carListing): void
+    {
+        try {
+            // Load media relationship if not already loaded
+            if (!$carListing->relationLoaded('media')) {
+                $carListing->load('media');
+            }
+
+            // Force delete all media records (bypass soft delete if they have it)
+            // This will trigger MediaObserver::deleting() for each media record
+            $carListing->media()->forceDelete();
+
+            Log::info('CarListing media force deleted (cascade)', [
+                'car_listing_id' => $carListing->id,
+                'media_count' => $carListing->media->count(),
+            ]);
+        } catch (\Exception $e) {
+            // Log error but don't prevent deletion of the car listing
+            Log::error('Failed to force delete CarListing media during cascade delete', [
+                'car_listing_id' => $carListing->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 }

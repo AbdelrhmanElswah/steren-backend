@@ -30,7 +30,11 @@ class CarBrandService extends OdooCrudService
         $brand = parent::updateByOdooId($odooId, $data);
 
         if (array_key_exists('media', $data)) {
-            $brand->media()?->delete();
+            // Delete existing media (MediaObserver will handle S3 file deletion)
+            $brand->load('media');
+            if ($brand->media) {
+                $brand->media->delete();
+            }
 
             if (!empty($data['media'])) {
                 $this->handleLogo($brand, $data['media']);

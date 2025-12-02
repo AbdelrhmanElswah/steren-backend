@@ -34,7 +34,9 @@ class CarouselService extends OdooCrudService
         $carousel = parent::updateByOdooId($odooId, $data);
 
         if (array_key_exists('media', $data)) {
-            $carousel->medias()?->delete();
+            // Delete existing media (MediaObserver will handle S3 file deletion)
+            $carousel->load('medias');
+            $carousel->medias()->delete();
 
             if (!empty($data['media'])) {
                 $this->handleCarouselImage($carousel, $data['media']);
