@@ -25,37 +25,7 @@ class UserResource extends JsonResource
             'language' => $this->language,
             'theme' => $this->theme,
             'is_verified' => (bool) $this->is_verified,
-            'dealer_application' => $this->when($this->relationLoaded('latestDealerApplication') && $this->latestDealerApplication, function () {
-                $application = $this->latestDealerApplication;
-                $status = $application->status?->name;
-                if ($status === 'pending') {
-                    return [
-                        'status' => $status,
-                        'status_badge_color' => $application->status_badge_color,
-                        'message' => 'Your dealer application is pending review'
-                    ];
-                }
-                return [
-                    'id' => $application->id,
-                    'seller_type' => $application->seller_type,
-                    'dealership_company_name' => $application->dealership_company_name,
-                    'status' => $status,
-                    'status_badge_color' => $application->status_badge_color,
-                    'payment_completed' => $application->payment_completed,
-                    'created_at' => $application->created_at?->toISOString(),
-                    'reviewed_at' => $application->reviewed_at?->toISOString(),
-                    'approved_at' => $application->approved_at?->toISOString(),
-                    'expires_at' => $application->expires_at?->toISOString(),
-                    'rejection_reason' => $application->rejection_reason,
-                    'days_until_expiration' => $application->days_until_expiration,
-                    'subscription_plan' => $this->when($application->subscriptionPlan, [
-                        'id' => $application->subscriptionPlan->id,
-                        'name' => $application->subscriptionPlan->name,
-                        'price' => $application->subscriptionPlan->price,
-                        'formatted_price' => $application->subscriptionPlan->formatted_price,
-                    ]),
-                ];
-            }),
+            // Note: dealer_application removed - use dealer_status.application instead
         ];
     }
 }

@@ -629,7 +629,6 @@ class UserProfileController extends Controller
                         'formatted_price' => $latestApplication->subscriptionPlan->formatted_price,
                     ] : null,
                     'payment_completed' => $latestApplication->payment_completed,
-                    'created_at' => $latestApplication->created_at,
                     'reviewed_at' => $latestApplication->reviewed_at,
                     'approved_at' => $latestApplication->approved_at,
                     'expires_at' => $latestApplication->expires_at,
