@@ -9,7 +9,6 @@ use App\Services\SubscriptionBasedListingService;
 use App\Services\CarListingFormatterService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 
 class HomePageController extends Controller
@@ -28,16 +27,17 @@ class HomePageController extends Controller
         try {
             $cityId = $request->input('city_id');
             $topPicksLimit = (int) $request->input('top_picks_limit', 10);
-            $user = Auth::user();
+            // Use $request->user() to properly get authenticated user even without explicit middleware
+            $user = $request->user();
 
             // Build cache key - include user ID if authenticated and city_id
             $userId = $user?->id ?? 'guest';
             $cacheKey = 'home_page_data_' . $userId . '_' . ($cityId ?? 'all') . '_' . $topPicksLimit;
 
             // Cache for 1 hour (3600 seconds) - shorter cache for personalized data
+            // Note: unread_count is excluded from cache and fetched fresh every time
             $data = Cache::remember($cacheKey, 3600, function () use ($user, $cityId, $topPicksLimit) {
                 return [
-                    'unread_count' => $this->getUnreadCount($user),
                     'brands' => $this->getBrands(),
                     'authorized_agencies' => $this->getAuthorizedAgencies(),
                     'body_types' => $this->getBodyTypes(),
@@ -48,6 +48,9 @@ class HomePageController extends Controller
                     'studios' => $this->getStudios($cityId),
                 ];
             });
+
+            // Fetch unread_count fresh every time (not cached)
+            $data['unread_count'] = $this->getUnreadCount($user);
 
             return $this->successResponse($data, 'Home page data retrieved successfully');
         } catch (\Exception $e) {
