@@ -4,6 +4,7 @@ namespace App\Http\Requests\Dealer;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\SubscriptionPlan;
 
 class DealerVerificationRequest extends FormRequest
 {
@@ -40,6 +41,41 @@ class DealerVerificationRequest extends FormRequest
     }
 
     /**
+     * Configure the validator instance.
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            // Add available subscription plans to error if subscription_plan_id is invalid
+            if ($validator->errors()->has('subscription_plan_id')) {
+                $availablePlans = SubscriptionPlan::active()
+                    ->ordered()
+                    ->get()
+                    ->map(function ($plan) {
+                        return [
+                            'id' => $plan->id,
+                            'name' => $plan->name,
+                            'price' => $plan->price,
+                            'formatted_price' => $plan->formatted_price,
+                        ];
+                    })
+                    ->values()
+                    ->toArray();
+
+                // Replace the error message with one that includes available plans
+                $validator->errors()->forget('subscription_plan_id');
+                $validator->errors()->add('subscription_plan_id', 'Selected subscription plan is invalid. Available plans: ' . json_encode($availablePlans));
+            }
+
+            // Add valid seller types to error if seller_type is invalid
+            if ($validator->errors()->has('seller_type')) {
+                $validator->errors()->forget('seller_type');
+                $validator->errors()->add('seller_type', 'Invalid seller type selected. Valid values are: authorized, independent');
+            }
+        });
+    }
+
+    /**
      * Get custom messages for validator errors.
      */
     public function messages(): array
@@ -48,7 +84,7 @@ class DealerVerificationRequest extends FormRequest
             'partner_id.required' => 'Partner ID is required.',
             'partner_id.integer' => 'Partner ID must be a valid integer.',
             'seller_type.required' => 'Please select your seller type.',
-            'seller_type.in' => 'Invalid seller type selected.',
+            'seller_type.in' => 'Invalid seller type selected. Valid values are: authorized, independent.',
             'dealership_company_name.required' => 'Dealership name is required.',
             'owner_manager_name.required' => 'Owner/Manager full name is required.',
             'phone_number.required' => 'Phone number is required.',
@@ -56,7 +92,7 @@ class DealerVerificationRequest extends FormRequest
             'email.email' => 'Please provide a valid email address.',
             'city_address.required' => 'City & Address is required.',
             'subscription_plan_id.required' => 'Please select a subscription plan.',
-            'subscription_plan_id.exists' => 'Selected subscription plan is invalid.',
+            'subscription_plan_id.exists' => 'Selected subscription plan is invalid. Please check available subscription plans.',
             'automotive_brand_represented.required' => 'Automotive brand is required for authorized sellers.',
             'authorization_letter.required' => 'Authorization letter file is required for authorized sellers.',
             'authorization_letter.file' => 'Authorization letter must be a valid file.',
