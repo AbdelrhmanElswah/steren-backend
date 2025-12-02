@@ -18,7 +18,7 @@ class UpdateCarouselRequest extends FormRequest
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'button_text' => ['nullable', 'string', 'max:255'],
-            'link_url' => ['nullable', 'url', 'max:2048'],
+            'link_url' => ['nullable', 'string', 'max:2048'],
             'start_date' => ['sometimes', 'date'],
             'end_date' => ['sometimes', 'date', 'after_or_equal:start_date'],
             'is_active' => ['nullable', 'boolean'],
