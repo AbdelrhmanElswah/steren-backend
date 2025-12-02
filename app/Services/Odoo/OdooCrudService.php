@@ -65,7 +65,19 @@ abstract class OdooCrudService
         $startTime = microtime(true);
         
         try {
-            $model = $this->model::where('odoo_id', $odooId)->firstOrFail();
+            // Try to find by odoo_id - handle both string and integer comparisons
+            // First try as string (most common case)
+            $model = $this->model::where('odoo_id', (string) $odooId)->first();
+            
+            // If not found and odooId is numeric, try as integer (in case DB stores as integer)
+            if (!$model && is_numeric($odooId)) {
+                $model = $this->model::where('odoo_id', (int) $odooId)->first();
+            }
+            
+            if (!$model) {
+                throw new ModelNotFoundException();
+            }
+            
             $model->update($data);
             
             $this->errorTracker->trackPerformance(
@@ -76,11 +88,25 @@ abstract class OdooCrudService
             
             return $model->fresh();
         } catch (ModelNotFoundException $e) {
+            // Log available odoo_id values for debugging
+            $availableOdooIds = $this->model::whereNotNull('odoo_id')
+                ->pluck('odoo_id')
+                ->take(10)
+                ->toArray();
+            
+            Log::warning('OdooCrudService: Model not found by odoo_id', [
+                'model' => class_basename($this->model),
+                'requested_odoo_id' => $odooId,
+                'available_odoo_ids_sample' => $availableOdooIds,
+                'total_records_with_odoo_id' => $this->model::whereNotNull('odoo_id')->count(),
+            ]);
+            
             $this->errorTracker->trackError($e, request(), [
                 'operation' => 'updateByOdooId',
                 'model' => class_basename($this->model),
                 'odoo_id' => $odooId,
-                'data' => $data
+                'data' => $data,
+                'available_odoo_ids_sample' => $availableOdooIds,
             ]);
             
             throw new OdooModelNotFoundException(
@@ -120,7 +146,19 @@ abstract class OdooCrudService
         $startTime = microtime(true);
         
         try {
-            $model = $this->model::where('odoo_id', $odooId)->firstOrFail();
+            // Try to find by odoo_id - handle both string and integer comparisons
+            // First try as string (most common case)
+            $model = $this->model::where('odoo_id', (string) $odooId)->first();
+            
+            // If not found and odooId is numeric, try as integer (in case DB stores as integer)
+            if (!$model && is_numeric($odooId)) {
+                $model = $this->model::where('odoo_id', (int) $odooId)->first();
+            }
+            
+            if (!$model) {
+                throw new ModelNotFoundException();
+            }
+            
             $result = $model->delete();
             
             $this->errorTracker->trackPerformance(
@@ -131,10 +169,23 @@ abstract class OdooCrudService
             
             return $result;
         } catch (ModelNotFoundException $e) {
+            // Log available odoo_id values for debugging
+            $availableOdooIds = $this->model::whereNotNull('odoo_id')
+                ->pluck('odoo_id')
+                ->take(10)
+                ->toArray();
+            
+            Log::warning('OdooCrudService: Model not found by odoo_id for delete', [
+                'model' => class_basename($this->model),
+                'requested_odoo_id' => $odooId,
+                'available_odoo_ids_sample' => $availableOdooIds,
+            ]);
+            
             $this->errorTracker->trackError($e, request(), [
                 'operation' => 'deleteByOdooId',
                 'model' => class_basename($this->model),
-                'odoo_id' => $odooId
+                'odoo_id' => $odooId,
+                'available_odoo_ids_sample' => $availableOdooIds,
             ]);
             
             throw new OdooModelNotFoundException(
@@ -179,7 +230,19 @@ abstract class OdooCrudService
             throw new \Exception('Model does not support soft deletes');
         }
 
-        $model = $this->model::withTrashed()->where('odoo_id', $odooId)->firstOrFail();
+        // Try to find by odoo_id - handle both string and integer comparisons
+        // First try as string (most common case)
+        $model = $this->model::withTrashed()->where('odoo_id', (string) $odooId)->first();
+        
+        // If not found and odooId is numeric, try as integer (in case DB stores as integer)
+        if (!$model && is_numeric($odooId)) {
+            $model = $this->model::withTrashed()->where('odoo_id', (int) $odooId)->first();
+        }
+        
+        if (!$model) {
+            throw new ModelNotFoundException();
+        }
+        
         $model->restore();
         return $model;
     }
