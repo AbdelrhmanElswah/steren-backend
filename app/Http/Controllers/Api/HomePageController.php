@@ -10,6 +10,7 @@ use App\Services\CarListingFormatterService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class HomePageController extends Controller
 {
@@ -27,8 +28,15 @@ class HomePageController extends Controller
         try {
             $cityId = $request->input('city_id');
             $topPicksLimit = (int) $request->input('top_picks_limit', 10);
-            // Use $request->user() to properly get authenticated user even without explicit middleware
-            $user = $request->user();
+            // Manually check for Sanctum token authentication since route doesn't have auth middleware
+            $user = null;
+            $bearerToken = $request->bearerToken();
+            if ($bearerToken) {
+                $token = PersonalAccessToken::findToken($bearerToken);
+                if ($token) {
+                    $user = $token->tokenable;
+                }
+            }
 
             // Build cache key - include user ID if authenticated and city_id
             $userId = $user?->id ?? 'guest';
