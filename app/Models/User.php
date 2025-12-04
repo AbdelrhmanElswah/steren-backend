@@ -656,7 +656,7 @@ class User extends Authenticatable
     /**
      * Suspend the account
      */
-    public function suspend(string $reason = null)
+    public function suspend(?string $reason = null)
     {
         $this->update([
             'is_suspended' => true,
