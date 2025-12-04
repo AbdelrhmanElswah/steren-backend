@@ -18,13 +18,8 @@ return new class extends Migration
             $table->foreignId('car_listing_id')->constrained('car_listings')->onDelete('cascade');
             
             // Odoo-related fields
-            $table->string('odoo_id')->nullable();
-            $table->string('odoo_car_listing_id')->nullable(); // Computed from car_listing_id
-            $table->string('odoo_listing_id')->nullable();
-            $table->string('odoo_vehicle_id')->nullable();
-            $table->string('odoo_seller_id')->nullable();
-            $table->string('odoo_city_id')->nullable();
-            $table->string('odoo_listing_state')->nullable();
+            $table->string('odoo_id')->nullable(); // Edit's Odoo ID (returned from Odoo)
+            $table->string('odoo_car_listing_id')->nullable(); // Original listing's Odoo ID (to send to Odoo)
             
             // Edit-specific fields
             $table->string('previous_state')->nullable(); // rejected, active, paused

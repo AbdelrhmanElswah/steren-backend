@@ -370,8 +370,7 @@ class CarListingEditService
             // Get all fields from edit (excluding edit-specific fields)
             $fieldsToUpdate = $edit->getFillable();
             $excludedFields = [
-                'car_listing_id', 'odoo_id', 'odoo_car_listing_id', 'odoo_listing_id',
-                'odoo_vehicle_id', 'odoo_seller_id', 'odoo_city_id', 'odoo_listing_state',
+                'car_listing_id', 'odoo_id', 'odoo_car_listing_id',
                 'previous_state', 'edit_type', 'status', 'approved_by', 'approved_at',
                 'rejection_reason', 'rejected_by', 'rejected_at'
             ];
