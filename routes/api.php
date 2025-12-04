@@ -26,6 +26,10 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('car-listings/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarListingController::class, 'updateByOdooId']);
     Route::post('car-listings/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarListingController::class, 'deleteByOdooId']);
     Route::post('car-listings/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\CarListingController::class, 'restoreByOdooId']);
+    
+    // Car Listing Edit approval/rejection routes
+    Route::post('car-listing-edits/odoo/{odooId}/approve', [App\Http\Controllers\Api\Odoo\CarListingEditController::class, 'approveByOdooId']);
+    Route::post('car-listing-edits/odoo/{odooId}/reject', [App\Http\Controllers\Api\Odoo\CarListingEditController::class, 'rejectByOdooId']);
 
     Route::post('car-submissions', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'store']);
     Route::post('car-submissions/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'updateByOdooId']);
@@ -91,6 +95,8 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
 Route::prefix('car-listings')->middleware(['auth:sanctum', 'phone.verified'])->group(function () {
     Route::post('/', [App\Http\Controllers\Api\CarListingApiController::class, 'store']);
     Route::post('/form-data', [App\Http\Controllers\Api\CarListingApiController::class, 'storeFormData']);
+    Route::post('/edit', [App\Http\Controllers\Api\CarListingEditController::class, 'store']);
+    Route::post('/edit/form-data', [App\Http\Controllers\Api\CarListingEditController::class, 'storeFormData']);
 });
 
 // Listing Status Management Routes - Protected with Sanctum
