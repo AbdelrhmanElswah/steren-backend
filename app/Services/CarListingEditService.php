@@ -327,7 +327,7 @@ class CarListingEditService
         }
         
         $payload = [
-            'odoo_car_listing_id' => $edit->odoo_car_listing_id,
+            'car_listing_id' => $edit->odoo_car_listing_id, // Send as car_listing_id to Odoo
             'images' => $imageUrls,
         ];
         

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Models\CarListing;
 
 class CarListingEditRequest extends FormRequest
 {
@@ -12,6 +13,32 @@ class CarListingEditRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+    
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $carListingId = $this->input('car_listing_id');
+            
+            if ($carListingId) {
+                $carListing = CarListing::find($carListingId);
+                
+                if ($carListing) {
+                    $allowedStatuses = ['active', 'paused', 'rejected'];
+                    $currentStatus = $carListing->status ?? 'pending';
+                    
+                    if (!in_array($currentStatus, $allowedStatuses)) {
+                        $validator->errors()->add(
+                            'car_listing_id',
+                            "Cannot edit car listing. Only listings with status 'active', 'paused', or 'rejected' can be edited. Current status: {$currentStatus}"
+                        );
+                    }
+                }
+            }
+        });
     }
 
     /**
