@@ -110,7 +110,7 @@ class CarListingEditFormRequest extends FormRequest
             
             // Existing image URLs to keep (from original listing)
             'existing_image_urls' => 'nullable|array|max:20',
-            'existing_image_urls.*' => 'url',
+            'existing_image_urls.*' => ['required', 'string', 'regex:/^https?:\/\/.+/'],
             
             // New images - File uploads (can be single file or array)
             'new_images' => 'nullable|array|max:20',

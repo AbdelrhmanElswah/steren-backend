@@ -76,7 +76,7 @@ class CarListingEditRequest extends FormRequest
             'city_id' => 'sometimes|integer|exists:cities,id',
             // Existing image URLs to keep (from original listing)
             'existing_image_urls' => 'nullable|array|max:20',
-            'existing_image_urls.*' => 'url',
+            'existing_image_urls.*' => ['required', 'string', 'regex:/^https?:\/\/.+/'],
             
             // New images - Base64 encoded images
             'new_images' => [
