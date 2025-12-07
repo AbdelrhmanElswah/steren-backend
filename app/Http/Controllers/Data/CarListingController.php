@@ -468,10 +468,19 @@ class CarListingController extends Controller
                     })->filter()->values()->toArray();
                 }
                 
+                // Check if user has other active listings (excluding current listing)
+                $hasOtherListing = $listing->user->carListings()
+                    ->where('id', '!=', $listing->id)
+                    ->where('status', 'active')
+                    ->whereNull('sold_at')
+                    ->exists();
+                
                 $formattedUser = [
+                    'id' => $listing->user->id,
                     'full_name' => $listing->user->full_name,
                     'phone' => $listing->user->phone,
-                    'profile_picture' => $userMediaArray
+                    'profile_picture' => $userMediaArray,
+                    'has_other_listing' => $hasOtherListing
                 ];
             }
 
