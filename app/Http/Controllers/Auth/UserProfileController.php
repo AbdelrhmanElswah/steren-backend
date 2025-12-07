@@ -641,7 +641,6 @@ class UserProfileController extends Controller
                     'approved_at' => $latestApplication->approved_at,
                     'expires_at' => $latestApplication->expires_at,
                     'rejection_reason' => $latestApplication->rejection_reason,
-                    'days_until_expiration' => $latestApplication->days_until_expiration,
                 ];
                 $dealerStatus['is_active'] = $activeApplication ? $activeApplication->isActive() : false;
                 $dealerStatus['is_expiring_soon'] = $activeApplication ? $activeApplication->isExpiringSoon() : false;
@@ -682,6 +681,7 @@ class UserProfileController extends Controller
             
             // Build authorized agency data
             $authorizedAgency = [
+                'id' => null,
                 'is_authorized_agency' => false,
                 'brand' => null,
             ];
@@ -691,6 +691,7 @@ class UserProfileController extends Controller
                 $authorizedAgencyRecord = AuthorizedAgency::where('partner_id', $user->partner_id)->first();
                 
                 if ($authorizedAgencyRecord) {
+                    $authorizedAgency['id'] = $authorizedAgencyRecord->id;
                     $authorizedAgency['is_authorized_agency'] = true;
                     
                     // Use the already loaded latestDealerApplication (brand relationship is already loaded)

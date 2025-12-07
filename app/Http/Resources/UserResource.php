@@ -24,7 +24,6 @@ class UserResource extends JsonResource
             'profile_picture_media' => $this->profilePictureMedia?->media,
             'language' => $this->language,
             'theme' => $this->theme,
-            'is_verified' => (bool) $this->is_verified,
             // Note: dealer_application removed - use dealer_status.application instead
         ];
     }
