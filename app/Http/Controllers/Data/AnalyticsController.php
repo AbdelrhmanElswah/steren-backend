@@ -263,7 +263,14 @@ class AnalyticsController extends Controller
         try {
             $user = auth()->user();
             $filter = $request->get('filter', 'all'); // all, posts, boosted, sold
-            $sort = $request->get('sort', 'latest'); // latest, oldest, views, price
+            $sort = $request->get('sort', 'latest'); // latest, year_high, year_low, price_high, price_low, mileage_high, mileage_low
+            
+            // Get pagination parameters from request
+            $perPage = (int) $request->input('per_page', 20);
+            $page = (int) $request->input('page', 1);
+            
+            // Limit per_page to reasonable range (1-100)
+            $perPage = max(1, min(100, $perPage));
             
             // Select only essential fields for listing card UI (matching /api/car-listings)
             $query = $user->carListings()
@@ -329,25 +336,40 @@ class AnalyticsController extends Controller
                     break;
             }
             
-            // Apply sorting
+            // Apply sorting - same as /api/search/listings
             switch ($sort) {
-                case 'oldest':
-                    $query->orderBy('created_at', 'asc');
+                case 'year_high':
+                    $query->orderBy('year', 'desc');
                     break;
-                case 'views':
-                    $query->orderBy('views', 'desc');
+                case 'year_low':
+                    $query->orderBy('year', 'asc');
                     break;
-                case 'price':
+                case 'price_high':
                     $query->orderBy('price', 'desc');
                     break;
-                case 'latest':
-                default:
+                case 'price_low':
+                    $query->orderBy('price', 'asc');
+                    break;
+                case 'mileage_high':
+                    $query->orderBy('mileage', 'desc');
+                    break;
+                case 'mileage_low':
+                    $query->orderBy('mileage', 'asc');
+                    break;
+                default: // 'latest' or any other value
                     $query->orderBy('created_at', 'desc');
                     break;
             }
             
+            // Get total count before pagination
+            $total = (clone $query)->count();
+            
+            // Get paginated results
+            $listings = $query->skip(($page - 1) * $perPage)
+                ->take($perPage)
+                ->get();
+            
             // Get media counts for all listings in one query (for UI gallery indicator)
-            $listings = $query->get();
             $listingIds = $listings->pluck('id');
             $mediaCounts = \App\Models\Media::where('modelable_type', 'App\Models\CarListing')
                 ->whereIn('modelable_id', $listingIds)
@@ -448,6 +470,13 @@ class AnalyticsController extends Controller
                 'summary' => $summary,
                 'filter' => $filter,
                 'sort' => $sort,
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'last_page' => ceil($total / $perPage),
+                    'has_more_pages' => $page < ceil($total / $perPage),
+                    'total' => $total,
+                ],
             ];
             
             return $this->successResponse($data, 'My ads retrieved successfully');
