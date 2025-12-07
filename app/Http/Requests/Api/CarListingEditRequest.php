@@ -74,6 +74,36 @@ class CarListingEditRequest extends FormRequest
             'title' => 'sometimes|string|max:255',
             'description' => 'nullable|string|max:2000',
             'city_id' => 'sometimes|integer|exists:cities,id',
+            // Existing image URLs to keep (from original listing)
+            'existing_image_urls' => 'nullable|array|max:20',
+            'existing_image_urls.*' => 'url',
+            
+            // New images - Base64 encoded images
+            'new_images' => [
+                'nullable',
+                'array',
+                function ($attribute, $value, $fail) {
+                    if ($this->user()) {
+                        $user = $this->user();
+                        $maxPhotos = 5;
+                        
+                        if ($user->isDealer()) {
+                            $maxPhotos = 10;
+                        }
+                        
+                        if ($user->isVerifiedDealer()) {
+                            $maxPhotos = 20;
+                        }
+                        
+                        if (count($value) > $maxPhotos) {
+                            $fail("You can upload a maximum of {$maxPhotos} photos per listing.");
+                        }
+                    }
+                }
+            ],
+            'new_images.*' => 'string',
+            
+            // Legacy support: 'images' field (for backward compatibility)
             'images' => [
                 'nullable',
                 'array',

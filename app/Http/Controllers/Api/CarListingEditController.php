@@ -27,10 +27,31 @@ class CarListingEditController extends Controller
     {
         try {
             // Create the edit record (JSON request)
-            $carListingEdit = $this->carListingEditService->create($request->validated(), false);
+            $validatedData = $request->validated();
+            $carListingEdit = $this->carListingEditService->create($validatedData, false);
             
             // Get the original car listing
             $carListing = $carListingEdit->carListing;
+            
+            // Handle mixed images: existing URLs + new base64 images
+            $existingImageUrls = $request->input('existing_image_urls', []);
+            $newImageBase64 = $request->input('new_images', []);
+            
+            // Legacy support: if 'new_images' not provided, use 'images' field
+            if (empty($newImageBase64) && isset($validatedData['images'])) {
+                $newImageBase64 = $validatedData['images'];
+            }
+            
+            // Process mixed images if we have existing URLs or new base64 images
+            if (!empty($existingImageUrls) || !empty($newImageBase64)) {
+                $this->carListingEditService->handleMixedImages(
+                    $carListingEdit,
+                    $carListing,
+                    $existingImageUrls,
+                    null, // No binary files for JSON
+                    $newImageBase64
+                );
+            }
             
             // Prepare Odoo payload with only changed fields
             $odooPayload = $this->carListingEditService->prepareOdooEditPayload($carListingEdit, $carListing);
@@ -156,17 +177,36 @@ class CarListingEditController extends Controller
             $validatedData = $request->validated();
             $carListingEdit = $this->carListingEditService->create($validatedData, true);
             
-            // Handle form-data images if provided
-            if ($request->hasFile('images')) {
-                $images = $request->file('images');
-                if (!is_array($images)) {
-                    $images = [$images];
-                }
-                $this->carListingEditService->handleFormDataImages($carListingEdit, $images);
-            }
-            
             // Get the original car listing
             $carListing = $carListingEdit->carListing;
+            
+            // Handle mixed images: existing URLs + new binary files
+            $existingImageUrls = $request->input('existing_image_urls', []);
+            $newImageFiles = null;
+            
+            if ($request->hasFile('new_images')) {
+                $newImageFiles = $request->file('new_images');
+                if (!is_array($newImageFiles)) {
+                    $newImageFiles = [$newImageFiles];
+                }
+            } elseif ($request->hasFile('images')) {
+                // Legacy support: if 'new_images' not provided, use 'images' field
+                $newImageFiles = $request->file('images');
+                if (!is_array($newImageFiles)) {
+                    $newImageFiles = [$newImageFiles];
+                }
+            }
+            
+            // Process mixed images if we have existing URLs or new files
+            if (!empty($existingImageUrls) || !empty($newImageFiles)) {
+                $this->carListingEditService->handleMixedImages(
+                    $carListingEdit,
+                    $carListing,
+                    $existingImageUrls,
+                    $newImageFiles,
+                    null // No base64 for form-data
+                );
+            }
             
             // Prepare Odoo payload with only changed fields
             $odooPayload = $this->carListingEditService->prepareOdooEditPayload($carListingEdit, $carListing);

@@ -48,10 +48,8 @@ class CarListingEditService
             // Create the edit record
             $carListingEdit = CarListingEdit::create($editData);
             
-            // Handle images if provided (base64 for JSON requests - form-data handled separately)
-            if (!$isFormData && isset($data['images']) && is_array($data['images'])) {
-                $this->handleImages($carListingEdit, $data['images']);
-            }
+            // Note: Images are now handled separately in the controller using handleMixedImages
+            // This allows us to process both existing URLs and new images together
             
             // Set original car listing to pending state
             $carListing->update(['status' => 'pending']);
@@ -476,7 +474,141 @@ class CarListingEditService
     }
     
     /**
-     * Handle image file uploads from form-data
+     * Handle mixed images: existing URLs (to keep) and new binary files (to upload)
+     * 
+     * @param CarListingEdit $edit
+     * @param CarListing $originalListing
+     * @param array|null $existingImageUrls Array of URLs to keep from original listing
+     * @param array|null $newImageFiles Array of binary files to upload (form-data)
+     * @param array|null $newImageBase64 Array of base64 strings to upload (JSON)
+     */
+    public function handleMixedImages(
+        CarListingEdit $edit, 
+        CarListing $originalListing, 
+        ?array $existingImageUrls = null,
+        ?array $newImageFiles = null,
+        ?array $newImageBase64 = null
+    ): void {
+        $order = 0;
+        
+        // Step 1: Handle existing images (URLs to keep)
+        if (!empty($existingImageUrls)) {
+            // Get original listing's media
+            $originalMedia = $originalListing->media()->orderBy('order')->get();
+            
+            foreach ($existingImageUrls as $url) {
+                // Find matching media record by URL
+                $matchingMedia = $originalMedia->first(function ($media) use ($url) {
+                    $mediaUrl = $media->public_url ?? Storage::disk('s3')->url($media->path_file_name);
+                    return $mediaUrl === $url;
+                });
+                
+                if ($matchingMedia) {
+                    // Copy media record to edit
+                    Media::create([
+                        'modelable_type' => CarListingEdit::class,
+                        'modelable_id' => $edit->id,
+                        'media' => $matchingMedia->media,
+                        'path_file_name' => $matchingMedia->path_file_name,
+                        'file_type' => $matchingMedia->file_type,
+                        'info' => $order === 0 ? 'primary' : 'secondary',
+                        'order' => $order++,
+                    ]);
+                } else {
+                    Log::warning('Could not find matching media for URL in car listing edit', [
+                        'edit_id' => $edit->id,
+                        'url' => $url,
+                        'car_listing_id' => $originalListing->id
+                    ]);
+                }
+            }
+        }
+        
+        // Step 2: Handle new binary files (form-data)
+        if (!empty($newImageFiles)) {
+            foreach ($newImageFiles as $imageFile) {
+                try {
+                    // Upload to S3
+                    $filename = time() . '_' . \Illuminate\Support\Str::random(10) . '_' . $imageFile->getClientOriginalName();
+                    $directory = 'car_listing_edits/' . $edit->id;
+                    $path = Storage::disk('s3')->putFileAs($directory, $imageFile, $filename, 'public');
+                    
+                    if (!$path) {
+                        Log::error('Failed to upload image to S3', [
+                            'edit_id' => $edit->id,
+                            'order' => $order
+                        ]);
+                        continue;
+                    }
+                    
+                    $mimeType = $imageFile->getMimeType();
+                    
+                    Media::create([
+                        'modelable_type' => CarListingEdit::class,
+                        'modelable_id' => $edit->id,
+                        'media' => $filename,
+                        'path_file_name' => $path,
+                        'file_type' => $mimeType,
+                        'info' => $order === 0 ? 'primary' : 'secondary',
+                        'order' => $order++,
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    Log::warning('Failed to process new image file for car listing edit: ' . $e->getMessage());
+                }
+            }
+        }
+        
+        // Step 3: Handle new base64 images (JSON)
+        if (!empty($newImageBase64)) {
+            foreach ($newImageBase64 as $base64Image) {
+                try {
+                    $extension = 'jpg';
+                    $mimeType = 'image/jpeg';
+                    $base64Payload = $base64Image;
+                    
+                    if (preg_match('/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/', $base64Image, $matches)) {
+                        $mimeType = strtolower($matches[1]);
+                        $base64Payload = $matches[2];
+                        
+                        $extensionMap = [
+                            'image/jpeg' => 'jpg',
+                            'image/png' => 'png',
+                            'image/gif' => 'gif',
+                            'image/webp' => 'webp',
+                        ];
+                        $extension = $extensionMap[$mimeType] ?? 'jpg';
+                    }
+                    
+                    $imageData = base64_decode($base64Payload);
+                    if ($imageData === false) {
+                        continue;
+                    }
+                    
+                    $filename = 'car_listing_edit_' . $edit->id . '_' . ($order + 1) . '_' . time() . '.' . $extension;
+                    $path = 'car_listing_edits/' . $edit->id . '/' . $filename;
+                    
+                    Storage::disk('s3')->put($path, $imageData, 'public');
+                    
+                    Media::create([
+                        'modelable_type' => CarListingEdit::class,
+                        'modelable_id' => $edit->id,
+                        'media' => $filename,
+                        'path_file_name' => $path,
+                        'file_type' => $mimeType,
+                        'info' => $order === 0 ? 'primary' : 'secondary',
+                        'order' => $order++,
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    Log::warning('Failed to process new base64 image for car listing edit: ' . $e->getMessage());
+                }
+            }
+        }
+    }
+    
+    /**
+     * Handle image file uploads from form-data (legacy method for backward compatibility)
      */
     public function handleFormDataImages(CarListingEdit $edit, array $imageFiles): void
     {

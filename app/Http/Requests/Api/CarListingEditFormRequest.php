@@ -108,7 +108,15 @@ class CarListingEditFormRequest extends FormRequest
             'title' => 'sometimes|string|max:255',
             'description' => 'nullable|string|max:2000',
             
-            // Images - File uploads (can be single file or array)
+            // Existing image URLs to keep (from original listing)
+            'existing_image_urls' => 'nullable|array|max:20',
+            'existing_image_urls.*' => 'url',
+            
+            // New images - File uploads (can be single file or array)
+            'new_images' => 'nullable|array|max:20',
+            'new_images.*' => 'file|image|mimes:jpeg,jpg,png,webp|max:5120', // 5MB max per image
+            
+            // Legacy support: 'images' field (for backward compatibility)
             'images' => 'nullable|array|max:20',
             'images.*' => 'file|image|mimes:jpeg,jpg,png,webp|max:5120', // 5MB max per image
             
@@ -151,7 +159,17 @@ class CarListingEditFormRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        // Handle images field - ensure it's always an array
+        // Handle new_images field - ensure it's always an array
+        if ($this->hasFile('new_images')) {
+            $newImages = $this->file('new_images');
+            // If it's a single file, wrap it in an array
+            if (!is_array($newImages)) {
+                $newImages = [$newImages];
+            }
+            $this->merge(['new_images' => $newImages]);
+        }
+        
+        // Handle legacy images field - ensure it's always an array (for backward compatibility)
         if ($this->hasFile('images')) {
             $images = $this->file('images');
             // If it's a single file, wrap it in an array
