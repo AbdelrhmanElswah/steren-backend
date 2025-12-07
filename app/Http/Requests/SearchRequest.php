@@ -26,6 +26,7 @@ class SearchRequest extends FormRequest
             // Singular filters
             'brand_id' => 'nullable|integer|exists:car_brands,id',
             'studio_id' => 'nullable|integer|exists:dealer_studios,id',
+            'user_id' => 'nullable|integer|exists:users,id',
             'model_id' => 'nullable|integer|exists:car_models,id',
             'condition_id' => 'nullable|integer|exists:car_conditions,id',
             'body_type_id' => 'nullable|integer|exists:body_types,id',
@@ -39,6 +40,7 @@ class SearchRequest extends FormRequest
             // Plural filters (accept array, comma-separated string, or single value)
             'brand_ids' => 'nullable',
             'studio_ids' => 'nullable',
+            'user_ids' => 'nullable',
             'model_ids' => 'nullable',
             'condition_ids' => 'nullable',
             'body_type_ids' => 'nullable',

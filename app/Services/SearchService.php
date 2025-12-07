@@ -562,6 +562,12 @@ class SearchService
             $query->whereIn('studio_id', $studioIds);
         }
 
+        // User filter - support both singular and plural
+        $userIds = $this->normalizeIds($filters['user_ids'] ?? $filters['user_id'] ?? null);
+        if (!empty($userIds)) {
+            $query->whereIn('user_id', $userIds);
+        }
+
         // Model filter - support both singular and plural
         $modelIds = $this->normalizeIds($filters['model_ids'] ?? $filters['model_id'] ?? null);
         if (!empty($modelIds)) {
