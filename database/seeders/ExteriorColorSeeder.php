@@ -17,6 +17,19 @@ class ExteriorColorSeeder extends Seeder
             ['name' => 'Green'],
             ['name' => 'Purple'],
             ['name' => 'Other'],
+            ['name' => 'Gold'],
+            ['name' => 'Turquoise'],
+            ['name' => 'Silver'],
+            ['name' => 'Beige'],
+            ['name' => 'Brown'],
+            ['name' => 'Bronze'],
+            ['name' => 'Yellow'],
+            ['name' => 'Orange'],
+            ['name' => 'Burgundy'],
+            ['name' => 'Maroon'],
+            ['name' => 'Teal'],
+            ['name' => 'Tan'],
+            ['name' => 'Pink'],
         ];
 
         foreach ($colors as $color) {
