@@ -70,6 +70,34 @@ class NotificationTypeSeeder extends Seeder
                 'sort_order' => 3,
             ],
             [
+                'name' => 'listing_edit_approved',
+                'display_name' => 'Listing Edit Approved',
+                'description' => 'Your car listing edit has been approved and applied',
+                'icon' => 'check_circle',
+                'color' => '#10B981',
+                'is_active' => true,
+                'default_template' => [
+                    'title' => 'Listing Edit Approved!',
+                    'body' => 'Your {{car_name}} listing edit has been approved and the changes are now live.'
+                ],
+                'channels' => ['push', 'email'],
+                'sort_order' => 4,
+            ],
+            [
+                'name' => 'listing_edit_rejected',
+                'display_name' => 'Listing Edit Rejected',
+                'description' => 'Your car listing edit has been rejected',
+                'icon' => 'cancel',
+                'color' => '#EF4444',
+                'is_active' => true,
+                'default_template' => [
+                    'title' => 'Listing Edit Rejected',
+                    'body' => 'Your {{car_name}} listing edit was rejected. Reason: {{reason}}'
+                ],
+                'channels' => ['push', 'email'],
+                'sort_order' => 5,
+            ],
+            [
                 'name' => 'price_drop',
                 'display_name' => 'Price Drop Alert',
                 'description' => 'A car in your watchlist has dropped in price',
@@ -81,7 +109,7 @@ class NotificationTypeSeeder extends Seeder
                     'body' => '{{car_name}} price dropped from {{old_price}} to {{new_price}}'
                 ],
                 'channels' => ['push'],
-                'sort_order' => 4,
+                'sort_order' => 6,
             ],
             [
                 'name' => 'new_match',
@@ -278,20 +306,6 @@ class NotificationTypeSeeder extends Seeder
                 ],
                 'channels' => ['push'],
                 'sort_order' => 17,
-            ],
-            [
-                'name' => 'listing_updated',
-                'display_name' => 'Listing Updated',
-                'description' => 'Your car listing has been updated successfully',
-                'icon' => 'edit',
-                'color' => '#3B82F6',
-                'is_active' => true,
-                'default_template' => [
-                    'title' => 'Listing Updated Successfully!',
-                    'body' => 'Your {{car_name}} listing has been updated and is being reviewed again.'
-                ],
-                'channels' => ['push'],
-                'sort_order' => 18,
             ],
         ];
 

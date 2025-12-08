@@ -123,18 +123,7 @@ class ListingApprovalService
 
             DB::commit();
 
-            // Create notification for the user (database + optional Firebase)
-            try {
-                // Reload listing with relationships for notification
-                $listing->load(['brand', 'carModel']);
-                $this->notificationService->createListingRejectedNotification($listing, $reason);
-            } catch (Exception $e) {
-                // Log error but don't fail the rejection process
-                Log::error('Failed to create rejection notification', [
-                    'listing_id' => $listingId,
-                    'error' => $e->getMessage()
-                ]);
-            }
+            // Note: Rejection notifications are now created manually by Odoo via the notification API endpoint
 
             Log::info('Listing rejected', [
                 'listing_id' => $listingId,
@@ -269,38 +258,7 @@ class ListingApprovalService
                 ]);
             });
 
-            // Create notification for the user
-            try {
-                // Refresh the listing to ensure we have all fields (including user_id)
-                $listing->refresh();
-                
-                // Reload listing with relationships for notification
-                $listing->load(['brand', 'carModel', 'user']);
-                
-                // Verify listing has a user_id before creating notification
-                if (!$listing->user_id) {
-                    Log::warning('Cannot create notification: listing has no user_id', [
-                        'listing_id' => $listing->id,
-                        'odoo_id' => $odooId
-                    ]);
-                } else {
-                    $this->notificationService->createListingRejectedNotification($listing, $reason);
-                    Log::info('Listing rejection notification created successfully', [
-                        'listing_id' => $listing->id,
-                        'user_id' => $listing->user_id,
-                        'odoo_id' => $odooId
-                    ]);
-                }
-            } catch (Exception $e) {
-                // Log error but don't fail the rejection process
-                Log::error('Failed to create rejection notification', [
-                    'listing_id' => $listing->id,
-                    'odoo_id' => $odooId,
-                    'user_id' => $listing->user_id ?? null,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-            }
+            // Note: Rejection notifications are now created manually by Odoo via the notification API endpoint
 
             Log::info('Listing rejected via Odoo integration', [
                 'listing_id' => $listing->id,

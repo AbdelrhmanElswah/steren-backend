@@ -31,6 +31,9 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('car-listing-edits/odoo/{odooId}/approve', [App\Http\Controllers\Api\Odoo\CarListingEditController::class, 'approveByOdooId']);
     Route::post('car-listing-edits/odoo/{odooId}/reject', [App\Http\Controllers\Api\Odoo\CarListingEditController::class, 'rejectByOdooId']);
 
+    // Notification management routes
+    Route::post('notifications/create', [App\Http\Controllers\Api\Odoo\NotificationController::class, 'createNotification']);
+
     Route::post('car-submissions', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'store']);
     Route::post('car-submissions/odoo/{odooId}/update', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'updateByOdooId']);
     Route::post('car-submissions/odoo/{odooId}/delete', [App\Http\Controllers\Api\Odoo\CarSubmissionController::class, 'deleteByOdooId']);
