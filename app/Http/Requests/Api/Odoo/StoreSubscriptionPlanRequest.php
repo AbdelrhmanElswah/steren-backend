@@ -20,7 +20,7 @@ class StoreSubscriptionPlanRequest extends FormRequest
             'price' => 'required|numeric|min:0',
             'currency' => 'nullable|string|max:10',
             'currency_symbol' => 'nullable|string|max:10',
-            'billing_cycle' => 'required|string|in:monthly,yearly,year',
+            'billing_cycle' => 'required|string|in:monthly,yearly,month,year',
             'features' => 'nullable|array',
             'max_listings' => 'nullable|integer|min:0',
             'max_photos' => 'nullable|integer|min:0',
