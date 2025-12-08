@@ -16,7 +16,11 @@ class StoreSubscriptionPlanRequest extends FormRequest
         return [
             'plan_id' => 'required|integer',
             'name' => 'required|string|max:255',
+            'name_ar' => 'nullable|string|max:255',
+            'name_kr' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+            'description_ar' => 'nullable|string',
+            'description_kr' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'currency' => 'nullable|string|max:10',
             'currency_symbol' => 'nullable|string|max:10',

@@ -14,11 +14,22 @@ class CarouselResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        // Get language from request
+        $lang = $request->query('lang');
+        if (!in_array($lang, ['ar', 'kr'])) {
+            $lang = null;
+        }
+        
+        // Get localized fields
+        $title = $lang ? ($this->{'title_' . $lang} ?: $this->title) : $this->title;
+        $description = $lang ? ($this->{'description_' . $lang} ?: $this->description) : $this->description;
+        $buttonText = $lang ? ($this->{'button_text_' . $lang} ?: $this->button_text) : $this->button_text;
+        
         return [
             'id' => $this->odoo_id, // Return Odoo ID as 'id' to match API response
-            'title' => $this->title,
-            'description' => $this->description,
-            'button_text' => $this->button_text,
+            'title' => $title,
+            'description' => $description,
+            'button_text' => $buttonText,
             'link_url' => $this->link_url,
             'start_date' => $this->start_date?->format('Y-m-d'),
             'end_date' => $this->end_date?->format('Y-m-d'),

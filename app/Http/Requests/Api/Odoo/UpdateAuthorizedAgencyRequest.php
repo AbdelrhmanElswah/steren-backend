@@ -15,6 +15,8 @@ class UpdateAuthorizedAgencyRequest extends FormRequest
     {
         return [
             'name' => 'sometimes|required|string|max:255',
+            'name_ar' => 'nullable|string|max:255',
+            'name_kr' => 'nullable|string|max:255',
             'partner_id' => 'sometimes|required|string|max:255',
             'media' => 'nullable',
         ];

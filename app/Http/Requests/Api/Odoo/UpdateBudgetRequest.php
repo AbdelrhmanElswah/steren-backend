@@ -21,6 +21,8 @@ class UpdateBudgetRequest extends FormRequest
     {
         return [
             'name' => 'sometimes|required|string|max:255',
+            'name_ar' => 'nullable|string|max:255',
+            'name_kr' => 'nullable|string|max:255',
             'value' => 'sometimes|required|numeric|min:0',
             'sequence' => 'sometimes|required|integer|min:0',
             'is_active' => 'nullable|boolean',

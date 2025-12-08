@@ -11,7 +11,7 @@ class City extends Model
 {
     use HasFactory, SoftDeletes, ExcludesSoftDeleted;
 
-    protected $fillable = ['odoo_id', 'name'];
+    protected $fillable = ['odoo_id', 'name', 'name_ar', 'name_kr'];
 
     public function userPreferences()
     {

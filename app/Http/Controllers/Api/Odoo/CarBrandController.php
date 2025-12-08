@@ -10,12 +10,13 @@ use App\Http\Resources\Api\Odoo\CarBrandResource;
 use App\Services\Odoo\CarBrandService;
 use App\Traits\ApiResponse;
 use App\Traits\OdooFetchTrait;
+use App\Traits\LocalizedResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 
 class CarBrandController extends Controller
 {
-    use ApiResponse, OdooFetchTrait;
+    use ApiResponse, OdooFetchTrait, LocalizedResponse;
 
     public function __construct(
         private CarBrandService $carBrandService
@@ -135,16 +136,21 @@ class CarBrandController extends Controller
     public function getBrands(GetCarBrandsRequest $request): JsonResponse
     {
         try {
-            // Build cache key based on request parameters
-            $cacheKey = 'odoo_brands_' . md5(serialize($request->only(['search', 'id', 'odoo_id'])));
+            // Get language from request
+            $lang = $this->getLanguageFromRequest($request);
+            
+            // Build cache key based on request parameters including language
+            $cacheKey = 'odoo_brands_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'lang'])));
             
             // Cache for 24 hours (86400 seconds)
-            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
-                // Only select needed columns for better performance
-                $brands = \App\Models\CarBrand::select('id', 'odoo_id', 'name')
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request, $lang) {
+                // Select needed columns including translation fields
+                $brands = \App\Models\CarBrand::select('id', 'odoo_id', 'name', 'name_ar', 'name_kr')
                     ->with(['media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order'])
                     ->when($request->filled('search'), function ($query) use ($request) {
-                        $query->where('name', 'like', '%' . $request->search . '%');
+                        $query->where('name', 'like', '%' . $request->search . '%')
+                              ->orWhere('name_ar', 'like', '%' . $request->search . '%')
+                              ->orWhere('name_kr', 'like', '%' . $request->search . '%');
                     })
                     ->when($request->filled('id'), function ($query) use ($request) {
                         $query->where('id', $request->id);
@@ -156,7 +162,7 @@ class CarBrandController extends Controller
                     ->get();
 
                 // Build response directly without using resource (faster, avoids temporary URL generation)
-                $brandsCollection = $brands->map(function ($brand) {
+                $brandsCollection = $brands->map(function ($brand) use ($lang) {
                     $mediaLink = null;
                     if ($brand->media && $brand->media->public_url) {
                         $mediaLink = $brand->media->public_url;
@@ -167,7 +173,7 @@ class CarBrandController extends Controller
                     return [
                         'id' => $brand->id,
                         'odoo_id' => $brand->odoo_id,
-                        'name' => $brand->name,
+                        'name' => $this->getLocalizedField($brand, 'name', $lang),
                         'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
                     ];
                 })->toArray();

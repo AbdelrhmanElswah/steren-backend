@@ -24,7 +24,11 @@ class SubscriptionPlanService extends OdooCrudService
         return [
             'odoo_id' => (string) ($odooData['plan_id'] ?? $odooData['id'] ?? ''),
             'name' => $odooData['name'],
+            'name_ar' => $odooData['name_ar'] ?? null,
+            'name_kr' => $odooData['name_kr'] ?? null,
             'description' => $odooData['description'] ?? null,
+            'description_ar' => $odooData['description_ar'] ?? null,
+            'description_kr' => $odooData['description_kr'] ?? null,
             'price' => $odooData['price'],
             'currency' => $odooData['currency'] ?? 'USD',
             'currency_symbol' => $odooData['currency_symbol'] ?? null,
@@ -69,8 +73,24 @@ class SubscriptionPlanService extends OdooCrudService
             $mappedData['name'] = $odooData['name'];
         }
 
+        if (isset($odooData['name_ar'])) {
+            $mappedData['name_ar'] = $odooData['name_ar'];
+        }
+
+        if (isset($odooData['name_kr'])) {
+            $mappedData['name_kr'] = $odooData['name_kr'];
+        }
+
         if (isset($odooData['description'])) {
             $mappedData['description'] = $odooData['description'];
+        }
+
+        if (isset($odooData['description_ar'])) {
+            $mappedData['description_ar'] = $odooData['description_ar'];
+        }
+
+        if (isset($odooData['description_kr'])) {
+            $mappedData['description_kr'] = $odooData['description_kr'];
         }
 
         if (isset($odooData['price'])) {

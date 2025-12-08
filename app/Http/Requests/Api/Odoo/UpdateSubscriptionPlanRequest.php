@@ -16,7 +16,11 @@ class UpdateSubscriptionPlanRequest extends FormRequest
         return [
             'plan_id' => 'sometimes|integer',
             'name' => 'sometimes|string|max:255',
+            'name_ar' => 'nullable|string|max:255',
+            'name_kr' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+            'description_ar' => 'nullable|string',
+            'description_kr' => 'nullable|string',
             'price' => 'sometimes|numeric|min:0',
             'currency' => 'nullable|string|max:10',
             'currency_symbol' => 'nullable|string|max:10',

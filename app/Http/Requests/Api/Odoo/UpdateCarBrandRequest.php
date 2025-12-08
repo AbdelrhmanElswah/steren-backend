@@ -22,6 +22,8 @@ class UpdateCarBrandRequest extends FormRequest
                 Rule::unique('car_brands', 'odoo_id')->ignore($this->route('id') ?? $this->route('odooId'))
             ],
             'name' => 'sometimes|string|max:255',
+            'name_ar' => 'nullable|string|max:255',
+            'name_kr' => 'nullable|string|max:255',
             'media' => 'sometimes|nullable',
         ];
     }

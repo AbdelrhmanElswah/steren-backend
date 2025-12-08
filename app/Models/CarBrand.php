@@ -11,7 +11,7 @@ class CarBrand extends Model
 {
     use HasFactory, SoftDeletes, ExcludesSoftDeleted;
 
-    protected $fillable = ['odoo_id', 'name'];
+    protected $fillable = ['odoo_id', 'name', 'name_ar', 'name_kr'];
 
     protected $appends = ['logo'];
 

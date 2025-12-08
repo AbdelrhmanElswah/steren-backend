@@ -16,6 +16,8 @@ class UpdateBodyTypeRequest extends FormRequest
         return [
             'odoo_id' => 'nullable|string|max:255',
             'name' => 'sometimes|required|string|max:255',
+            'name_ar' => 'nullable|string|max:255',
+            'name_kr' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'media' => 'nullable|string',
             'active' => 'nullable|boolean',

@@ -15,6 +15,8 @@ class AuthorizedAgency extends Model
     protected $fillable = [
         'odoo_id',
         'name',
+        'name_ar',
+        'name_kr',
         'partner_id',
     ];
 

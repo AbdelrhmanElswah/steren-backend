@@ -9,11 +9,21 @@ class SubscriptionPlanResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Get language from request
+        $lang = $request->query('lang');
+        if (!in_array($lang, ['ar', 'kr'])) {
+            $lang = null;
+        }
+        
+        // Get localized fields
+        $name = $lang ? ($this->{'name_' . $lang} ?: $this->name) : $this->name;
+        $description = $lang ? ($this->{'description_' . $lang} ?: $this->description) : $this->description;
+        
         return [
             'id' => $this->id,
             'odoo_id' => $this->odoo_id,
-            'name' => $this->name,
-            'description' => $this->description,
+            'name' => $name,
+            'description' => $description,
             'price' => (float) $this->price,
             'currency' => $this->currency,
             'currency_symbol' => $this->currency_symbol,

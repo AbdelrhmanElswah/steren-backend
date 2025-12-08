@@ -14,6 +14,8 @@ class Budget extends Model
     protected $fillable = [
         'odoo_id',
         'name',
+        'name_ar',
+        'name_kr',
         'value',
         'sequence',
         'is_active',

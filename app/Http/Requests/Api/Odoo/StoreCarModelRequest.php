@@ -16,6 +16,8 @@ class StoreCarModelRequest extends FormRequest
         return [
             'odoo_id' => 'nullable|max:255|unique:car_models,odoo_id',
             'name' => 'required|string|max:255',
+            'name_ar' => 'nullable|string|max:255',
+            'name_kr' => 'nullable|string|max:255',
             'car_brand_id' => 'required',
         ];
     }

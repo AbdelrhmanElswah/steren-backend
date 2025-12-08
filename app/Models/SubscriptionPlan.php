@@ -12,7 +12,11 @@ class SubscriptionPlan extends Model
     protected $fillable = [
         'odoo_id',
         'name',
+        'name_ar',
+        'name_kr',
         'description',
+        'description_ar',
+        'description_kr',
         'price',
         'currency',
         'currency_symbol',

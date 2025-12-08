@@ -123,13 +123,15 @@ class CityController extends Controller
     public function getCities(GetCitiesRequest $request): JsonResponse
     {
         try {
-            // Build cache key based on request parameters
-            $cacheKey = 'odoo_cities_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'per_page', 'page'])));
+            // Build cache key based on request parameters including language
+            $cacheKey = 'odoo_cities_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'per_page', 'page', 'lang'])));
             
             // Cache for 24 hours (86400 seconds)
             $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
                 $cities = \App\Models\City::when($request->filled('search'), function ($query) use ($request) {
-                        $query->where('name', 'like', '%' . $request->search . '%');
+                        $query->where('name', 'like', '%' . $request->search . '%')
+                              ->orWhere('name_ar', 'like', '%' . $request->search . '%')
+                              ->orWhere('name_kr', 'like', '%' . $request->search . '%');
                     })
                     ->when($request->filled('id'), function ($query) use ($request) {
                         $query->where('id', $request->id);

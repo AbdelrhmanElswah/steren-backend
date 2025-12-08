@@ -107,8 +107,8 @@ class CarouselController extends Controller
     public function getCarousels(GetCarouselsRequest $request): JsonResponse
     {
         try {
-            // Build cache key based on request parameters
-            $cacheKey = 'odoo_carousels_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'active_only', 'is_active', 'sort_by', 'sort_order'])));
+            // Build cache key based on request parameters including language
+            $cacheKey = 'odoo_carousels_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'active_only', 'is_active', 'sort_by', 'sort_order', 'lang'])));
             
             // Cache for 24 hours (86400 seconds)
             $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
@@ -121,7 +121,11 @@ class CarouselController extends Controller
                     })
                     ->when($request->filled('search'), function ($query) use ($request) {
                         return $query->where('title', 'like', '%' . $request->search . '%')
-                                    ->orWhere('description', 'like', '%' . $request->search . '%');
+                                    ->orWhere('title_ar', 'like', '%' . $request->search . '%')
+                                    ->orWhere('title_kr', 'like', '%' . $request->search . '%')
+                                    ->orWhere('description', 'like', '%' . $request->search . '%')
+                                    ->orWhere('description_ar', 'like', '%' . $request->search . '%')
+                                    ->orWhere('description_kr', 'like', '%' . $request->search . '%');
                     })
                     ->when($request->filled('id'), function ($query) use ($request) {
                         return $query->where('id', $request->id);

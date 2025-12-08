@@ -101,8 +101,8 @@ class SubscriptionPlanController extends Controller
     public function getSubscriptionPlans(GetSubscriptionPlansRequest $request): JsonResponse
     {
         try {
-            // Build cache key based on request parameters
-            $cacheKey = 'odoo_subscription_plans_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'is_active', 'is_popular', 'is_featured', 'billing_cycle'])));
+            // Build cache key based on request parameters including language
+            $cacheKey = 'odoo_subscription_plans_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'is_active', 'is_popular', 'is_featured', 'billing_cycle', 'lang'])));
             
             // Cache for 24 hours (86400 seconds)
             $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {

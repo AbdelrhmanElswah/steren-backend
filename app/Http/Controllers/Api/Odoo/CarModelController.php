@@ -11,12 +11,13 @@ use App\Http\Resources\Api\Odoo\CarBrandResource;
 use App\Services\Odoo\CarModelService;
 use App\Traits\ApiResponse;
 use App\Traits\OdooFetchTrait;
+use App\Traits\LocalizedResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 
 class CarModelController extends Controller
 {
-    use ApiResponse, OdooFetchTrait;
+    use ApiResponse, OdooFetchTrait, LocalizedResponse;
 
     public function __construct(
         private CarModelService $CarModelService
@@ -103,15 +104,18 @@ class CarModelController extends Controller
     public function getCarModels(GetCarModelsRequest $request): JsonResponse
     {
         try {
-            // Build cache key based on request parameters
-            $cacheKey = 'odoo_car_models_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'brand_id'])));
+            // Get language from request
+            $lang = $this->getLanguageFromRequest($request);
+            
+            // Build cache key based on request parameters including language
+            $cacheKey = 'odoo_car_models_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'brand_id', 'lang'])));
             
             // Cache for 24 hours (86400 seconds)
-            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request, $lang) {
                 $brandsWithModels = $this->CarModelService->getBrandsWithModels($request->validated());
                 
                 // Build response directly without using resources (faster, avoids temporary URL generation)
-                $formattedBrands = $brandsWithModels->map(function ($brand) {
+                $formattedBrands = $brandsWithModels->map(function ($brand) use ($lang) {
                     $mediaLink = null;
                     if ($brand->media && $brand->media->path_file_name) {
                         $mediaLink = $brand->media->getS3PublicUrl($brand->media->path_file_name);
@@ -120,13 +124,13 @@ class CarModelController extends Controller
                     $brandData = [
                         'id' => $brand->id,
                         'odoo_id' => $brand->odoo_id,
-                        'name' => $brand->name,
+                        'name' => $this->getLocalizedField($brand, 'name', $lang),
                         'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
-                        'models' => $brand->carModels->map(function ($model) {
+                        'models' => $brand->carModels->map(function ($model) use ($lang) {
                             return [
                                 'id' => $model->id,
                                 'odoo_id' => $model->odoo_id,
-                                'name' => $model->name,
+                                'name' => $this->getLocalizedField($model, 'name', $lang),
                                 'car_brand_id' => $model->car_brand_id,
                             ];
                         })->toArray(),

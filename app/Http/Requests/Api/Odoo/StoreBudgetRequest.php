@@ -22,6 +22,8 @@ class StoreBudgetRequest extends FormRequest
         return [
             'odoo_id' => 'required|string|unique:budgets,odoo_id',
             'name' => 'required|string|max:255',
+            'name_ar' => 'nullable|string|max:255',
+            'name_kr' => 'nullable|string|max:255',
             'value' => 'required|numeric|min:0',
             'sequence' => 'required|integer|min:0',
             'is_active' => 'nullable|boolean',

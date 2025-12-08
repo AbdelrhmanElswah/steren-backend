@@ -11,6 +11,8 @@ class BodyType extends Model
     protected $fillable = [
         'odoo_id',
         'name',
+        'name_ar',
+        'name_kr',
         'description',
         'is_active',
     ];

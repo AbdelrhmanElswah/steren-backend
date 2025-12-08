@@ -10,12 +10,13 @@ use App\Http\Resources\Api\Odoo\BodyTypeResource;
 use App\Services\Odoo\BodyTypeService;
 use App\Traits\ApiResponse;
 use App\Traits\OdooFetchTrait;
+use App\Traits\LocalizedResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 
 class BodyTypeController extends Controller
 {
-    use ApiResponse, OdooFetchTrait;
+    use ApiResponse, OdooFetchTrait, LocalizedResponse;
 
     public function __construct(
         private BodyTypeService $bodyTypeService
@@ -105,16 +106,21 @@ class BodyTypeController extends Controller
     public function getBodyTypes(GetBodyTypesRequest $request): JsonResponse
     {
         try {
-            // Build cache key based on request parameters
-            $cacheKey = 'odoo_body_types_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'is_active'])));
+            // Get language from request
+            $lang = $this->getLanguageFromRequest($request);
+            
+            // Build cache key based on request parameters including language
+            $cacheKey = 'odoo_body_types_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'is_active', 'lang'])));
             
             // Cache for 24 hours (86400 seconds)
-            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
-                // Only select needed columns for better performance
-                $bodyTypes = \App\Models\BodyType::select('id', 'odoo_id', 'name')
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request, $lang) {
+                // Select needed columns including translation fields
+                $bodyTypes = \App\Models\BodyType::select('id', 'odoo_id', 'name', 'name_ar', 'name_kr')
                     ->with(['medias:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order'])
                     ->when($request->filled('search'), function ($query) use ($request) {
-                        $query->where('name', 'like', '%' . $request->search . '%');
+                        $query->where('name', 'like', '%' . $request->search . '%')
+                              ->orWhere('name_ar', 'like', '%' . $request->search . '%')
+                              ->orWhere('name_kr', 'like', '%' . $request->search . '%');
                     })
                     ->when($request->filled('id'), function ($query) use ($request) {
                         $query->where('id', $request->id);
@@ -129,7 +135,7 @@ class BodyTypeController extends Controller
                     ->get();
 
                 // Build response directly without using resource (faster, avoids temporary URL generation)
-                $bodyTypesCollection = $bodyTypes->map(function ($bodyType) {
+                $bodyTypesCollection = $bodyTypes->map(function ($bodyType) use ($lang) {
                     $mediaLink = null;
                     if ($bodyType->medias->isNotEmpty()) {
                         $firstMedia = $bodyType->medias->first();
@@ -141,7 +147,7 @@ class BodyTypeController extends Controller
                     return [
                         'id' => $bodyType->id,
                         'odoo_id' => $bodyType->odoo_id,
-                        'name' => $bodyType->name,
+                        'name' => $this->getLocalizedField($bodyType, 'name', $lang),
                         'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
                     ];
                 })->toArray();

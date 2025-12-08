@@ -24,6 +24,8 @@ class UpdateCityRequest extends FormRequest
                 Rule::unique('cities', 'odoo_id')->ignore($cityId)
             ],
             'name' => 'sometimes|string|max:255',
+            'name_ar' => 'nullable|string|max:255',
+            'name_kr' => 'nullable|string|max:255',
         ];
     }
 

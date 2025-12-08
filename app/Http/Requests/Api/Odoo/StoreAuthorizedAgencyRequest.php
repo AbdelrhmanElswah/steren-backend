@@ -15,6 +15,8 @@ class StoreAuthorizedAgencyRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
+            'name_ar' => 'nullable|string|max:255',
+            'name_kr' => 'nullable|string|max:255',
             'partner_id' => 'required|string|max:255',
             'media' => 'nullable',
         ];

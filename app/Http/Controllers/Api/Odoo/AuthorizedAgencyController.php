@@ -10,12 +10,13 @@ use App\Http\Resources\Api\Odoo\AuthorizedAgencyResource;
 use App\Models\AuthorizedAgency;
 use App\Services\Odoo\AuthorizedAgencyService;
 use App\Traits\ApiResponse;
+use App\Traits\LocalizedResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 
 class AuthorizedAgencyController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, LocalizedResponse;
 
     public function __construct(
         private AuthorizedAgencyService $authorizedAgencyService
@@ -115,15 +116,20 @@ class AuthorizedAgencyController extends Controller
     public function getAuthorizedAgencies(GetAuthorizedAgenciesRequest $request): JsonResponse
     {
         try {
-            // Build cache key based on request parameters
-            $cacheKey = 'odoo_authorized_agencies_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'partner_id', 'per_page', 'page'])));
+            // Get language from request
+            $lang = $this->getLanguageFromRequest($request);
+            
+            // Build cache key based on request parameters including language
+            $cacheKey = 'odoo_authorized_agencies_' . md5(serialize($request->only(['search', 'id', 'odoo_id', 'partner_id', 'per_page', 'page', 'lang'])));
             
             // Cache for 24 hours (86400 seconds)
-            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request) {
+            $result = \Illuminate\Support\Facades\Cache::remember($cacheKey, 86400, function () use ($request, $lang) {
                 // Build query to get partner IDs first
                 $partnerIdsQuery = AuthorizedAgency::query()
                     ->when($request->filled('search'), function ($q) use ($request) {
-                        $q->where('name', 'like', '%' . $request->search . '%');
+                        $q->where('name', 'like', '%' . $request->search . '%')
+                          ->orWhere('name_ar', 'like', '%' . $request->search . '%')
+                          ->orWhere('name_kr', 'like', '%' . $request->search . '%');
                     })
                     ->when($request->filled('id'), function ($q) use ($request) {
                         $q->where('id', $request->id);
@@ -163,10 +169,12 @@ class AuthorizedAgencyController extends Controller
                 }
 
                 // Build main query with media eager loading
-                $query = AuthorizedAgency::select('id', 'name', 'partner_id')
+                $query = AuthorizedAgency::select('id', 'name', 'name_ar', 'name_kr', 'partner_id')
                     ->with(['media:id,modelable_type,modelable_id,media,path_file_name,file_type,info,order'])
                     ->when($request->filled('search'), function ($q) use ($request) {
-                        $q->where('name', 'like', '%' . $request->search . '%');
+                        $q->where('name', 'like', '%' . $request->search . '%')
+                          ->orWhere('name_ar', 'like', '%' . $request->search . '%')
+                          ->orWhere('name_kr', 'like', '%' . $request->search . '%');
                     })
                     ->when($request->filled('id'), function ($q) use ($request) {
                         $q->where('id', $request->id);
@@ -185,7 +193,7 @@ class AuthorizedAgencyController extends Controller
                         page: $request->integer('page', 1)
                     );
 
-                    $agenciesCollection = $paginated->getCollection()->map(function ($agency) use ($studioMap) {
+                    $agenciesCollection = $paginated->getCollection()->map(function ($agency) use ($studioMap, $lang) {
                         $mediaLink = null;
                         if ($agency->media && $agency->media->path_file_name) {
                             $mediaLink = $agency->media->getS3PublicUrl($agency->media->path_file_name);
@@ -193,7 +201,7 @@ class AuthorizedAgencyController extends Controller
 
                         return [
                             'id' => $agency->id,
-                            'name' => $agency->name,
+                            'name' => $this->getLocalizedField($agency, 'name', $lang),
                             'partner_id' => $agency->partner_id,
                             'studio_id' => $studioMap[$agency->partner_id] ?? null,
                             'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
@@ -214,7 +222,7 @@ class AuthorizedAgencyController extends Controller
 
                 $agencies = $query->get();
                 
-                $agenciesCollection = $agencies->map(function ($agency) use ($studioMap) {
+                $agenciesCollection = $agencies->map(function ($agency) use ($studioMap, $lang) {
                     $mediaLink = null;
                     if ($agency->media && $agency->media->path_file_name) {
                         $mediaLink = $agency->media->getS3PublicUrl($agency->media->path_file_name);
@@ -222,7 +230,7 @@ class AuthorizedAgencyController extends Controller
 
                     return [
                         'id' => $agency->id,
-                        'name' => $agency->name,
+                        'name' => $this->getLocalizedField($agency, 'name', $lang),
                         'partner_id' => $agency->partner_id,
                         'studio_id' => $studioMap[$agency->partner_id] ?? null,
                         'media' => $mediaLink ? ['media_link' => $mediaLink] : null,
