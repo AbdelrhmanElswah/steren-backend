@@ -183,4 +183,34 @@ class SubscriptionPlan extends Model
     {
         return $this->billing_cycle === 'monthly';
     }
+
+    /**
+     * Get localized features based on language
+     * Features are stored as: {"en": [...], "ar": [...], "kr": [...]}
+     * 
+     * @param string|null $lang Language code ('ar', 'kr', or null for 'en')
+     * @return array Array of feature strings
+     */
+    public function getLocalizedFeatures(?string $lang = null): array
+    {
+        $features = $this->features ?? [];
+        
+        // If features is old format (simple array), return as-is for backward compatibility
+        if (!is_array($features) || empty($features) || !isset($features['en'])) {
+            // Check if it's a simple array (old format)
+            if (is_array($features) && isset($features[0]) && is_string($features[0])) {
+                return $features; // Return old format
+            }
+            return [];
+        }
+        
+        // New format: {"en": [...], "ar": [...], "kr": [...]}
+        if (!$lang || !in_array($lang, ['ar', 'kr'])) {
+            // Default to English
+            return $features['en'] ?? [];
+        }
+        
+        // Return localized features, fallback to English if not available
+        return $features[$lang] ?? $features['en'] ?? [];
+    }
 }

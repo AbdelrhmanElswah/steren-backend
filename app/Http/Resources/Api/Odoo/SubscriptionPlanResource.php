@@ -19,6 +19,10 @@ class SubscriptionPlanResource extends JsonResource
         $name = $lang ? ($this->{'name_' . $lang} ?: $this->name) : $this->name;
         $description = $lang ? ($this->{'description_' . $lang} ?: $this->description) : $this->description;
         
+        // Get localized features
+        // Features are stored as: {"en": [...], "ar": [...], "kr": [...]}
+        $features = $this->getLocalizedFeatures($lang);
+        
         return [
             'id' => $this->id,
             'odoo_id' => $this->odoo_id,
@@ -28,7 +32,7 @@ class SubscriptionPlanResource extends JsonResource
             'currency' => $this->currency,
             'currency_symbol' => $this->currency_symbol,
             'billing_cycle' => $this->billing_cycle,
-            'features' => $this->features,
+            'features' => $features,
             'max_listings' => $this->max_listings,
             'max_photos' => $this->max_photos,
             'subscriber_count' => $this->subscriber_count,

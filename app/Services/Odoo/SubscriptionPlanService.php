@@ -33,7 +33,7 @@ class SubscriptionPlanService extends OdooCrudService
             'currency' => $odooData['currency'] ?? 'USD',
             'currency_symbol' => $odooData['currency_symbol'] ?? null,
             'billing_cycle' => $billingCycle,
-            'features' => $odooData['features'] ?? [],
+            // Features are computed from boolean flags, not received from Odoo
             'max_listings' => $odooData['max_listings'] ?? null,
             'max_photos' => $odooData['max_photos'] ?? null,
             'subscriber_count' => $odooData['subscriber_count'] ?? 0,
@@ -116,31 +116,26 @@ class SubscriptionPlanService extends OdooCrudService
             $mappedData['billing_cycle'] = $billingCycle;
         }
 
-        // Handle features: Use from Odoo if provided, otherwise compute from boolean flags if any feature flags changed
-        if (isset($odooData['features'])) {
-            $mappedData['features'] = $odooData['features'];
-        } else {
-            // Check if any feature flags are being updated
-            $featureFlags = [
-                'is_whatsapp_phone', 'is_badge', 'is_search', 'is_similar_cars',
-                'is_dedicated_account_rep', 'is_analytics', 'is_top_picks',
-                'is_priority_support', 'is_you_may_also_like',
-                'max_listings', 'max_photos' // These also affect features
-            ];
-            
-            $anyFeatureFlagChanged = false;
-            foreach ($featureFlags as $flag) {
-                if (isset($odooData[$flag])) {
-                    $anyFeatureFlagChanged = true;
-                    break;
-                }
+        // Check if any feature flags are being updated (features are computed from flags, not received from Odoo)
+        // Name translations also affect features (used in badge feature)
+        $featureFlags = [
+            'is_whatsapp_phone', 'is_badge', 'is_search', 'is_similar_cars',
+            'is_dedicated_account_rep', 'is_analytics', 'is_top_picks',
+            'is_priority_support', 'is_you_may_also_like',
+            'max_listings', 'max_photos', 'name', 'name_ar', 'name_kr' // These affect features
+        ];
+        
+        $anyFeatureFlagChanged = false;
+        foreach ($featureFlags as $flag) {
+            if (isset($odooData[$flag])) {
+                $anyFeatureFlagChanged = true;
+                break;
             }
-            
-            // If feature flags changed but features not provided, we'll compute it after update
-            // Store a flag to indicate we need to recompute features
-            if ($anyFeatureFlagChanged) {
-                $mappedData['_recompute_features'] = true;
-            }
+        }
+        
+        // If feature flags changed, we'll compute features after update
+        if ($anyFeatureFlagChanged) {
+            $mappedData['_recompute_features'] = true;
         }
 
         if (isset($odooData['max_listings'])) {
@@ -218,77 +213,110 @@ class SubscriptionPlanService extends OdooCrudService
     {
         $mappedData = $this->mapOdooDataToModel($odooData);
         
-        // If features not provided, compute from boolean flags
-        if (empty($mappedData['features'])) {
-            $flags = [
-                'name' => $mappedData['name'],
-                'is_whatsapp_phone' => $mappedData['is_whatsapp_phone'] ?? false,
-                'is_badge' => $mappedData['is_badge'] ?? false,
-                'is_search' => $mappedData['is_search'] ?? false,
-                'is_similar_cars' => $mappedData['is_similar_cars'] ?? false,
-                'is_analytics' => $mappedData['is_analytics'] ?? false,
-                'is_top_picks' => $mappedData['is_top_picks'] ?? false,
-                'is_you_may_also_like' => $mappedData['is_you_may_also_like'] ?? false,
-                'is_dedicated_account_rep' => $mappedData['is_dedicated_account_rep'] ?? false,
-                'is_priority_support' => $mappedData['is_priority_support'] ?? false,
-            ];
-            
-            $mappedData['features'] = $this->computeFeaturesFromFlags(
-                $flags,
-                $mappedData['max_listings'] ?? null,
-                $mappedData['max_photos'] ?? null
-            );
-        }
+        // Always compute features from boolean flags (not received from Odoo)
+        // Features are generated in all languages: {"en": [...], "ar": [...], "kr": [...]}
+        $flags = [
+            'name' => $mappedData['name'],
+            'name_ar' => $mappedData['name_ar'] ?? null,
+            'name_kr' => $mappedData['name_kr'] ?? null,
+            'is_whatsapp_phone' => $mappedData['is_whatsapp_phone'] ?? false,
+            'is_badge' => $mappedData['is_badge'] ?? false,
+            'is_search' => $mappedData['is_search'] ?? false,
+            'is_similar_cars' => $mappedData['is_similar_cars'] ?? false,
+            'is_analytics' => $mappedData['is_analytics'] ?? false,
+            'is_top_picks' => $mappedData['is_top_picks'] ?? false,
+            'is_you_may_also_like' => $mappedData['is_you_may_also_like'] ?? false,
+            'is_dedicated_account_rep' => $mappedData['is_dedicated_account_rep'] ?? false,
+            'is_priority_support' => $mappedData['is_priority_support'] ?? false,
+        ];
+        
+        $mappedData['features'] = $this->computeFeaturesFromFlags(
+            $flags,
+            $mappedData['max_listings'] ?? null,
+            $mappedData['max_photos'] ?? null
+        );
         
         return $this->create($mappedData);
     }
 
     /**
-     * Compute features array from boolean flags (matching Odoo's _prepare_api_data logic)
+     * Compute features array from boolean flags with translations
+     * Returns structure: {"en": [...], "ar": [...], "kr": [...]}
      */
     private function computeFeaturesFromFlags(array $flags, ?int $maxListings = null, ?int $maxPhotos = null): array
     {
-        $featureList = [];
+        $featuresEn = [];
+        $featuresAr = [];
+        $featuresKr = [];
 
         // Add listing and photo limits to features (always first)
         if ($maxListings !== null) {
-            $featureList[] = "Up to {$maxListings} car listings per month";
+            $featuresEn[] = "Up to {$maxListings} car listings per month";
+            $featuresAr[] = "حتى {$maxListings} قائمة سيارات شهرياً";
+            $featuresKr[] = "هەر مانگێک تا {$maxListings} لیستینگی ئۆتۆمبێل";
         }
         if ($maxPhotos !== null) {
-            $featureList[] = "Up to {$maxPhotos} photos per listing";
+            $featuresEn[] = "Up to {$maxPhotos} photos per listing";
+            $featuresAr[] = "حتى {$maxPhotos} صورة لكل قائمة";
+            $featuresKr[] = "بۆ هەر لیستینگێک تا {$maxPhotos} وێنە";
         }
 
         // Build feature list from boolean flags
         if (!empty($flags['is_whatsapp_phone'])) {
-            $featureList[] = "WhatsApp Contact";
+            $featuresEn[] = "WhatsApp Contact";
+            $featuresAr[] = "اتصال واتساب";
+            $featuresKr[] = "پەیوەندی واتساپ";
         }
         if (!empty($flags['is_badge'])) {
             $planName = $flags['name'] ?? 'Plan';
-            $featureList[] = "Plan Badge ({$planName})";
+            $planNameAr = $flags['name_ar'] ?? $planName;
+            $planNameKr = $flags['name_kr'] ?? $planName;
+            
+            $featuresEn[] = "Plan Badge ({$planName})";
+            $featuresAr[] = "شارة الخطة ({$planNameAr})";
+            $featuresKr[] = "نیشانەی پلان ({$planNameKr})";
         }
         if (!empty($flags['is_search'])) {
-            $featureList[] = "Advanced Search";
+            $featuresEn[] = "Advanced Search";
+            $featuresAr[] = "بحث متقدم";
+            $featuresKr[] = "گەڕانی پێشکەوتوو";
         }
         if (!empty($flags['is_similar_cars'])) {
-            $featureList[] = "Similar Cars Display";
+            $featuresEn[] = "Similar Cars Display";
+            $featuresAr[] = "عرض سيارات مشابهة";
+            $featuresKr[] = "پیشاندانی ئۆتۆمبێلی هاوشێوە";
         }
         if (!empty($flags['is_analytics'])) {
-            $featureList[] = "Analytics Dashboard";
+            $featuresEn[] = "Analytics Dashboard";
+            $featuresAr[] = "لوحة تحليلات";
+            $featuresKr[] = "داشبۆردی شیکاری";
         }
         if (!empty($flags['is_top_picks'])) {
-            $featureList[] = "Featured in Top Picks";
+            $featuresEn[] = "Featured in Top Picks";
+            $featuresAr[] = "مميز في الاختيارات المفضلة";
+            $featuresKr[] = "تایبەت لە هەڵبژاردە سەرەکییەکان";
         }
         if (!empty($flags['is_you_may_also_like'])) {
-            $featureList[] = "You May Also Like Recommendations";
+            $featuresEn[] = "You May Also Like Recommendations";
+            $featuresAr[] = "توصيات قد تعجبك";
+            $featuresKr[] = "پێشنیارەکانی تر";
         }
         if (!empty($flags['is_dedicated_account_rep'])) {
-            $featureList[] = "Dedicated Account Representative";
+            $featuresEn[] = "Dedicated Account Representative";
+            $featuresAr[] = "ممثل حساب مخصص";
+            $featuresKr[] = "نوێنەری هەژماری تایبەت";
         }
         if (!empty($flags['is_priority_support'])) {
-            $featureList[] = "Priority Support";
+            $featuresEn[] = "Priority Support";
+            $featuresAr[] = "دعم ذو أولوية";
+            $featuresKr[] = "پشتگیری پێشەنگی";
         }
 
-        return $featureList;
+        return [
+            'en' => $featuresEn,
+            'ar' => $featuresAr,
+            'kr' => $featuresKr,
+        ];
     }
 
     public function updateFromOdoo(string $odooId, array $odooData): SubscriptionPlan
@@ -309,8 +337,11 @@ class SubscriptionPlanService extends OdooCrudService
             $plan->refresh();
             
             // Build flags array from current plan data and any updates
+            // Features are generated in all languages: {"en": [...], "ar": [...], "kr": [...]}
             $flags = [
                 'name' => $plan->name,
+                'name_ar' => $plan->name_ar,
+                'name_kr' => $plan->name_kr,
                 'is_whatsapp_phone' => $plan->is_whatsapp_phone,
                 'is_badge' => $plan->is_badge,
                 'is_search' => $plan->is_search,
@@ -322,7 +353,7 @@ class SubscriptionPlanService extends OdooCrudService
                 'is_priority_support' => $plan->is_priority_support,
             ];
             
-            // Compute features from flags
+            // Compute features from flags (returns {"en": [...], "ar": [...], "kr": [...]})
             $features = $this->computeFeaturesFromFlags($flags, $plan->max_listings, $plan->max_photos);
             
             // Update features
