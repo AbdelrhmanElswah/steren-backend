@@ -12,13 +12,28 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('car_listing_edits', function (Blueprint $table) {
-            $table->dropColumn([
-                'odoo_listing_id',
-                'odoo_vehicle_id',
-                'odoo_seller_id',
-                'odoo_city_id',
-                'odoo_listing_state',
-            ]);
+            $columnsToDrop = [];
+            
+            // Check which columns exist before trying to drop them
+            if (Schema::hasColumn('car_listing_edits', 'odoo_listing_id')) {
+                $columnsToDrop[] = 'odoo_listing_id';
+            }
+            if (Schema::hasColumn('car_listing_edits', 'odoo_vehicle_id')) {
+                $columnsToDrop[] = 'odoo_vehicle_id';
+            }
+            if (Schema::hasColumn('car_listing_edits', 'odoo_seller_id')) {
+                $columnsToDrop[] = 'odoo_seller_id';
+            }
+            if (Schema::hasColumn('car_listing_edits', 'odoo_city_id')) {
+                $columnsToDrop[] = 'odoo_city_id';
+            }
+            if (Schema::hasColumn('car_listing_edits', 'odoo_listing_state')) {
+                $columnsToDrop[] = 'odoo_listing_state';
+            }
+            
+            if (!empty($columnsToDrop)) {
+                $table->dropColumn($columnsToDrop);
+            }
         });
     }
 
