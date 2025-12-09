@@ -16,6 +16,14 @@ class AuthorizedAgencyService extends OdooCrudService
 
     public function create(array $data): AuthorizedAgency
     {
+        // Normalize empty strings to null for translation fields
+        if (isset($data['name_ar']) && $data['name_ar'] === '') {
+            $data['name_ar'] = null;
+        }
+        if (isset($data['name_kr']) && $data['name_kr'] === '') {
+            $data['name_kr'] = null;
+        }
+        
         $agency = parent::create($data);
 
         if (!empty($data['media'])) {
@@ -28,6 +36,20 @@ class AuthorizedAgencyService extends OdooCrudService
     public function updateByPartnerId(string $partnerId, array $data): AuthorizedAgency
     {
         $agency = AuthorizedAgency::where('partner_id', $partnerId)->firstOrFail();
+        
+        // Prevent changing partner_id (Odoo also prevents this)
+        if (isset($data['partner_id']) && $agency->partner_id !== $data['partner_id']) {
+            throw new \RuntimeException('Cannot change partner_id on an existing authorized agency');
+        }
+        
+        // Normalize empty strings to null for translation fields
+        if (isset($data['name_ar']) && $data['name_ar'] === '') {
+            $data['name_ar'] = null;
+        }
+        if (isset($data['name_kr']) && $data['name_kr'] === '') {
+            $data['name_kr'] = null;
+        }
+        
         $agency->update($data);
 
         if (array_key_exists('media', $data)) {
