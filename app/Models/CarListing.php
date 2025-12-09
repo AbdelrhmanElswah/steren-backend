@@ -269,7 +269,8 @@ class CarListing extends Model
      * Get dynamic title based on year + brand + model + trim in the requested language
      * Format: 
      * - English: "2020 Toyota Camry SE" (year + brand + model + trim)
-     * - Arabic/Kurdish: "SE تويوتا كامري 2020" (trim + brand + model + year)
+     * - Arabic/Kurdish: "2023 شيري أريو 5 TGDI" (year + brand + model + trim)
+     *   In RTL display, this shows year on the right (first) and trim on the left (last)
      * 
      * @param string|null $lang Language code ('ar', 'kr', or null for default)
      * @return string Dynamic title
@@ -303,13 +304,9 @@ class CarListing extends Model
             }
         }
         
-        // For Arabic and Kurdish: trim + brand + model + year
-        // For English/default: year + brand + model + trim
-        if (in_array($lang, ['ar', 'kr'])) {
-            $parts = array_filter([$trim, $brandName, $modelName, $year]);
-        } else {
-            $parts = array_filter([$year, $brandName, $modelName, $trim]);
-        }
+        // For all languages: year + brand + model + trim
+        // In RTL (Arabic/Kurdish), this displays correctly with year on the right and trim on the left
+        $parts = array_filter([$year, $brandName, $modelName, $trim]);
         
         return implode(' ', $parts);
     }
