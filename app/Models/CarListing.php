@@ -267,60 +267,51 @@ class CarListing extends Model
 
     /**
      * Get dynamic title based on year + brand + model + trim in the requested language
-     * Format: "2020 Toyota Camry SE" or "2020 تويوتا كامري SE" (if lang=ar)
+     * Format: 
+     * - English: "2020 Toyota Camry SE" (year + brand + model + trim)
+     * - Arabic/Kurdish: "SE تويوتا كامري 2020" (trim + brand + model + year)
      * 
      * @param string|null $lang Language code ('ar', 'kr', or null for default)
      * @return string Dynamic title
      */
     public function getDynamicTitle(?string $lang = null): string
     {
-        $parts = [];
-        
-        // Year (always in numbers, no translation needed)
-        if ($this->year) {
-            $parts[] = (string) $this->year;
-        }
+        $year = $this->year ? (string) $this->year : null;
+        $trim = $this->trim ?: null;
         
         // Brand (with translation)
+        $brandName = null;
         if ($this->relationLoaded('brand') && $this->brand) {
             $brandName = $lang ? ($this->brand->{'name_' . $lang} ?: $this->brand->name) : $this->brand->name;
-            if ($brandName) {
-                $parts[] = $brandName;
-            }
         } elseif ($this->car_brand_id) {
             // Load brand if not already loaded
             $brand = \App\Models\CarBrand::find($this->car_brand_id);
             if ($brand) {
                 $brandName = $lang ? ($brand->{'name_' . $lang} ?: $brand->name) : $brand->name;
-                if ($brandName) {
-                    $parts[] = $brandName;
-                }
             }
         }
         
         // Model (with translation)
+        $modelName = null;
         if ($this->relationLoaded('carModel') && $this->carModel) {
             $modelName = $lang ? ($this->carModel->{'name_' . $lang} ?: $this->carModel->name) : $this->carModel->name;
-            if ($modelName) {
-                $parts[] = $modelName;
-            }
         } elseif ($this->car_model_id) {
             // Load model if not already loaded
             $model = \App\Models\CarModel::find($this->car_model_id);
             if ($model) {
                 $modelName = $lang ? ($model->{'name_' . $lang} ?: $model->name) : $model->name;
-                if ($modelName) {
-                    $parts[] = $modelName;
-                }
             }
         }
         
-        // Trim (usually in English, but include it if available)
-        if ($this->trim) {
-            $parts[] = $this->trim;
+        // For Arabic and Kurdish: trim + brand + model + year
+        // For English/default: year + brand + model + trim
+        if (in_array($lang, ['ar', 'kr'])) {
+            $parts = array_filter([$trim, $brandName, $modelName, $year]);
+        } else {
+            $parts = array_filter([$year, $brandName, $modelName, $trim]);
         }
         
-        return implode(' ', array_filter($parts));
+        return implode(' ', $parts);
     }
 
     /**
