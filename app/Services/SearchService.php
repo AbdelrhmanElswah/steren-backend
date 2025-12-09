@@ -235,27 +235,38 @@ class SearchService
     /**
      * Get filter options for search
      */
-    public function getFilterOptions(): array
+    public function getFilterOptions(?string $lang = null): array
     {
-        // Use a versioned cache key to force refresh after code changes
-        return Cache::remember('search_filter_options_v7', 3600, function () {
+        // Use a versioned cache key to force refresh after code changes (include lang in cache key)
+        $cacheKey = 'search_filter_options_v8_' . ($lang ?? 'en');
+        return Cache::remember($cacheKey, 3600, function () use ($lang) {
             // Helper to get unique records by name using subquery
-            $getUniqueByName = function($tableName) {
+            $getUniqueByName = function($tableName, $translationFields = false) use ($lang) {
                 $ids = DB::table($tableName)
                     ->select(DB::raw('MIN(id) as id'))
                     ->groupBy('name')
                     ->pluck('id')
                     ->toArray();
                 
+                $selectFields = ['id', 'name'];
+                if ($translationFields) {
+                    $selectFields[] = 'name_ar';
+                    $selectFields[] = 'name_kr';
+                }
+                
                 return DB::table($tableName)
-                    ->select('id', 'name')
+                    ->select($selectFields)
                     ->whereIn('id', $ids)
                     ->orderBy('name')
                     ->get()
-                    ->map(function($item) {
+                    ->map(function($item) use ($lang) {
+                        $name = $item->name;
+                        if ($lang && isset($item->{'name_' . $lang}) && !empty($item->{'name_' . $lang})) {
+                            $name = $item->{'name_' . $lang};
+                        }
                         return [
                             'id' => $item->id,
-                            'name' => $item->name
+                            'name' => $name
                         ];
                     })
                     ->toArray();
@@ -270,8 +281,8 @@ class SearchService
             // Get unique transmissions
             $transmissions = $getUniqueByName('transmissions');
 
-            // Get unique exterior colors
-            $exteriorColors = $getUniqueByName('exterior_colors');
+            // Get unique exterior colors (with translation support)
+            $exteriorColors = $getUniqueByName('exterior_colors', true);
 
             // Get unique drive types
             $driveTypes = $getUniqueByName('drive_types');
@@ -419,12 +430,12 @@ class SearchService
     /**
      * Search car listings with advanced filters
      */
-    public function searchListings(array $filters, int $page = 1, int $perPage = 20): array
+    public function searchListings(array $filters, int $page = 1, int $perPage = 20, ?string $lang = null): array
     {
         $sortBy = $filters['sort'] ?? 'latest';
-        $cacheKey = 'search_listings_' . md5(serialize($filters)) . "_{$page}_{$perPage}_{$sortBy}";
+        $cacheKey = 'search_listings_' . md5(serialize($filters)) . "_{$page}_{$perPage}_{$sortBy}_" . ($lang ?? 'en');
         
-        return Cache::remember($cacheKey, 300, function () use ($filters, $page, $perPage, $sortBy) {
+        return Cache::remember($cacheKey, 300, function () use ($filters, $page, $perPage, $sortBy, $lang) {
             // Build base query for filtering (without eager loading for count)
             $baseQuery = CarListing::query();
             $this->applySearchFilters($baseQuery, $filters);
@@ -434,12 +445,12 @@ class SearchService
             $total = (clone $baseQuery)->select('car_listings.id')->distinct()->count('car_listings.id');
 
             // Now build the query with eager loading for actual results
-            // Load all relationships needed for standardized format
+            // Load all relationships needed for standardized format (including translation fields)
             $query = CarListing::with([
-                'brand:id,name,odoo_id',
-                'carModel:id,name,car_brand_id',
-                'bodyType:id,name',
-                'city:id,name,odoo_id',
+                'brand:id,name,name_ar,name_kr,odoo_id',
+                'carModel:id,name,name_ar,name_kr,car_brand_id',
+                'bodyType:id,name,name_ar,name_kr',
+                'city:id,name,name_ar,name_kr,odoo_id',
                 'media' => function($mediaQuery) {
                     $mediaQuery->select('id', 'modelable_type', 'modelable_id', 'path_file_name', 'file_type', 'info', 'order')
                         ->orderBy('order');
@@ -449,7 +460,7 @@ class SearchService
                 },
                 'fuelType:id,name',
                 'transmission:id,name',
-                'exteriorColor:id,name',
+                'exteriorColor:id,name,name_ar,name_kr',
                 'driveType:id,name',
                 'cylinder:id,name',
                 'carCondition:id,name',
@@ -495,7 +506,7 @@ class SearchService
 
             // Format listings using shared formatter (matches /api/car-listings format)
             $formatter = app(\App\Services\CarListingFormatterService::class);
-            $formattedListings = $formatter->formatListings($listings);
+            $formattedListings = $formatter->formatListings($listings, null, $lang);
 
             return [
                 'listings' => $formattedListings,
@@ -528,11 +539,20 @@ class SearchService
                 $searchLower = strtolower($search);
                 
                 // First, try to find matching brands and models to reduce subquery complexity
-                $matchingBrandIds = \App\Models\CarBrand::whereRaw('LOWER(name) LIKE ?', ['%' . $searchLower . '%'])
+                // Search in all language fields
+                $matchingBrandIds = \App\Models\CarBrand::where(function($q) use ($searchLower) {
+                    $q->whereRaw('LOWER(name) LIKE ?', ['%' . $searchLower . '%'])
+                      ->orWhereRaw('LOWER(name_ar) LIKE ?', ['%' . $searchLower . '%'])
+                      ->orWhereRaw('LOWER(name_kr) LIKE ?', ['%' . $searchLower . '%']);
+                })
                     ->pluck('id')
                     ->toArray();
                 
-                $matchingModelIds = \App\Models\CarModel::whereRaw('LOWER(name) LIKE ?', ['%' . $searchLower . '%'])
+                $matchingModelIds = \App\Models\CarModel::where(function($q) use ($searchLower) {
+                    $q->whereRaw('LOWER(name) LIKE ?', ['%' . $searchLower . '%'])
+                      ->orWhereRaw('LOWER(name_ar) LIKE ?', ['%' . $searchLower . '%'])
+                      ->orWhereRaw('LOWER(name_kr) LIKE ?', ['%' . $searchLower . '%']);
+                })
                     ->pluck('id')
                     ->toArray();
                 

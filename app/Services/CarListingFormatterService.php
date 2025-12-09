@@ -13,9 +13,10 @@ class CarListingFormatterService
      * 
      * @param CarListing $listing
      * @param int|null $mediaCount Optional media count (for performance, avoids counting query)
+     * @param string|null $lang Language code ('ar', 'kr', or null for default)
      * @return array
      */
-    public function formatListing(CarListing $listing, ?int $mediaCount = null): array
+    public function formatListing(CarListing $listing, ?int $mediaCount = null, ?string $lang = null): array
     {
         // Get all media with only media_link (optimized for performance)
         $mediaList = [];
@@ -58,9 +59,12 @@ class CarListingFormatterService
             ];
         }
 
+        // Get dynamic title: year + brand + model + trim (in requested language)
+        $dynamicTitle = $listing->getDynamicTitle($lang);
+        
         return [
             'id' => $listing->id,
-            'title' => $listing->title,
+            'title' => $dynamicTitle, // Use dynamic title instead of stored title
             'price' => $listing->price,
             'price_currency' => $listing->price_currency,
             'year' => $listing->year,
@@ -83,19 +87,19 @@ class CarListingFormatterService
             'city_id' => $listing->city_id,
             'brand' => $listing->brand ? [
                 'id' => $listing->brand->id,
-                'name' => $listing->brand->name,
+                'name' => $lang ? ($listing->brand->{'name_' . $lang} ?: $listing->brand->name) : $listing->brand->name,
             ] : null,
             'car_model' => $listing->carModel ? [
                 'id' => $listing->carModel->id,
-                'name' => $listing->carModel->name,
+                'name' => $lang ? ($listing->carModel->{'name_' . $lang} ?: $listing->carModel->name) : $listing->carModel->name,
             ] : null,
             'body_type' => $listing->bodyType ? [
                 'id' => $listing->bodyType->id,
-                'name' => $listing->bodyType->name,
+                'name' => $lang ? ($listing->bodyType->{'name_' . $lang} ?: $listing->bodyType->name) : $listing->bodyType->name,
             ] : null,
             'city' => $listing->city ? [
                 'id' => $listing->city->id,
-                'name' => $listing->city->name,
+                'name' => $lang ? ($listing->city->{'name_' . $lang} ?: $listing->city->name) : $listing->city->name,
             ] : null,
             'car_condition' => $listing->carCondition ? [
                 'id' => $listing->carCondition->id,
@@ -111,7 +115,7 @@ class CarListingFormatterService
             ] : null,
             'exterior_color' => $listing->exteriorColor ? [
                 'id' => $listing->exteriorColor->id,
-                'name' => $listing->exteriorColor->name,
+                'name' => $lang ? ($listing->exteriorColor->{'name_' . $lang} ?: $listing->exteriorColor->name) : $listing->exteriorColor->name,
             ] : null,
             'drive_type' => $listing->driveType ? [
                 'id' => $listing->driveType->id,
@@ -141,9 +145,10 @@ class CarListingFormatterService
      * 
      * @param Collection|SupportCollection $listings
      * @param array|null $mediaCounts Optional array of [listing_id => count] for performance
+     * @param string|null $lang Language code ('ar', 'kr', or null for default)
      * @return array
      */
-    public function formatListings($listings, ?array $mediaCounts = null): array
+    public function formatListings($listings, ?array $mediaCounts = null, ?string $lang = null): array
     {
         // If media counts provided, use them; otherwise calculate per listing
         if ($mediaCounts === null && $listings->isNotEmpty()) {
@@ -156,9 +161,9 @@ class CarListingFormatterService
                 ->toArray();
         }
 
-        return $listings->map(function ($listing) use ($mediaCounts) {
+        return $listings->map(function ($listing) use ($mediaCounts, $lang) {
             $count = $mediaCounts[$listing->id] ?? null;
-            return $this->formatListing($listing, $count);
+            return $this->formatListing($listing, $count, $lang);
         })->toArray();
     }
 }

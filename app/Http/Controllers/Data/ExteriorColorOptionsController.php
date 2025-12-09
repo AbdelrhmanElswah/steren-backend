@@ -5,25 +5,30 @@ namespace App\Http\Controllers\Data;
 use App\Http\Controllers\Controller;
 use App\Models\ExteriorColor;
 use App\Traits\ApiResponse;
+use App\Traits\LocalizedResponse;
 use Illuminate\Http\JsonResponse;
 
 class ExteriorColorOptionsController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, LocalizedResponse;
 
     /**
      * Get all exterior colors as options
      */
-    public function getExteriorColorOptions(): JsonResponse
+    public function getExteriorColorOptions(\Illuminate\Http\Request $request): JsonResponse
     {
         try {
-            $colors = ExteriorColor::orderBy('name')->get();
+            $lang = $this->getLanguageFromRequest($request);
             
-            $options = $colors->map(function ($color) {
+            $colors = ExteriorColor::select('id', 'name', 'name_ar', 'name_kr', 'hex_code')
+                ->orderBy('name')
+                ->get();
+            
+            $options = $colors->map(function ($color) use ($lang) {
                 return [
                     'value' => $color->id,
-                    'label' => $color->name,
-                    'hex_code' => $color->hex_code,
+                    'label' => $this->getLocalizedField($color, 'name', $lang),
+                    'hex_code' => $color->hex_code ?? null,
                 ];
             });
 

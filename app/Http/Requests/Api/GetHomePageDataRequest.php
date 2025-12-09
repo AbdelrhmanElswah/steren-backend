@@ -16,6 +16,7 @@ class GetHomePageDataRequest extends FormRequest
         return [
             'city_id' => 'nullable|integer|exists:cities,id',
             'top_picks_limit' => 'nullable|integer|min:1|max:50',
+            'lang' => 'nullable|string|in:ar,kr',
         ];
     }
 }

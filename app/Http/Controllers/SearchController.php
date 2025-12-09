@@ -87,8 +87,12 @@ class SearchController extends Controller
             $validated = $request->validated();
             $page = $validated['page'] ?? 1;
             $perPage = $validated['per_page'] ?? 20;
+            $lang = $request->query('lang');
+            if (!in_array($lang, ['ar', 'kr'])) {
+                $lang = null;
+            }
 
-            $results = $this->searchService->searchListings($validated, $page, $perPage);
+            $results = $this->searchService->searchListings($validated, $page, $perPage, $lang);
 
             $data = [
                 'listings' => $results['listings'], // Already formatted by SearchService
@@ -150,7 +154,12 @@ class SearchController extends Controller
     public function getFilterOptions(Request $request): JsonResponse
     {
         try {
-            $options = $this->searchService->getFilterOptions();
+            $lang = $request->query('lang');
+            if (!in_array($lang, ['ar', 'kr'])) {
+                $lang = null;
+            }
+            
+            $options = $this->searchService->getFilterOptions($lang);
 
             return $this->successResponse($options, 'Filter options retrieved successfully');
         } catch (\Exception $e) {
