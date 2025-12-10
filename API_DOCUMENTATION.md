@@ -683,8 +683,8 @@ Search car listings with advanced filters.
 - `brand_id` (integer, nullable): Filter by brand ID
 - `model_id` (integer, nullable): Filter by model ID
 - `condition_id` (integer, nullable): Filter by condition ID
-- `year_from` (integer, nullable, min:1990, max:current): Minimum year
-- `year_to` (integer, nullable, min:1990, max:current, gte:year_from): Maximum year
+- `year_from` (integer, nullable, min:1900, max:current): Minimum year
+- `year_to` (integer, nullable, min:1900, max:current, gte:year_from): Maximum year
 - `price_min` (numeric, nullable, min:0): Minimum price
 - `price_max` (numeric, nullable, min:0, gte:price_min): Maximum price
 - `mileage_min` (integer, nullable, min:0): Minimum mileage
