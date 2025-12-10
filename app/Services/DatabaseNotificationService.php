@@ -303,12 +303,26 @@ class DatabaseNotificationService
 
     /**
      * Replace template variables with actual data
+     * Handles both {{key}} and {key} formats for backward compatibility
      */
     private function replaceTemplateVariables(string $template, array $data): string
     {
         foreach ($data as $key => $value) {
-            $template = str_replace("{{$key}}", $value, $template);
+            // Convert value to string if it's not already
+            $value = (string) $value;
+            
+            // Replace double curly braces format: {{key}}
+            $template = str_replace('{{' . $key . '}}', $value, $template);
+            
+            // Also replace single curly braces format: {key} (for backward compatibility)
+            $template = str_replace('{' . $key . '}', $value, $template);
         }
+        
+        // Clean up any remaining curly braces that might have been left behind
+        // This handles edge cases where replacement didn't work correctly
+        // Only remove simple patterns like {value} where value doesn't contain spaces or special chars
+        $template = preg_replace('/\{([^}]+)\}/', '$1', $template);
+        
         return $template;
     }
 

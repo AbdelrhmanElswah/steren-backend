@@ -395,6 +395,10 @@ class NotificationController extends Controller
                 $title = $lang ? ($notification->{'title_' . $lang} ?: $notification->title) : $notification->title;
                 $message = $lang ? ($notification->{'message_' . $lang} ?: $notification->message) : $notification->message;
                 
+                // Clean up any remaining curly braces from messages (fix for old notifications)
+                $title = $this->cleanCurlyBraces($title);
+                $message = $this->cleanCurlyBraces($message);
+                
                 $notificationData = [
                     'id' => $notification->id,
                     'user_id' => $notification->user_id,
@@ -786,5 +790,29 @@ class NotificationController extends Controller
                 500
             );
         }
+    }
+
+    /**
+     * Clean up curly braces from notification messages
+     * Removes patterns like {value} and replaces them with just value
+     * This fixes old notifications that may have been stored with incorrect formatting
+     * 
+     * @param string|null $text
+     * @return string
+     */
+    private function cleanCurlyBraces(?string $text): string
+    {
+        if (empty($text)) {
+            return '';
+        }
+
+        // Remove single curly braces pattern: {value} -> value
+        // This regex matches { followed by any characters except } followed by }
+        $text = preg_replace('/\{([^}]+)\}/', '$1', $text);
+
+        // Also remove any remaining double curly braces: {{value}} -> value
+        $text = preg_replace('/\{\{([^}]+)\}\}/', '$1', $text);
+
+        return $text;
     }
 }
