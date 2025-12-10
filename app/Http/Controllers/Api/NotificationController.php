@@ -391,9 +391,9 @@ class NotificationController extends Controller
             // Format notifications to include type details
             $formattedNotifications = $notifications->getCollection()->map(function ($notification) use ($lang) {
                 // Get localized title and message based on lang parameter
-                // If lang is null (English), return title_en, otherwise get localized version
-                $title = $lang ? ($notification->{'title_' . $lang} ?: $notification->title_en) : $notification->title_en;
-                $message = $lang ? ($notification->{'message_' . $lang} ?: $notification->message_en) : $notification->message_en;
+                // If lang is null (English), return title/message, otherwise get localized version
+                $title = $lang ? ($notification->{'title_' . $lang} ?: $notification->title) : $notification->title;
+                $message = $lang ? ($notification->{'message_' . $lang} ?: $notification->message) : $notification->message;
                 
                 $notificationData = [
                     'id' => $notification->id,
@@ -486,9 +486,9 @@ class NotificationController extends Controller
             $lang = $this->getLanguageFromRequest($request);
 
             // Get localized title and message based on lang parameter
-            // If lang is null (English), return title_en, otherwise get localized version
-            $title = $lang ? ($notification->{'title_' . $lang} ?: $notification->title_en) : $notification->title_en;
-            $message = $lang ? ($notification->{'message_' . $lang} ?: $notification->message_en) : $notification->message_en;
+            // If lang is null (English), return title/message, otherwise get localized version
+            $title = $lang ? ($notification->{'title_' . $lang} ?: $notification->title) : $notification->title;
+            $message = $lang ? ($notification->{'message_' . $lang} ?: $notification->message) : $notification->message;
 
             // Format notification with type details
             $notificationData = [

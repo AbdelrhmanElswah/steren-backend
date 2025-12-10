@@ -30,38 +30,36 @@ class DatabaseNotificationService
     ): Notification {
         try {
             // Handle title - support both string (backward compatibility) and array (translations)
+            // title field is used for English, title_ar and title_kr for translations
             $titleData = [];
             if (is_array($title)) {
                 $titleData = [
-                    'title' => null, // Not populated - will be determined by lang parameter when retrieved
-                    'title_en' => $title['en'] ?? null,
+                    'title' => $title['en'] ?? null, // English stored in title field
                     'title_ar' => $title['ar'] ?? null,
                     'title_kr' => $title['kr'] ?? null,
                 ];
             } else {
                 // Backward compatibility: use string as English title
                 $titleData = [
-                    'title' => null,
-                    'title_en' => $title,
+                    'title' => $title, // English stored in title field
                     'title_ar' => null,
                     'title_kr' => null,
                 ];
             }
 
             // Handle message - support both string (backward compatibility) and array (translations)
+            // message field is used for English, message_ar and message_kr for translations
             $messageData = [];
             if (is_array($message)) {
                 $messageData = [
-                    'message' => null, // Not populated - will be determined by lang parameter when retrieved
-                    'message_en' => $message['en'] ?? null,
+                    'message' => $message['en'] ?? null, // English stored in message field
                     'message_ar' => $message['ar'] ?? null,
                     'message_kr' => $message['kr'] ?? null,
                 ];
             } else {
                 // Backward compatibility: use string as English message
                 $messageData = [
-                    'message' => null,
-                    'message_en' => $message,
+                    'message' => $message, // English stored in message field
                     'message_ar' => null,
                     'message_kr' => null,
                 ];

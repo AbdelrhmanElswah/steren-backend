@@ -13,12 +13,10 @@ class Notification extends Model
         'user_id',
         'notification_type_id',
         'type',
-        'title',
-        'title_en',
+        'title', // English
         'title_ar',
         'title_kr',
-        'message',
-        'message_en',
+        'message', // English
         'message_ar',
         'message_kr',
         'data',
