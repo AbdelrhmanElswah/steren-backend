@@ -597,16 +597,45 @@ class DealerVerificationService
     public function updateVerificationStatus(int $applicationId, string $status, ?string $reason = null): array
     {
         try {
-            $dealerApplication = DealerApplication::findOrFail($applicationId);
+            $dealerApplication = DealerApplication::with('user')->findOrFail($applicationId);
 
             DB::beginTransaction();
 
             switch ($status) {
                 case 'approved':
+                    // Ensure user relationship exists
+                    if (!$dealerApplication->user) {
+                        throw new OdooServiceException('Dealer application does not have an associated user. partner_id: ' . $dealerApplication->partner_id);
+                    }
+
                     $dealerApplication->approve();
                     $dealerApplication->user->update(['is_dealer' => 1]);
-                    // Create default studio for newly approved dealer
-                    $this->createDefaultStudioForDealer($dealerApplication->user);
+                    
+                    // Create default studio using robust method with odoo_id
+                    if (!$dealerApplication->odoo_id) {
+                        throw new OdooServiceException('Cannot create studio: dealer application has no odoo_id');
+                    }
+
+                    try {
+                        $studio = $this->createStudioForApprovedDealer($dealerApplication->odoo_id);
+                        Log::info('Studio creation completed successfully during status update', [
+                            'application_id' => $applicationId,
+                            'odoo_id' => $dealerApplication->odoo_id,
+                            'user_id' => $dealerApplication->user->id,
+                            'studio_id' => $studio?->id,
+                            'studio_created' => $studio ? true : false,
+                        ]);
+                    } catch (Exception $studioError) {
+                        // Log error and re-throw to ensure we know about the issue
+                        Log::error('Failed to create default studio during status update', [
+                            'application_id' => $applicationId,
+                            'odoo_id' => $dealerApplication->odoo_id,
+                            'user_id' => $dealerApplication->user->id,
+                            'error' => $studioError->getMessage(),
+                            'trace' => $studioError->getTraceAsString(),
+                        ]);
+                        throw new OdooServiceException('Status update succeeded but studio creation failed: ' . $studioError->getMessage());
+                    }
                     break;
 
                 case 'rejected':
@@ -645,7 +674,7 @@ class DealerVerificationService
     public function approveApplication(int $applicationId, ?int $reviewedBy = null): array
     {
         try {
-            $application = DealerApplication::findOrFail($applicationId);
+            $application = DealerApplication::with('user')->findOrFail($applicationId);
 
             $allowedStatuses = ['application_applied', 'pending', 'under_review'];
             if (!in_array($application->status?->name, $allowedStatuses)) {
@@ -654,6 +683,11 @@ class DealerVerificationService
 
             if (!$application->odoo_id) {
                 throw new OdooServiceException('Application does not have an Odoo ID. Cannot approve without Odoo integration.');
+            }
+
+            // Ensure user relationship exists
+            if (!$application->user) {
+                throw new OdooServiceException('Dealer application does not have an associated user. partner_id: ' . $application->partner_id);
             }
 
             DB::beginTransaction();
@@ -677,7 +711,29 @@ class DealerVerificationService
                 'is_dealer' => true,
             ]);
 
-            $this->createDefaultStudioForDealer($application->user);
+            // Create default studio using robust method with odoo_id
+            try {
+                $studio = $this->createStudioForApprovedDealer($application->odoo_id);
+                Log::info('Studio creation completed successfully during approval', [
+                    'application_id' => $applicationId,
+                    'odoo_id' => $application->odoo_id,
+                    'user_id' => $application->user->id,
+                    'studio_id' => $studio?->id,
+                    'studio_created' => $studio ? true : false,
+                ]);
+            } catch (Exception $studioError) {
+                // Log error but don't fail the approval - studio can be created later
+                Log::error('Failed to create default studio during approval', [
+                    'application_id' => $applicationId,
+                    'odoo_id' => $application->odoo_id,
+                    'user_id' => $application->user->id,
+                    'error' => $studioError->getMessage(),
+                    'trace' => $studioError->getTraceAsString(),
+                ]);
+                // Re-throw to ensure we know about the issue
+                // Approval will fail if studio creation fails - this ensures data consistency
+                throw new OdooServiceException('Approval succeeded but studio creation failed: ' . $studioError->getMessage());
+            }
 
             // Auto-complete payment when application is approved
             // This creates the subscription record using the same logic as payment completion
@@ -1026,81 +1082,230 @@ class DealerVerificationService
     }
 
     /**
-     * Create default studio for dealer
+     * Robust method to create default studio for dealer after approval
+     * Uses odoo_id to ensure we have the correct dealer application
+     * This method is idempotent - can be called multiple times safely
+     * 
+     * @param string $odooId The Odoo ID of the dealer application
+     * @return \App\Models\DealerStudio|null The created or existing studio
+     * @throws \Exception If studio creation fails
+     */
+    public function createStudioForApprovedDealer(string $odooId): ?\App\Models\DealerStudio
+    {
+        try {
+            // Find dealer application by odoo_id with user relationship
+            $dealerApplication = DealerApplication::with('user')->where('odoo_id', $odooId)->first();
+
+            if (!$dealerApplication) {
+                Log::warning('Dealer application not found by odoo_id for studio creation', [
+                    'odoo_id' => $odooId,
+                ]);
+                throw new OdooServiceException('Dealer application not found with odoo_id: ' . $odooId);
+            }
+
+            if (!$dealerApplication->user) {
+                Log::error('Dealer application has no associated user', [
+                    'odoo_id' => $odooId,
+                    'application_id' => $dealerApplication->id,
+                    'partner_id' => $dealerApplication->partner_id,
+                ]);
+                throw new OdooServiceException('Dealer application does not have an associated user. partner_id: ' . $dealerApplication->partner_id);
+            }
+
+            $user = $dealerApplication->user;
+
+            // Comprehensive duplicate checking - check multiple ways to prevent duplicates
+            // 1. Check by dealer_id (any active studio)
+            $existingStudio = \App\Models\DealerStudio::where('dealer_id', $user->id)
+                ->where('is_active', true)
+                ->lockForUpdate() // Lock to prevent race conditions
+                ->first();
+
+            if ($existingStudio) {
+                Log::info('Dealer already has an active studio, returning existing studio', [
+                    'dealer_id' => $user->id,
+                    'existing_studio_id' => $existingStudio->id,
+                    'studio_name' => $existingStudio->name,
+                    'odoo_id' => $odooId,
+                ]);
+                return $existingStudio;
+            }
+
+            // 2. Check by odoo_id if stored in studio (additional safety check)
+            if (\Illuminate\Support\Facades\Schema::hasColumn('dealer_studios', 'odoo_id')) {
+                $existingStudioByOdoo = \App\Models\DealerStudio::where('odoo_id', $odooId)
+                    ->where('is_active', true)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existingStudioByOdoo) {
+                    Log::info('Studio already exists with this odoo_id, returning existing studio', [
+                        'odoo_id' => $odooId,
+                        'existing_studio_id' => $existingStudioByOdoo->id,
+                        'dealer_id' => $user->id,
+                    ]);
+                    return $existingStudioByOdoo;
+                }
+            }
+
+            // 3. Double-check by dealer_id after lock (race condition protection)
+            $doubleCheckStudio = \App\Models\DealerStudio::where('dealer_id', $user->id)
+                ->where('is_active', true)
+                ->first();
+
+            if ($doubleCheckStudio) {
+                Log::info('Studio was created by another process, returning existing studio', [
+                    'dealer_id' => $user->id,
+                    'existing_studio_id' => $doubleCheckStudio->id,
+                    'odoo_id' => $odooId,
+                ]);
+                return $doubleCheckStudio;
+            }
+
+            // Get studio name from dealer application
+            $studioName = $dealerApplication->dealership_company_name 
+                ?: $user->full_name 
+                ?: 'Dealer Studio';
+
+            Log::info('Creating default studio for approved dealer', [
+                'odoo_id' => $odooId,
+                'dealer_id' => $user->id,
+                'application_id' => $dealerApplication->id,
+                'studio_name' => $studioName,
+                'dealership_company_name' => $dealerApplication->dealership_company_name,
+            ]);
+
+            // Create studio within a transaction for safety
+            $studio = DB::transaction(function () use ($user, $dealerApplication, $studioName, $odooId) {
+                // Final check inside transaction
+                $finalCheck = \App\Models\DealerStudio::where('dealer_id', $user->id)
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($finalCheck) {
+                    return $finalCheck;
+                }
+
+                // Prepare studio data
+                $studioData = [
+                    'dealer_id' => $user->id,
+                    'name' => $studioName,
+                    'description' => 'Studio for ' . ($dealerApplication->dealership_company_name ?: $user->full_name),
+                    'address' => $user->address ?? 'Address not provided',
+                    'city_id' => $user->city_id ?? 1,
+                    'phone' => $user->phone,
+                    'email' => $user->email,
+                    'is_active' => true,
+                    'is_verified' => true,
+                    'verification_status' => 'verified',
+                    'verified_at' => now(),
+                    'settings' => [
+                        'auto_assign_listings' => true,
+                        'auto_featured' => true,
+                        'is_default' => true,
+                    ],
+                    'business_hours' => [
+                        'monday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                        'tuesday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                        'wednesday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                        'thursday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                        'friday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
+                        'saturday' => ['is_open' => true, 'open' => '09:00', 'close' => '17:00'],
+                        'sunday' => ['is_open' => false, 'open' => '09:00', 'close' => '17:00'],
+                    ],
+                    'amenities' => ['Showroom', 'Parking', 'Customer Service'],
+                    'specialties' => ['All Vehicle Types'],
+                ];
+
+                // Add odoo_id if column exists
+                if (\Illuminate\Support\Facades\Schema::hasColumn('dealer_studios', 'odoo_id')) {
+                    $studioData['odoo_id'] = $odooId;
+                }
+
+                // Create studio
+                $studio = \App\Models\DealerStudio::create($studioData);
+
+                // Verify creation
+                if (!$studio || !$studio->id) {
+                    throw new \Exception('Studio creation failed - studio object is invalid after creation');
+                }
+
+                // Associate existing listings with studio
+                if (\Illuminate\Support\Facades\Schema::hasColumn('car_listings', 'studio_id')) {
+                    $associatedCount = \App\Models\CarListing::where('user_id', $user->id)
+                        ->where('status', 'active')
+                        ->whereNull('studio_id')
+                        ->update(['studio_id' => $studio->id]);
+
+                    Log::info('Associated existing listings with studio', [
+                        'studio_id' => $studio->id,
+                        'associated_count' => $associatedCount,
+                    ]);
+                }
+
+                // Auto-promote dealer's listings to featured
+                $promotedCount = \App\Models\CarListing::where('user_id', $user->id)
+                    ->where('status', 'active')
+                    ->where('is_featured', false)
+                    ->update([
+                        'is_featured' => true,
+                        'featured_at' => now(),
+                    ]);
+
+                Log::info('Promoted dealer listings to featured', [
+                    'studio_id' => $studio->id,
+                    'promoted_count' => $promotedCount,
+                ]);
+
+                return $studio;
+            });
+
+            Log::info('Default studio created successfully for approved dealer', [
+                'odoo_id' => $odooId,
+                'dealer_id' => $user->id,
+                'studio_id' => $studio->id,
+                'studio_name' => $studio->name,
+                'city_id' => $studio->city_id,
+                'is_verified' => $studio->is_verified,
+                'verification_status' => $studio->verification_status,
+            ]);
+
+            return $studio;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to create studio for approved dealer', [
+                'odoo_id' => $odooId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            // Re-throw to ensure caller knows about the failure
+            throw new OdooServiceException('Failed to create studio for approved dealer: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Legacy method - kept for backward compatibility
+     * Now delegates to createStudioForApprovedDealer using odoo_id
+     * 
+     * @deprecated Use createStudioForApprovedDealer() instead
      */
     protected function createDefaultStudioForDealer(User $user): void
     {
-        // Check if dealer already has any studio
-        $existingStudio = \App\Models\DealerStudio::where('dealer_id', $user->id)
-            ->where('is_active', true)
-            ->first();
-
-        if ($existingStudio) {
-            return;
-        }
-
-        // Get dealer application to get company name
+        // Get the latest dealer application to find odoo_id
         $dealerApplication = $user->latestDealerApplication;
-        
-        // Use dealership company name if available, otherwise use dealer's full name
-        $studioName = $dealerApplication && $dealerApplication->dealership_company_name
-            ? $dealerApplication->dealership_company_name
-            : ($user->full_name ?? 'Dealer Studio');
 
-        // Create default studio
-        $studio = \App\Models\DealerStudio::create([
-            'dealer_id' => $user->id,
-            'name' => $studioName,
-            'description' => 'Studio for ' . ($dealerApplication && $dealerApplication->dealership_company_name 
-                ? $dealerApplication->dealership_company_name 
-                : $user->full_name),
-            'address' => $user->address ?? 'Address not provided',
-            'city_id' => $user->city_id ?? 1, // Default city or first city
-            'phone' => $user->phone,
-            'email' => $user->email,
-            'is_active' => true,
-            'is_verified' => true, // Auto-verify default studio
-            'verification_status' => 'verified',
-            'verified_at' => now(),
-            'settings' => [
-                'auto_assign_listings' => true,
-                'auto_featured' => true,
-                'is_default' => true,
-            ],
-            'business_hours' => [
-                'monday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
-                'tuesday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
-                'wednesday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
-                'thursday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
-                'friday' => ['is_open' => true, 'open' => '09:00', 'close' => '18:00'],
-                'saturday' => ['is_open' => true, 'open' => '09:00', 'close' => '17:00'],
-                'sunday' => ['is_open' => false, 'open' => '09:00', 'close' => '17:00'],
-            ],
-            'amenities' => ['Showroom', 'Parking', 'Customer Service'],
-            'specialties' => ['All Vehicle Types'],
-        ]);
-
-        if (\Illuminate\Support\Facades\Schema::hasColumn('car_listings', 'studio_id')) {
-            \App\Models\CarListing::where('user_id', $user->id)
-                ->where('status', 'active')
-                ->whereNull('studio_id')
-                ->update(['studio_id' => $studio->id]);
+        if (!$dealerApplication || !$dealerApplication->odoo_id) {
+            Log::warning('Cannot create studio - dealer application missing or has no odoo_id', [
+                'user_id' => $user->id,
+                'has_application' => $dealerApplication ? true : false,
+                'has_odoo_id' => $dealerApplication && $dealerApplication->odoo_id ? true : false,
+            ]);
+            throw new \Exception('Cannot create studio: dealer application missing or has no odoo_id');
         }
 
-        \App\Models\CarListing::where('user_id', $user->id)
-            ->where('status', 'active')
-            ->where('is_featured', false)
-            ->update([
-                'is_featured' => true,
-                'featured_at' => now(),
-            ]);
-
-        Log::info('Default studio created for dealer', [
-            'dealer_id' => $user->id,
-            'studio_id' => $studio->id,
-            'studio_name' => $studio->name,
-            'city_id' => $studio->city_id,
-        ]);
+        // Use the robust method
+        $this->createStudioForApprovedDealer($dealerApplication->odoo_id);
     }
 
     /**

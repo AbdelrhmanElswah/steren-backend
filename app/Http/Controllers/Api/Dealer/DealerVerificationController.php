@@ -242,12 +242,37 @@ class DealerVerificationController extends Controller
     public function approveByOdooId(Request $request, string $odooId)
     {
         try {
-            $application = DealerApplication::where('odoo_id', $odooId)->firstOrFail();
+            // Load user relationship to ensure it's available
+            $application = DealerApplication::with('user')->where('odoo_id', $odooId)->firstOrFail();
+            
+            if (!$application->user) {
+                return $this->errorResponse(
+                    'Dealer application does not have an associated user. partner_id: ' . $application->partner_id,
+                    400
+                );
+            }
             
             $result = $this->dealerVerificationService->approveApplication(
                 $application->id,
                 $request->user()?->id
             );
+            
+            // Verify studio was created (service method already handles this, but double-check for response)
+            $studio = \App\Models\DealerStudio::where('dealer_id', $application->user->id)
+                ->where('is_active', true)
+                ->first();
+            
+            $result['studio_created'] = $studio ? true : false;
+            $result['studio_id'] = $studio?->id;
+            $result['studio_name'] = $studio?->name;
+            
+            if (!$studio) {
+                Log::warning('Studio verification failed after approval', [
+                    'odoo_id' => $odooId,
+                    'application_id' => $application->id,
+                    'user_id' => $application->user->id,
+                ]);
+            }
 
             // Add approved_at timestamp to the result
             $result['approved_at'] = now()->toISOString();
