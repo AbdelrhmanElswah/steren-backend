@@ -177,16 +177,34 @@ class DealerVerificationService
                     Log::info('Raw Odoo response structure', [
                         'full_response' => $odooResponse,
                         'response_keys' => array_keys($odooResponse),
-                        'data_keys' => isset($odooResponse['data']) ? array_keys($odooResponse['data']) : 'no_data_key'
+                        'odoo_id_from_response' => $odooResponse['odoo_id'] ?? 'NOT_SET'
                     ]);
 
-                    $odooId = $odooResponse['data']['id'] ?? $odooResponse['odoo_id'] ?? null;
+                    // Extract odoo_id from response (submitToOdoo already extracts it)
+                    $odooId = $odooResponse['odoo_id'] ?? null;
 
-                    Log::info('Odoo accepted the dealer application', [
+                    // Validate that we received an odoo_id - this is critical!
+                    if (!$odooId) {
+                        Log::error('Odoo submission succeeded but odoo_id is missing', [
+                            'application_id' => $dealerApplication->id,
+                            'partner_id' => $data['partner_id'],
+                            'odoo_response' => $odooResponse,
+                        ]);
+
+                        // Update local record with error
+                        $dealerApplication->update([
+                            'sync_error' => 'Odoo submission succeeded but odoo_id was not returned in response',
+                            'synced_with_odoo' => false
+                        ]);
+
+                        throw new OdooServiceException('Odoo submission succeeded but odoo_id was not returned. Cannot proceed without odoo_id.');
+                    }
+
+                    Log::info('Odoo accepted the dealer application with odoo_id', [
                         'application_id' => $dealerApplication->id,
                         'partner_id' => $data['partner_id'],
-                        'odoo_response' => $odooResponse,
-                        'odoo_id' => $odooId
+                        'odoo_id' => $odooId,
+                        'odoo_id_type' => gettype($odooId)
                     ]);
 
                     $underReviewStatus = Status::findByNameAndType('under_review', 'dealer_application');
@@ -197,8 +215,11 @@ class DealerVerificationService
                         'status_name' => $underReviewStatus?->name
                     ]);
 
+                    // Ensure odoo_id is stored as string for consistency
+                    $odooIdString = (string) $odooId;
+
                     $updateData = [
-                        'odoo_id' => $odooId,
+                        'odoo_id' => $odooIdString,
                         'synced_with_odoo' => true,
                         'sync_error' => null
                     ];
@@ -208,6 +229,17 @@ class DealerVerificationService
                     }
 
                     $dealerApplication->update($updateData);
+
+                    // Verify odoo_id was saved correctly
+                    $dealerApplication->refresh();
+                    if ($dealerApplication->odoo_id !== $odooIdString) {
+                        Log::error('Failed to save odoo_id to dealer application', [
+                            'application_id' => $dealerApplication->id,
+                            'expected_odoo_id' => $odooIdString,
+                            'saved_odoo_id' => $dealerApplication->odoo_id,
+                        ]);
+                        throw new OdooServiceException('Failed to save odoo_id to dealer application');
+                    }
 
                     Log::info('Dealer application synced with Odoo successfully', [
                         'application_id' => $dealerApplication->id,
@@ -452,9 +484,31 @@ class DealerVerificationService
                         ]);
                     }
 
+                    // Ensure odoo_id is not null - this is critical for approval flow
+                    if (!$odooId) {
+                        Log::error('extractOdooId returned null - cannot proceed without odoo_id', [
+                            'response_data' => $responseData,
+                            'partner_id' => $data['partner_id'] ?? null,
+                            'user_id' => $user->id ?? null,
+                            'response_structure' => [
+                                'has_data' => isset($responseData['data']),
+                                'data_keys' => isset($responseData['data']) ? array_keys($responseData['data']) : [],
+                                'data_id' => $responseData['data']['id'] ?? 'NOT_FOUND',
+                            ]
+                        ]);
+
+                        return [
+                            'success' => false,
+                            'message' => 'Odoo returned success but did not provide an ID. Response structure may have changed.',
+                            'error_code' => 'MISSING_ODOO_ID',
+                            'response_data' => $responseData
+                        ];
+                    }
+
                     return [
                         'success' => true,
-                        'odoo_id' => $odooId,
+                        'odoo_id' => (string) $odooId, // Ensure it's a string
+                        'data' => $responseData['data'] ?? null, // Include full data for debugging
                         'message' => $responseData['message'] ?? 'Verification submitted successfully'
                     ];
                 }
@@ -573,23 +627,42 @@ class DealerVerificationService
 
     protected function extractOdooId(array $responseData): ?string
     {
-
-
         $possiblePaths = [
-            'data.id',
-            'result.data.id',
-            'result.id',
-            'result.data',
-            'id',
-            'result'
+            'data.id',           // Standard Odoo response: {success: true, data: {id: 110}}
+            'result.data.id',    // Alternative response format
+            'result.id',         // Direct result format
+            'result.data',       // Result data as ID
+            'id',                // Direct ID field
+            'result'             // Result as ID
         ];
 
         foreach ($possiblePaths as $path) {
             $value = data_get($responseData, $path);
             if ($value !== null && (is_numeric($value) || is_string($value))) {
-                return (string) $value;
+                $extractedId = (string) $value;
+                Log::info('Successfully extracted odoo_id from response', [
+                    'path' => $path,
+                    'odoo_id' => $extractedId,
+                    'value_type' => gettype($value)
+                ]);
+                return $extractedId;
             }
         }
+
+        // Log detailed information about why extraction failed
+        Log::warning('Failed to extract odoo_id from Odoo response', [
+            'response_structure' => [
+                'top_level_keys' => array_keys($responseData),
+                'has_data' => isset($responseData['data']),
+                'data_type' => isset($responseData['data']) ? gettype($responseData['data']) : 'not_set',
+                'data_keys' => isset($responseData['data']) && is_array($responseData['data']) ? array_keys($responseData['data']) : 'not_array',
+                'data_id_value' => $responseData['data']['id'] ?? 'NOT_FOUND',
+                'has_result' => isset($responseData['result']),
+                'result_type' => isset($responseData['result']) ? gettype($responseData['result']) : 'not_set',
+            ],
+            'checked_paths' => $possiblePaths,
+            'full_response_sample' => json_encode($responseData, JSON_PRETTY_PRINT)
+        ]);
 
         return null;
     }
