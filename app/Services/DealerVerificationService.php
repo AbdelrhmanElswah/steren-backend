@@ -1259,13 +1259,46 @@ class DealerVerificationService
                     return $finalCheck;
                 }
 
+                // Get valid city_id - validate user's city_id exists, or find first valid city, or use null
+                $cityId = null;
+                if ($user->city_id) {
+                    // Validate that the user's city_id actually exists
+                    $cityExists = \App\Models\City::where('id', $user->city_id)->exists();
+                    if ($cityExists) {
+                        $cityId = $user->city_id;
+                    } else {
+                        Log::warning('User has invalid city_id, will try to find valid city', [
+                            'user_id' => $user->id,
+                            'invalid_city_id' => $user->city_id,
+                        ]);
+                    }
+                }
+
+                // If no valid city_id from user, try to find first available city
+                if (!$cityId) {
+                    $firstCity = \App\Models\City::orderBy('id')->first();
+                    if ($firstCity) {
+                        $cityId = $firstCity->id;
+                        Log::info('Using first available city as fallback', [
+                            'city_id' => $cityId,
+                            'city_name' => $firstCity->name,
+                        ]);
+                    } else {
+                        // No cities exist - set to null (foreign key allows NULL)
+                        Log::warning('No cities found in database, setting city_id to NULL', [
+                            'user_id' => $user->id,
+                        ]);
+                        $cityId = null;
+                    }
+                }
+
                 // Prepare studio data
                 $studioData = [
                     'dealer_id' => $user->id,
                     'name' => $studioName,
                     'description' => 'Studio for ' . ($dealerApplication->dealership_company_name ?: $user->full_name),
                     'address' => $user->address ?? 'Address not provided',
-                    'city_id' => $user->city_id ?? 1,
+                    'city_id' => $cityId, // Validated city_id or null
                     'phone' => $user->phone,
                     'email' => $user->email,
                     'is_active' => true,
