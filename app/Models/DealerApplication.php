@@ -22,6 +22,7 @@ class DealerApplication extends Model
         'vehicles_in_stock',
         'years_in_business',
         'city_address',
+        'city_id',
         'automotive_brand_represented',
         'business_license_number',
         'brand_id',
@@ -129,6 +130,14 @@ class DealerApplication extends Model
     public function brand()
     {
         return $this->belongsTo(CarBrand::class, 'brand_id');
+    }
+
+    /**
+     * Get the city
+     */
+    public function city()
+    {
+        return $this->belongsTo(City::class);
     }
 
     /**

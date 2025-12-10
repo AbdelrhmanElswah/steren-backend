@@ -327,6 +327,7 @@ class DealerVerificationService
                     ? (int) $data['years_in_business']
                     : null,
                 'city_address' => $data['city_address'],
+                'city_id' => isset($data['city_id']) && $data['city_id'] ? (int) $data['city_id'] : null,
                 'subscription_plan_id' => $subscriptionPlan->id,
                 'status_id' => $applicationAppliedStatus?->id,
                 'terms_accepted' => true,
@@ -1259,13 +1260,35 @@ class DealerVerificationService
                     return $finalCheck;
                 }
 
-                // Get valid city_id - validate user's city_id exists, or find first valid city, or use null
+                // Get valid city_id - prioritize application's city_id, then user's city_id, then fallback
                 $cityId = null;
-                if ($user->city_id) {
-                    // Validate that the user's city_id actually exists
+                
+                // Priority 1: Use application's city_id if provided and valid
+                if ($dealerApplication->city_id) {
+                    $cityExists = \App\Models\City::where('id', $dealerApplication->city_id)->exists();
+                    if ($cityExists) {
+                        $cityId = $dealerApplication->city_id;
+                        Log::info('Using city_id from dealer application', [
+                            'city_id' => $cityId,
+                            'application_id' => $dealerApplication->id,
+                        ]);
+                    } else {
+                        Log::warning('Dealer application has invalid city_id, will try fallback', [
+                            'application_id' => $dealerApplication->id,
+                            'invalid_city_id' => $dealerApplication->city_id,
+                        ]);
+                    }
+                }
+
+                // Priority 2: Fallback to user's city_id if application doesn't have one
+                if (!$cityId && $user->city_id) {
                     $cityExists = \App\Models\City::where('id', $user->city_id)->exists();
                     if ($cityExists) {
                         $cityId = $user->city_id;
+                        Log::info('Using city_id from user as fallback', [
+                            'city_id' => $cityId,
+                            'user_id' => $user->id,
+                        ]);
                     } else {
                         Log::warning('User has invalid city_id, will try to find valid city', [
                             'user_id' => $user->id,
@@ -1274,7 +1297,7 @@ class DealerVerificationService
                     }
                 }
 
-                // If no valid city_id from user, try to find first available city
+                // Priority 3: If no valid city_id from application or user, try to find first available city
                 if (!$cityId) {
                     $firstCity = \App\Models\City::orderBy('id')->first();
                     if ($firstCity) {
@@ -1287,6 +1310,7 @@ class DealerVerificationService
                         // No cities exist - set to null (foreign key allows NULL)
                         Log::warning('No cities found in database, setting city_id to NULL', [
                             'user_id' => $user->id,
+                            'application_id' => $dealerApplication->id,
                         ]);
                         $cityId = null;
                     }
