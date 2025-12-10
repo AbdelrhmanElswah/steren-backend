@@ -44,5 +44,10 @@ class AuthorizedAgency extends Model
     {
         return $this->morphOne(Media::class, 'modelable')->where('info', 'authorized_agency_media');
     }
+
+    public function models()
+    {
+        return $this->hasMany(AuthorizedAgencyModel::class);
+    }
 }
 

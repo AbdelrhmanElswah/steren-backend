@@ -94,6 +94,18 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('budgets/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'restoreByOdooId']);
 });
 
+// Authorized Agency Models - protected
+Route::prefix('authorized-agencies')->middleware('auth:sanctum')->group(function () {
+    Route::get('{authorizedAgency}/models', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'index']);
+    Route::post('{authorizedAgency}/models', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'store']);
+});
+
+Route::prefix('authorized-agency-models')->middleware('auth:sanctum')->group(function () {
+    Route::get('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'show']);
+    Route::put('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'update']);
+    Route::patch('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'update']);
+});
+
 // Car Listing API Routes - Protected with Sanctum and Phone Verification
 Route::prefix('car-listings')->middleware(['auth:sanctum', 'phone.verified'])->group(function () {
     Route::post('/', [App\Http\Controllers\Api\CarListingApiController::class, 'store']);
