@@ -35,6 +35,11 @@ class UpdateAuthorizedAgencyModelRequest extends FormRequest
             'acceleration' => ['nullable', 'numeric', 'min:0'],
             'top_speed' => ['nullable', 'integer', 'min:0'],
 
+            // Existing images to keep
+            'existing_outer_image_url' => ['nullable', 'string', 'regex:/^https?:\\/\\/.+/'],
+            'existing_inner_image_urls' => ['nullable', 'array', 'max:20'],
+            'existing_inner_image_urls.*' => ['required', 'string', 'regex:/^https?:\\/\\/.+/'],
+
             'outer_image' => ['sometimes', 'file', 'mimes:jpg,jpeg,png,webp,gif,bmp'],
             'outer_image_base64' => ['sometimes', 'nullable', 'string'],
 

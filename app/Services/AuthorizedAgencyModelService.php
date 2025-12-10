@@ -34,50 +34,83 @@ class AuthorizedAgencyModelService
         ?UploadedFile $outerImage = null,
         ?string $outerImageBase64 = null,
         array $innerImages = [],
-        array $innerImagesBase64 = []
+        array $innerImagesBase64 = [],
+        ?string $existingOuterImageUrl = null,
+        array $existingInnerImageUrls = []
     ): AuthorizedAgencyModel {
         $agencyModel->update($data);
 
-        if ($outerImage || $outerImageBase64 !== null) {
-            $this->replaceOuterImage($agencyModel, $outerImage, $outerImageBase64);
-        }
+        $this->syncOuterImage(
+            $agencyModel,
+            $existingOuterImageUrl,
+            $outerImage,
+            $outerImageBase64
+        );
 
-        if (!empty($innerImages) || !empty($innerImagesBase64)) {
-            $this->replaceInnerImages($agencyModel, $innerImages, $innerImagesBase64);
-        }
+        $this->syncInnerImages(
+            $agencyModel,
+            $existingInnerImageUrls,
+            $innerImages,
+            $innerImagesBase64
+        );
 
         return $agencyModel->fresh(['outerImage', 'innerImages']);
     }
 
-    private function replaceOuterImage(
+    private function syncOuterImage(
         AuthorizedAgencyModel $agencyModel,
+        ?string $existingOuterImageUrl = null,
         ?UploadedFile $file = null,
         ?string $base64 = null
     ): void {
-        if ($agencyModel->outerImage) {
-            $agencyModel->outerImage->delete();
-        }
+        $current = $agencyModel->outerImage;
 
-        if ($file) {
-            $this->storeMediaFromFile($agencyModel, $file, self::OUTER_INFO, 0);
-            return;
-        }
+        // If client wants to keep the current outer image (url matches), do nothing.
+        if ($existingOuterImageUrl && $current && $this->mediaUrlMatches($current, $existingOuterImageUrl)) {
+            // no-op
+        } else {
+            // Not kept -> delete current and replace if new provided
+            if ($current) {
+                $current->delete();
+            }
 
-        if ($base64) {
-            $this->storeMediaFromBase64($agencyModel, $base64, self::OUTER_INFO, 0);
+            if ($file) {
+                $this->storeMediaFromFile($agencyModel, $file, self::OUTER_INFO, 0);
+                return;
+            }
+
+            if ($base64) {
+                $this->storeMediaFromBase64($agencyModel, $base64, self::OUTER_INFO, 0);
+            }
         }
     }
 
-    private function replaceInnerImages(
+    private function syncInnerImages(
         AuthorizedAgencyModel $agencyModel,
+        array $existingInnerImageUrls = [],
         array $files = [],
         array $base64Images = []
     ): void {
-        if ($agencyModel->innerImages()->exists()) {
-            $agencyModel->innerImages->each->delete();
+        $existingUrls = collect($existingInnerImageUrls)->filter()->values();
+        $current = $agencyModel->innerImages()->get();
+
+        // Delete any current inner images not present in existing urls
+        foreach ($current as $img) {
+            if (!$this->mediaUrlInList($img, $existingUrls)) {
+                $img->delete();
+            }
         }
 
         $order = 0;
+
+        // Keep order of existing images as provided
+        foreach ($existingUrls as $url) {
+            $img = $current->first(fn ($item) => $this->mediaUrlMatches($item, $url));
+            if ($img) {
+                $img->order = $order++;
+                $img->save();
+            }
+        }
 
         foreach ($files as $file) {
             if ($file instanceof UploadedFile) {
@@ -186,6 +219,22 @@ class AuthorizedAgencyModelService
             'order' => $order,
         ]);
     }
+
+    private function mediaUrlMatches(Media $media, string $url): bool
+    {
+        $publicUrl = $media->getS3PublicUrl($media->path_file_name);
+        $tempUrl = $media->getS3TemporaryUrl($media->path_file_name);
+
+        return $url === $publicUrl || $url === $tempUrl;
+    }
+
+    private function mediaUrlInList(Media $media, $urlList): bool
+    {
+        $publicUrl = $media->getS3PublicUrl($media->path_file_name);
+        $tempUrl = $media->getS3TemporaryUrl($media->path_file_name);
+
+        return collect($urlList)->contains(function ($url) use ($publicUrl, $tempUrl) {
+            return $url === $publicUrl || $url === $tempUrl;
+        });
+    }
 }
-
-

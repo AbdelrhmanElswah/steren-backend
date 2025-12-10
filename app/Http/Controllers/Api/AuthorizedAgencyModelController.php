@@ -108,7 +108,9 @@ class AuthorizedAgencyModelController extends Controller
                 $request->file('outer_image'),
                 $request->input('outer_image_base64'),
                 $request->file('inner_images', []),
-                $request->input('inner_images_base64', [])
+                $request->input('inner_images_base64', []),
+                $request->input('existing_outer_image_url'),
+                $request->input('existing_inner_image_urls', [])
             );
 
             return $this->successResponse(
