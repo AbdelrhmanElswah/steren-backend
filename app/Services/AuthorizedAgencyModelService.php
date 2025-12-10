@@ -22,8 +22,8 @@ class AuthorizedAgencyModelService
     ): AuthorizedAgencyModel {
         $agencyModel = AuthorizedAgencyModel::create($data);
 
-        $this->replaceOuterImage($agencyModel, $outerImage, $outerImageBase64);
-        $this->replaceInnerImages($agencyModel, $innerImages, $innerImagesBase64);
+        $this->storeOuterImage($agencyModel, $outerImage, $outerImageBase64);
+        $this->storeInnerImages($agencyModel, $innerImages, $innerImagesBase64);
 
         return $agencyModel->fresh(['outerImage', 'innerImages']);
     }
@@ -55,6 +55,41 @@ class AuthorizedAgencyModelService
         );
 
         return $agencyModel->fresh(['outerImage', 'innerImages']);
+    }
+
+    private function storeOuterImage(
+        AuthorizedAgencyModel $agencyModel,
+        ?UploadedFile $file = null,
+        ?string $base64 = null
+    ): void {
+        if ($file) {
+            $this->storeMediaFromFile($agencyModel, $file, self::OUTER_INFO, 0);
+            return;
+        }
+
+        if ($base64) {
+            $this->storeMediaFromBase64($agencyModel, $base64, self::OUTER_INFO, 0);
+        }
+    }
+
+    private function storeInnerImages(
+        AuthorizedAgencyModel $agencyModel,
+        array $files = [],
+        array $base64Images = []
+    ): void {
+        $order = 0;
+
+        foreach ($files as $file) {
+            if ($file instanceof UploadedFile) {
+                $this->storeMediaFromFile($agencyModel, $file, self::INNER_INFO, $order++);
+            }
+        }
+
+        foreach ($base64Images as $base64) {
+            if (!empty($base64)) {
+                $this->storeMediaFromBase64($agencyModel, $base64, self::INNER_INFO, $order++);
+            }
+        }
     }
 
     private function syncOuterImage(
