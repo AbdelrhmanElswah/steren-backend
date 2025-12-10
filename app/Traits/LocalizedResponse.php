@@ -33,7 +33,8 @@ trait LocalizedResponse
 
     /**
      * Get language from request (query parameter 'lang')
-     * Valid values: 'ar', 'kr', or null (default)
+     * Valid values: 'en', 'ar', 'kr', or null (default)
+     * Note: 'en' is accepted but returns null (uses base field for English)
      * 
      * @param \Illuminate\Http\Request $request
      * @return string|null
@@ -42,9 +43,10 @@ trait LocalizedResponse
     {
         $lang = $request->query('lang');
         
-        // Validate language code
-        if (in_array($lang, ['ar', 'kr'])) {
-            return $lang;
+        // Validate language code - accept en, ar, kr
+        if (in_array($lang, ['en', 'ar', 'kr'])) {
+            // Return null for 'en' since we use base field for English
+            return $lang === 'en' ? null : $lang;
         }
         
         return null;

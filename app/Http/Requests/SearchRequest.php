@@ -87,7 +87,7 @@ class SearchRequest extends FormRequest
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:100',
             'sort' => 'nullable|string|in:latest,year_high,year_low,price_high,price_low,mileage_high,mileage_low',
-            'lang' => 'nullable|string|in:ar,kr',
+            'lang' => 'nullable|string|in:en,ar,kr',
         ];
     }
 
