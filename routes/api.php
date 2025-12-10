@@ -102,8 +102,8 @@ Route::prefix('authorized-agencies')->middleware('auth:sanctum')->group(function
 
 Route::prefix('authorized-agency-models')->middleware('auth:sanctum')->group(function () {
     Route::get('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'show']);
-    Route::put('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'update']);
-    Route::patch('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'update']);
+    // Use POST for updates to support multipart/form-data uploads without _method override
+    Route::post('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'update']);
 });
 
 // Car Listing API Routes - Protected with Sanctum and Phone Verification
