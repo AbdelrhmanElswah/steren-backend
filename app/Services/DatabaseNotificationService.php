@@ -153,14 +153,14 @@ class DatabaseNotificationService
                 }
             }
 
-            $title = 'Listing Created Successfully!';
-            $message = "Your {$carName} listing has been created and is pending approval.";
+            // Get translations
+            $translations = $this->getNotificationTranslations('listing_created', ['car_name' => $carName]);
 
             return $this->createNotification(
                 $listing->user_id,
                 'listing_created',
-                $title,
-                $message,
+                $translations['title'],
+                $translations['message'],
                 [
                     'car_listing_id' => $listing->id,
                     'car_name' => $carName,
@@ -204,8 +204,8 @@ class DatabaseNotificationService
                 }
             }
 
-            $title = 'Listing Approved!';
-            $message = "Great news! Your {$carName} listing has been approved and is now live. Buyers can now see and contact you about this vehicle.";
+            // Get translations
+            $translations = $this->getNotificationTranslations('listing_approved', ['car_name' => $carName]);
 
             // Ensure user_id is an integer
             $userId = (int) $listing->user_id;
@@ -216,8 +216,8 @@ class DatabaseNotificationService
             return $this->createNotification(
                 $userId,
                 'listing_approved',
-                $title,
-                $message,
+                $translations['title'],
+                $translations['message'],
                 [
                     'car_listing_id' => $listing->id,
                     'car_name' => $carName,
@@ -263,9 +263,13 @@ class DatabaseNotificationService
                 }
             }
 
-            $title = 'Listing Rejected';
             $reasonText = $reason ?? 'No reason provided';
-            $message = "Your {$carName} listing was not approved. Reason: {$reasonText}. Please review the requirements and submit a new listing.";
+            
+            // Get translations
+            $translations = $this->getNotificationTranslations('listing_rejected', [
+                'car_name' => $carName,
+                'reason' => $reasonText,
+            ]);
 
             // Ensure user_id is an integer
             $userId = (int) $listing->user_id;
@@ -276,8 +280,8 @@ class DatabaseNotificationService
             return $this->createNotification(
                 $userId,
                 'listing_rejected',
-                $title,
-                $message,
+                $translations['title'],
+                $translations['message'],
                 [
                     'car_listing_id' => $listing->id,
                     'car_name' => $carName,
@@ -311,6 +315,120 @@ class DatabaseNotificationService
     }
 
     /**
+     * Get notification translations for a given type and dynamic data
+     * 
+     * @param string $type Notification type
+     * @param array $data Dynamic data for template replacement (e.g., car_name, company_name, reason)
+     * @return array Array with 'title' and 'message' keys, each containing ['en', 'ar', 'kr']
+     */
+    private function getNotificationTranslations(string $type, array $data = []): array
+    {
+        $translations = [
+            'listing_created' => [
+                'title' => [
+                    'en' => 'Listing Created Successfully!',
+                    'ar' => 'تم إنشاء الإعلان بنجاح!',
+                    'kr' => 'ئیلان بە سەرکەوتوویی دروست کرا!',
+                ],
+                'message' => [
+                    'en' => "Your {{car_name}} listing has been created and is pending approval.",
+                    'ar' => "تم إنشاء إعلان {{car_name}} الخاص بك وهو في انتظار الموافقة.",
+                    'kr' => "ئیلانی {{car_name}} ت دروست کرا و چاوەڕوانی پەسندکردنە.",
+                ],
+            ],
+            'listing_approved' => [
+                'title' => [
+                    'en' => 'Listing Approved!',
+                    'ar' => 'تمت الموافقة على الإعلان!',
+                    'kr' => 'ئیلان پەسند کرا!',
+                ],
+                'message' => [
+                    'en' => "Great news! Your {{car_name}} listing has been approved and is now live. Buyers can now see and contact you about this vehicle.",
+                    'ar' => "أخبار رائعة! تمت الموافقة على إعلان {{car_name}} الخاص بك وهو الآن نشط. يمكن للمشترين الآن رؤية والاتصال بك بخصوص هذه المركبة.",
+                    'kr' => "هەواڵی خۆش! ئیلانی {{car_name}} ت پەسند کرا و ئێستا زیندووە. کڕیاران دەتوانن ئێستا ببینن و پەیوەندی بەتەوە بکەن لەسەر ئەم ئۆتۆمبێلە.",
+                ],
+            ],
+            'listing_rejected' => [
+                'title' => [
+                    'en' => 'Listing Rejected',
+                    'ar' => 'تم رفض الإعلان',
+                    'kr' => 'ئیلان ڕەتکرایەوە',
+                ],
+                'message' => [
+                    'en' => "Your {{car_name}} listing was not approved. Reason: {{reason}}. Please review the requirements and submit a new listing.",
+                    'ar' => "لم تتم الموافقة على إعلان {{car_name}} الخاص بك. السبب: {{reason}}. يرجى مراجعة المتطلبات وإرسال إعلان جديد.",
+                    'kr' => "ئیلانی {{car_name}} ت پەسند نەکرا. هۆکار: {{reason}}. تکایە پێداچوونەوەی پێداویستییەکان بکە و ئیلانێکی نوێ بنێرە.",
+                ],
+            ],
+            'dealer_application_submitted' => [
+                'title' => [
+                    'en' => 'Application Submitted!',
+                    'ar' => 'تم إرسال الطلب!',
+                    'kr' => 'داواکاری نێردرا!',
+                ],
+                'message' => [
+                    'en' => "Your dealer application for {{company_name}} has been submitted and is pending review.",
+                    'ar' => "تم إرسال طلب التاجر الخاص بك لـ {{company_name}} وهو في انتظار المراجعة.",
+                    'kr' => "داواکاری دەستفرۆشی {{company_name}} ت نێردرا و چاوەڕوانی پێداچوونەوەیە.",
+                ],
+            ],
+            'dealer_application_approved' => [
+                'title' => [
+                    'en' => 'Dealer Application Approved!',
+                    'ar' => 'تمت الموافقة على طلب التاجر!',
+                    'kr' => 'داواکاری دەستفرۆش پەسند کرا!',
+                ],
+                'message' => [
+                    'en' => "Congratulations! Your dealer application has been approved. You can now post car listings and manage your dealership.",
+                    'ar' => "تهانينا! تمت الموافقة على طلب التاجر الخاص بك. يمكنك الآن نشر إعلانات السيارات وإدارة وكالتك.",
+                    'kr' => "پیرۆزە! داواکاری دەستفرۆش ت پەسند کرا. ئێستا دەتوانیت ئیلانی ئۆتۆمبێل بنێریت و دەستفرۆشخانەکەت بەڕێوەبەریت.",
+                ],
+            ],
+            'dealer_application_rejected' => [
+                'title' => [
+                    'en' => 'Dealer Application Rejected',
+                    'ar' => 'تم رفض طلب التاجر',
+                    'kr' => 'داواکاری دەستفرۆش ڕەتکرایەوە',
+                ],
+                'message' => [
+                    'en' => "Your dealer application was not approved. Reason: {{reason}}. Please review the requirements and submit a new application.",
+                    'ar' => "لم تتم الموافقة على طلب التاجر الخاص بك. السبب: {{reason}}. يرجى مراجعة المتطلبات وإرسال طلب جديد.",
+                    'kr' => "داواکاری دەستفرۆش ت پەسند نەکرا. هۆکار: {{reason}}. تکایە پێداچوونەوەی پێداویستییەکان بکە و داواکارییەکی نوێ بنێرە.",
+                ],
+            ],
+            'user_created' => [
+                'title' => [
+                    'en' => 'Welcome to Steren!',
+                    'ar' => 'مرحباً بك في ستيرين!',
+                    'kr' => 'بەخێربێیت بۆ ستێرین!',
+                ],
+                'message' => [
+                    'en' => "Welcome {{user_name}}! We're excited to have you join our community. Start exploring amazing cars or list your own!",
+                    'ar' => "مرحباً {{user_name}}! نحن متحمسون لانضمامك إلى مجتمعنا. ابدأ في استكشاف السيارات الرائعة أو أضف سيارتك الخاصة!",
+                    'kr' => "بەخێربێیت {{user_name}}! دڵخۆشین کە بەشداری کۆمەڵگاکەمان دەکەیت. دەست بکە بە گەڕان بەدوای ئۆتۆمبێلی سەرسوڕهێنەر یان ئۆتۆمبێلەکەت خۆت بنووسەوە!",
+                ],
+            ],
+        ];
+
+        $result = $translations[$type] ?? [
+            'title' => ['en' => 'Notification', 'ar' => 'إشعار', 'kr' => 'ئاگاداری'],
+            'message' => ['en' => 'You have a new notification.', 'ar' => 'لديك إشعار جديد.', 'kr' => 'ئاگادارییەکی نوێت هەیە.'],
+        ];
+
+        // Replace template variables in all languages
+        foreach (['en', 'ar', 'kr'] as $lang) {
+            if (isset($result['title'][$lang])) {
+                $result['title'][$lang] = $this->replaceTemplateVariables($result['title'][$lang], $data);
+            }
+            if (isset($result['message'][$lang])) {
+                $result['message'][$lang] = $this->replaceTemplateVariables($result['message'][$lang], $data);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Create dealer application submitted notification
      */
     public function createDealerApplicationSubmittedNotification($application): Notification
@@ -323,8 +441,9 @@ class DatabaseNotificationService
             }
 
             $companyName = $application->dealership_company_name ?? 'your dealership';
-            $title = 'Application Submitted!';
-            $message = "Your dealer application for {$companyName} has been submitted and is pending review.";
+            
+            // Get translations
+            $translations = $this->getNotificationTranslations('dealer_application_submitted', ['company_name' => $companyName]);
 
             // Get user ID from relationship (DealerApplication uses partner_id, not user_id)
             $userId = $application->user?->id ?? $application->partner_id;
@@ -340,8 +459,8 @@ class DatabaseNotificationService
             return $this->createNotification(
                 $userId,
                 'dealer_application_submitted',
-                $title,
-                $message,
+                $translations['title'],
+                $translations['message'],
                 [
                     'dealer_application_id' => $application->id,
                     'company_name' => $companyName,
@@ -370,8 +489,8 @@ class DatabaseNotificationService
                 throw new Exception('Notification type "dealer_application_approved" not found. Please run the seeder.');
             }
 
-            $title = 'Dealer Application Approved!';
-            $message = "Congratulations! Your dealer application has been approved. You can now post car listings and manage your dealership.";
+            // Get translations
+            $translations = $this->getNotificationTranslations('dealer_application_approved');
 
             // Get user ID from relationship (DealerApplication uses partner_id, not user_id)
             $userId = $application->user?->id ?? $application->partner_id;
@@ -387,8 +506,8 @@ class DatabaseNotificationService
             return $this->createNotification(
                 $userId,
                 'dealer_application_approved',
-                $title,
-                $message,
+                $translations['title'],
+                $translations['message'],
                 [
                     'dealer_application_id' => $application->id,
                     'approved_at' => $application->approved_at?->toISOString(),
@@ -417,9 +536,10 @@ class DatabaseNotificationService
                 throw new Exception('Notification type "dealer_application_rejected" not found. Please run the seeder.');
             }
 
-            $title = 'Dealer Application Rejected';
             $reasonText = $reason ?? 'No reason provided';
-            $message = "Your dealer application was not approved. Reason: {$reasonText}. Please review the requirements and submit a new application.";
+            
+            // Get translations
+            $translations = $this->getNotificationTranslations('dealer_application_rejected', ['reason' => $reasonText]);
 
             // Get user ID from relationship (DealerApplication uses partner_id, not user_id)
             $userId = $application->user?->id ?? $application->partner_id;
@@ -435,8 +555,8 @@ class DatabaseNotificationService
             return $this->createNotification(
                 $userId,
                 'dealer_application_rejected',
-                $title,
-                $message,
+                $translations['title'],
+                $translations['message'],
                 [
                     'dealer_application_id' => $application->id,
                     'reason' => $reasonText,
@@ -467,14 +587,15 @@ class DatabaseNotificationService
             }
 
             $userName = $user->full_name ?? 'there';
-            $title = 'Welcome to Steren!';
-            $message = "Welcome {$userName}! We're excited to have you join our community. Start exploring amazing cars or list your own!";
+            
+            // Get translations
+            $translations = $this->getNotificationTranslations('user_created', ['user_name' => $userName]);
 
             return $this->createNotification(
                 $user->id,
                 'user_created',
-                $title,
-                $message,
+                $translations['title'],
+                $translations['message'],
                 [
                     'user_id' => $user->id,
                     'user_name' => $userName,
