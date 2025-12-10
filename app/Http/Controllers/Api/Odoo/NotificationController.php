@@ -84,7 +84,7 @@ class NotificationController extends Controller
                 'user_id' => $user->id,
                 'partner_id' => $partnerId,
                 'type' => $type,
-                'title_en' => $title['en'] ?? null,
+                'title' => $title['en'] ?? null,
             ]);
 
             return $this->successResponse([
