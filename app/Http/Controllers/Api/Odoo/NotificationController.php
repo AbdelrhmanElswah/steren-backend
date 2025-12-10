@@ -33,8 +33,8 @@ class NotificationController extends Controller
         try {
             $partnerId = $request->input('partner_id');
             $type = $request->input('type');
-            $title = $request->input('title');
-            $message = $request->input('message');
+            $title = $request->input('title'); // Now an array with en/ar/kr keys
+            $message = $request->input('message'); // Now an array with en/ar/kr keys
 
             // Validate notification type first
             $notificationType = NotificationType::findByName($type);
@@ -66,12 +66,12 @@ class NotificationController extends Controller
                 );
             }
 
-            // Create the notification
+            // Create the notification with translations
             $notification = $this->notificationService->createNotification(
                 $user->id,
                 $type,
-                $title,
-                $message,
+                $title, // Pass as array
+                $message, // Pass as array
                 [
                     'partner_id' => $partnerId,
                     'notification_type' => $type,
@@ -79,12 +79,12 @@ class NotificationController extends Controller
                 $notificationType->id
             );
 
-            Log::info('Rejection notification created by Odoo', [
+            Log::info('Notification created by Odoo', [
                 'notification_id' => $notification->id,
                 'user_id' => $user->id,
                 'partner_id' => $partnerId,
                 'type' => $type,
-                'title' => $title
+                'title_en' => $title['en'] ?? null,
             ]);
 
             return $this->successResponse([

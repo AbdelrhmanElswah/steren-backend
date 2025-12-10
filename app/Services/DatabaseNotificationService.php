@@ -11,32 +11,76 @@ class DatabaseNotificationService
 {
     /**
      * Create a notification record in the database without sending push notification
+     * 
+     * @param int $userId
+     * @param string $type
+     * @param string|array $title - Can be a string (backward compatibility) or array with 'en', 'ar', 'kr' keys
+     * @param string|array $message - Can be a string (backward compatibility) or array with 'en', 'ar', 'kr' keys
+     * @param array $data
+     * @param int|null $notificationTypeId
+     * @return Notification
      */
     public function createNotification(
         int $userId,
         string $type,
-        string $title,
-        string $message,
+        string|array $title,
+        string|array $message,
         array $data = [],
         ?int $notificationTypeId = null
     ): Notification {
         try {
-            $notification = Notification::create([
+            // Handle title - support both string (backward compatibility) and array (translations)
+            $titleData = [];
+            if (is_array($title)) {
+                $titleData = [
+                    'title' => null, // Not populated - will be determined by lang parameter when retrieved
+                    'title_en' => $title['en'] ?? null,
+                    'title_ar' => $title['ar'] ?? null,
+                    'title_kr' => $title['kr'] ?? null,
+                ];
+            } else {
+                // Backward compatibility: use string as English title
+                $titleData = [
+                    'title' => null,
+                    'title_en' => $title,
+                    'title_ar' => null,
+                    'title_kr' => null,
+                ];
+            }
+
+            // Handle message - support both string (backward compatibility) and array (translations)
+            $messageData = [];
+            if (is_array($message)) {
+                $messageData = [
+                    'message' => null, // Not populated - will be determined by lang parameter when retrieved
+                    'message_en' => $message['en'] ?? null,
+                    'message_ar' => $message['ar'] ?? null,
+                    'message_kr' => $message['kr'] ?? null,
+                ];
+            } else {
+                // Backward compatibility: use string as English message
+                $messageData = [
+                    'message' => null,
+                    'message_en' => $message,
+                    'message_ar' => null,
+                    'message_kr' => null,
+                ];
+            }
+
+            $notification = Notification::create(array_merge([
                 'user_id' => $userId,
                 'notification_type_id' => $notificationTypeId,
                 'type' => $type,
-                'title' => $title,
-                'message' => $message,
                 'data' => $data,
                 'is_read' => false,
                 'read_at' => null,
-            ]);
+            ], $titleData, $messageData));
 
             Log::info('Notification created in database', [
                 'notification_id' => $notification->id,
                 'user_id' => $userId,
                 'type' => $type,
-                'title' => $title
+                'title' => is_array($title) ? ($title['en'] ?? 'N/A') : $title
             ]);
 
             return $notification;

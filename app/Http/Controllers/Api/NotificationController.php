@@ -8,6 +8,7 @@ use App\Models\Notification;
 use App\Models\NotificationType;
 use App\Models\User;
 use App\Traits\ApiResponse;
+use App\Traits\LocalizedResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -17,7 +18,7 @@ use Exception;
 
 class NotificationController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, LocalizedResponse;
 
     protected ?FirebaseNotificationService $firebaseService = null;
 
@@ -384,14 +385,22 @@ class NotificationController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
+            // Get language from request
+            $lang = $this->getLanguageFromRequest($request);
+
             // Format notifications to include type details
-            $formattedNotifications = $notifications->getCollection()->map(function ($notification) {
+            $formattedNotifications = $notifications->getCollection()->map(function ($notification) use ($lang) {
+                // Get localized title and message based on lang parameter
+                // If lang is null (English), return title_en, otherwise get localized version
+                $title = $lang ? ($notification->{'title_' . $lang} ?: $notification->title_en) : $notification->title_en;
+                $message = $lang ? ($notification->{'message_' . $lang} ?: $notification->message_en) : $notification->message_en;
+                
                 $notificationData = [
                     'id' => $notification->id,
                     'user_id' => $notification->user_id,
                     'type' => $notification->type,
-                    'title' => $notification->title,
-                    'message' => $notification->message,
+                    'title' => $title,
+                    'message' => $message,
                     'data' => $notification->data,
                     'is_read' => $notification->is_read,
                     'read_at' => $notification->read_at,
@@ -473,13 +482,21 @@ class NotificationController extends Controller
             // Refresh to get updated read_at
             $notification->refresh();
 
+            // Get language from request
+            $lang = $this->getLanguageFromRequest($request);
+
+            // Get localized title and message based on lang parameter
+            // If lang is null (English), return title_en, otherwise get localized version
+            $title = $lang ? ($notification->{'title_' . $lang} ?: $notification->title_en) : $notification->title_en;
+            $message = $lang ? ($notification->{'message_' . $lang} ?: $notification->message_en) : $notification->message_en;
+
             // Format notification with type details
             $notificationData = [
                 'id' => $notification->id,
                 'user_id' => $notification->user_id,
                 'type' => $notification->type,
-                'title' => $notification->title,
-                'message' => $notification->message,
+                'title' => $title,
+                'message' => $message,
                 'data' => $notification->data,
                 'is_read' => $notification->is_read,
                 'read_at' => $notification->read_at,
