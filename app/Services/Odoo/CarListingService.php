@@ -118,6 +118,7 @@ class CarListingService extends OdooCrudService
                 'inspection_file_name' => null,
                 'damaged_areas' => $carListing->damaged_areas ?? []
             ],
+            'city_id' => $this->getCityOdooId($carListing->city_id),
             'price_currency' => $carListing->price_currency ?? 'USD',
             'price' => $carListing->price,
             'seller_info' => [
@@ -125,7 +126,6 @@ class CarListingService extends OdooCrudService
             ],
             'title' => $carListing->title,
             'description' => $carListing->description,
-            'location' => $this->getPreferredOdooLocationId($carListing),
             'images' => []
         ];
     }
@@ -206,16 +206,12 @@ class CarListingService extends OdooCrudService
         return $model ? (int)$model->odoo_id : null;
     }
 
-    private function getPreferredOdooLocationId(\App\Models\CarListing $carListing): ?int
+    private function getCityOdooId($cityId): ?int
     {
-        $cityId = request()->input('city_id');
-        if ($cityId) {
-            $city = \App\Models\City::find($cityId);
-            if ($city && $city->odoo_id) {
-                return (int)$city->odoo_id;
-            }
+        if (!$cityId) {
+            return null;
         }
-
-        return null;
+        $city = \App\Models\City::find($cityId);
+        return $city && $city->odoo_id ? (int) $city->odoo_id : null;
     }
 }
