@@ -39,8 +39,7 @@ class AuthorizedAgencyListingService
                 'agency' => [
                     'id' => $agency->id,
                     'name' => $this->getLocalized($agency, 'name', $lang),
-                    'partner_id' => $agency->partner_id,
-                    'studio_ids' => $studioIds,
+                    'studio_id' => $studioIds[0] ?? null,
                 ],
                 'new' => [
                     'count' => count($models),
