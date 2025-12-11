@@ -25,7 +25,7 @@ class AuthorizedAgencyModelController extends Controller
     {
         try {
             $models = $authorizedAgency->models()
-                ->with(['outerImage', 'innerImages'])
+                ->with(['outerImage', 'innerImages', 'carModel'])
                 ->get();
 
             return $this->successResponse(
@@ -46,7 +46,7 @@ class AuthorizedAgencyModelController extends Controller
     public function show(AuthorizedAgencyModel $authorizedAgencyModel): JsonResponse
     {
         try {
-            $authorizedAgencyModel->load(['outerImage', 'innerImages']);
+            $authorizedAgencyModel->load(['outerImage', 'innerImages', 'carModel']);
 
             return $this->successResponse(
                 new AuthorizedAgencyModelResource($authorizedAgencyModel),

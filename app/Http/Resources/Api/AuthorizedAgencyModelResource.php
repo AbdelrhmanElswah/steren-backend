@@ -14,11 +14,13 @@ class AuthorizedAgencyModelResource extends JsonResource
     {
         $useTemporaryUrl = $this->shouldUseTemporaryUrls($request);
         $expirationMinutes = $this->getExpirationMinutes($request);
+        $lang = $request->query('lang');
 
         return [
             'id' => $this->id,
             'authorized_agency_id' => $this->authorized_agency_id,
             'car_model_id' => $this->car_model_id,
+            'model_name' => $this->getLocalizedName($this->carModel, $lang),
             'gcc_import' => $this->gcc_import,
             'engine_size' => $this->engine_size,
             'forced_induction' => $this->forced_induction,
@@ -39,15 +41,31 @@ class AuthorizedAgencyModelResource extends JsonResource
             'torque' => $this->torque,
             'acceleration' => $this->acceleration,
             'top_speed' => $this->top_speed,
-            'outer_image' => $this->when(
-                $this->relationLoaded('outerImage') && $this->outerImage,
-                $this->getStandardMedia($this->outerImage, $request, $useTemporaryUrl, $expirationMinutes)
-            ),
+            'outer_image' => $this->relationLoaded('outerImage')
+                ? ($this->outerImage
+                    ? $this->getStandardMedia($this->outerImage, $request, $useTemporaryUrl, $expirationMinutes)
+                    : null)
+                : null,
             'inner_images' => $this->when(
                 $this->relationLoaded('innerImages'),
                 $this->getMultipleMediaData($this->innerImages, $request, $useTemporaryUrl, $expirationMinutes)
             ),
         ];
+    }
+
+    private function getLocalizedName($model, ?string $lang): ?string
+    {
+        if (!$model) {
+            return null;
+        }
+
+        $lang = $lang ? strtolower($lang) : null;
+
+        return match ($lang) {
+            'ar' => $model->name_ar ?? $model->name ?? null,
+            'kr', 'ku', 'ckb' => $model->name_kr ?? $model->name ?? null,
+            default => $model->name ?? null,
+        };
     }
 }
 
