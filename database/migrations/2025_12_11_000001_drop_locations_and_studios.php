@@ -27,6 +27,14 @@ return new class extends Migration
             });
         }
 
+        // Clean up references to legacy studios table before dropping it
+        if (Schema::hasTable('car_listing_edits') && Schema::hasColumn('car_listing_edits', 'studio_id')) {
+            Schema::table('car_listing_edits', function (Blueprint $table) {
+                $table->dropForeign(['studio_id']);
+                $table->dropColumn('studio_id');
+            });
+        }
+
         // Drop legacy studios table
         if (Schema::hasTable('studios')) {
             Schema::dropIfExists('studios');
