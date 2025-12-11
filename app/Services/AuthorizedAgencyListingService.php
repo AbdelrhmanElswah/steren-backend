@@ -19,12 +19,12 @@ class AuthorizedAgencyListingService
      * - used: same shape as studio listings (formatted listings)
      * - new: models sourced from authorized_agency_models (no trims)
      */
-    public function getAgencyListings(int $authorizedAgencyId): array
+    public function getAgencyListings(int $authorizedAgencyId, ?string $lang = null): array
     {
-        $cacheKey = 'authorized_agency_listings_' . $authorizedAgencyId;
+        $cacheKey = 'authorized_agency_listings_' . $authorizedAgencyId . '_' . ($lang ?: 'default');
 
-        return Cache::remember($cacheKey, 86400, function () use ($authorizedAgencyId) {
-            $agency = AuthorizedAgency::select('id', 'name', 'partner_id')->findOrFail($authorizedAgencyId);
+        return Cache::remember($cacheKey, 86400, function () use ($authorizedAgencyId, $lang) {
+            $agency = AuthorizedAgency::select('id', 'name', 'name_ar', 'name_kr', 'partner_id')->findOrFail($authorizedAgencyId);
 
             $studioIds = $this->getStudioIdsForAgency($agency->partner_id);
 
@@ -33,12 +33,12 @@ class AuthorizedAgencyListingService
             $usedFormatted = $this->formatter->formatListings($usedListings);
 
             // New models from authorized_agency_models
-            $models = $this->getAgencyModels($authorizedAgencyId);
+            $models = $this->getAgencyModels($authorizedAgencyId, $lang);
 
             return [
                 'agency' => [
                     'id' => $agency->id,
-                    'name' => $agency->name,
+                    'name' => $this->getLocalized($agency, 'name', $lang),
                     'partner_id' => $agency->partner_id,
                     'studio_ids' => $studioIds,
                 ],
@@ -112,13 +112,17 @@ class AuthorizedAgencyListingService
             ->get();
     }
 
-    private function getAgencyModels(int $authorizedAgencyId): array
+    private function getAgencyModels(int $authorizedAgencyId, ?string $lang = null): array
     {
-        $models = AuthorizedAgencyModel::with(['carModel:id,name,car_brand_id', 'carModel.brand:id,name', 'outerImage'])
+        $models = AuthorizedAgencyModel::with([
+                'carModel:id,name,name_ar,name_kr,car_brand_id',
+                'carModel.brand:id,name,name_ar,name_kr',
+                'outerImage'
+            ])
             ->where('authorized_agency_id', $authorizedAgencyId)
             ->get();
 
-        return $models->map(function ($model) {
+        return $models->map(function ($model) use ($lang) {
             $outerUrl = null;
             if ($model->outerImage && $model->outerImage->path_file_name) {
                 $outerUrl = $model->outerImage->getS3PublicUrl($model->outerImage->path_file_name);
@@ -127,12 +131,27 @@ class AuthorizedAgencyListingService
             return [
                 'id' => $model->id,
                 'car_model_id' => $model->car_model_id,
-                'model_name' => $model->carModel->name ?? null,
-                'brand_name' => $model->carModel->brand->name ?? null,
+                'model_name' => $this->getLocalized($model->carModel, 'name', $lang),
+                'brand_name' => $this->getLocalized($model->carModel?->brand, 'name', $lang),
                 'price_start_from' => $model->price_start_from,
                 'outer_image' => $outerUrl,
             ];
         })->values()->toArray();
+    }
+
+    private function getLocalized($model, string $field, ?string $lang)
+    {
+        if (!$model) {
+            return null;
+        }
+
+        $lang = $lang ? strtolower($lang) : null;
+
+        return match ($lang) {
+            'ar' => $model->{$field . '_ar'} ?? $model->{$field} ?? null,
+            'kr', 'ku', 'ckb' => $model->{$field . '_kr'} ?? $model->{$field} ?? null,
+            default => $model->{$field} ?? null,
+        };
     }
 }
 

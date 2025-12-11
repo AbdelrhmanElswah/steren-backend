@@ -1082,7 +1082,8 @@ class CarListingDetailsController extends Controller
     public function getAuthorizedAgencyListings(Request $request, int $authorizedAgencyId): JsonResponse
     {
         try {
-            $result = $this->authorizedAgencyListingService->getAgencyListings($authorizedAgencyId);
+            $lang = $request->query('lang');
+            $result = $this->authorizedAgencyListingService->getAgencyListings($authorizedAgencyId, $lang);
 
             return $this->successResponse($result, 'Authorized agency listings retrieved successfully');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
