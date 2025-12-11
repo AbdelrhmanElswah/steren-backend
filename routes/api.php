@@ -106,6 +106,9 @@ Route::prefix('authorized-agency-models')->middleware('auth:sanctum')->group(fun
     Route::post('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'update']);
 });
 
+// Authorized agency listings (used + models)
+Route::get('authorized-agencies/{authorizedAgency}/listings', [App\Http\Controllers\Api\CarListingDetailsController::class, 'getAuthorizedAgencyListings']);
+
 // Car Listing API Routes - Protected with Sanctum and Phone Verification
 Route::prefix('car-listings')->middleware(['auth:sanctum', 'phone.verified'])->group(function () {
     Route::post('/', [App\Http\Controllers\Api\CarListingApiController::class, 'store']);

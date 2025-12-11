@@ -19,7 +19,8 @@ class CarListingDetailsController extends Controller
     public function __construct(
         private CarListingRecommendationService $carListingRecommendationService,
         private CarBrandListingService $carBrandListingService,
-        private StudioListingService $studioListingService
+        private StudioListingService $studioListingService,
+        private \App\Services\AuthorizedAgencyListingService $authorizedAgencyListingService
     ) {}
 
     /**
@@ -1070,6 +1071,24 @@ class CarListingDetailsController extends Controller
             return $this->notFoundResponse('Studio not found');
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to retrieve studio listings: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get authorized agency listings with custom structure
+     * - used: active listings for agency studios (same format as studio used)
+     * - new: models from authorized_agency_models (no trims)
+     */
+    public function getAuthorizedAgencyListings(Request $request, int $authorizedAgencyId): JsonResponse
+    {
+        try {
+            $result = $this->authorizedAgencyListingService->getAgencyListings($authorizedAgencyId);
+
+            return $this->successResponse($result, 'Authorized agency listings retrieved successfully');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->notFoundResponse('Authorized agency not found');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to retrieve authorized agency listings: ' . $e->getMessage(), 500);
         }
     }
 }
