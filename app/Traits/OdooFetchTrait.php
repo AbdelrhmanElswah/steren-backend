@@ -262,12 +262,4 @@ trait OdooFetchTrait
         );
     }
 
-    public function fetchStudios(Request $request): JsonResponse
-    {
-        return $this->fetchModelData(
-            \App\Models\Studio::class,
-            'studios',
-            $request
-        );
-    }
 }
