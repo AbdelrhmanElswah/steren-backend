@@ -134,6 +134,7 @@ class AuthorizedAgencyListingService
                 'model_name' => $this->getLocalized($model->carModel, 'name', $lang),
                 'brand_name' => $this->getLocalized($model->carModel?->brand, 'name', $lang),
                 'price_start_from' => $model->price_start_from,
+                'price_currency' => $model->price_currency,
                 'outer_image' => $outerUrl,
             ];
         })->values()->toArray();

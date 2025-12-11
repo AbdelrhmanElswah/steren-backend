@@ -20,6 +20,7 @@ class AuthorizedAgencyModelService
         array $innerImages = [],
         array $innerImagesBase64 = []
     ): AuthorizedAgencyModel {
+        $data['price_currency'] = $this->normalizeCurrency($data['price_currency'] ?? 'USD');
         $agencyModel = AuthorizedAgencyModel::create($data);
 
         $this->storeOuterImage($agencyModel, $outerImage, $outerImageBase64);
@@ -38,6 +39,10 @@ class AuthorizedAgencyModelService
         ?string $existingOuterImageUrl = null,
         array $existingInnerImageUrls = []
     ): AuthorizedAgencyModel {
+        if (array_key_exists('price_currency', $data)) {
+            $data['price_currency'] = $this->normalizeCurrency($data['price_currency']);
+        }
+
         $agencyModel->update($data);
 
         $this->syncOuterImage(
@@ -253,6 +258,12 @@ class AuthorizedAgencyModelService
             'info' => $info,
             'order' => $order,
         ]);
+    }
+
+    private function normalizeCurrency(?string $currency): string
+    {
+        $currency = strtoupper(trim($currency ?? ''));
+        return in_array($currency, ['USD', 'IQD'], true) ? $currency : 'USD';
     }
 
     private function mediaUrlMatches(Media $media, string $url): bool

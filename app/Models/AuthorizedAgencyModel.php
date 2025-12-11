@@ -23,6 +23,7 @@ class AuthorizedAgencyModel extends Model
         'seating_capacity',
         'drive_type',
         'price_start_from',
+        'price_currency',
         'horse_power',
         'length_from',
         'length_to',

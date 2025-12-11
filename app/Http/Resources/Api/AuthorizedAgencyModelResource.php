@@ -28,6 +28,7 @@ class AuthorizedAgencyModelResource extends JsonResource
             'seating_capacity' => $this->seating_capacity,
             'drive_type' => $this->drive_type,
             'price_start_from' => $this->price_start_from,
+            'price_currency' => $this->price_currency,
             'horse_power' => $this->horse_power,
             'length_from' => $this->length_from,
             'length_to' => $this->length_to,

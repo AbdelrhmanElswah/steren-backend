@@ -24,6 +24,7 @@ class StoreAuthorizedAgencyModelRequest extends FormRequest
             'seating_capacity' => ['nullable', 'integer', 'min:1'],
             'drive_type' => ['nullable', 'string', 'max:255'],
             'price_start_from' => ['nullable', 'numeric', 'min:0'],
+            'price_currency' => ['nullable', 'string', 'in:USD,IQD', 'max:3'],
             'horse_power' => ['nullable', 'integer', 'min:0'],
             'length_from' => ['nullable', 'numeric', 'min:0'],
             'length_to' => ['nullable', 'numeric', 'min:0'],
