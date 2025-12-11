@@ -46,10 +46,17 @@ class AuthorizedAgencyModelController extends Controller
     public function show(AuthorizedAgencyModel $authorizedAgencyModel): JsonResponse
     {
         try {
-            $authorizedAgencyModel->load(['outerImage', 'innerImages', 'carModel']);
+            $authorizedAgencyModel->load(['outerImage', 'innerImages', 'carModel', 'authorizedAgency']);
+
+            // Get trims from car listings for this agency's studio and model
+            $trims = $this->getTrimsForModel($authorizedAgencyModel);
+
+            $resource = new AuthorizedAgencyModelResource($authorizedAgencyModel);
+            $data = $resource->toArray(request());
+            $data['trims'] = $trims;
 
             return $this->successResponse(
-                new AuthorizedAgencyModelResource($authorizedAgencyModel),
+                $data,
                 'Authorized agency model fetched successfully'
             );
         } catch (\Throwable $e) {
@@ -61,6 +68,47 @@ class AuthorizedAgencyModelController extends Controller
 
             return $this->errorResponse('Failed to fetch authorized agency model', 500);
         }
+    }
+
+    /**
+     * Get trims from car listings for the agency's studio and model
+     */
+    private function getTrimsForModel(AuthorizedAgencyModel $model): array
+    {
+        $agency = $model->authorizedAgency;
+        if (!$agency || !$agency->partner_id) {
+            return [];
+        }
+
+        // Get studio IDs for the agency
+        $userIds = \App\Models\User::where('partner_id', $agency->partner_id)->pluck('id');
+        if ($userIds->isEmpty()) {
+            return [];
+        }
+
+        $studioIds = \App\Models\DealerStudio::whereIn('dealer_id', $userIds)->pluck('id')->all();
+        if (empty($studioIds)) {
+            return [];
+        }
+
+        // Query car listings for this studio and model
+        $listings = \App\Models\CarListing::whereIn('studio_id', $studioIds)
+            ->where('car_model_id', $model->car_model_id)
+            ->where('status', 'active')
+            ->whereNull('sold_at')
+            ->select('id', 'trim', 'engine_size', 'engine_type', 'price', 'price_currency')
+            ->get();
+
+        return $listings->map(function ($listing) {
+            return [
+                'listing_id' => $listing->id,
+                'trim_name' => $listing->trim ?? 'Base',
+                'engine_size' => $listing->engine_size,
+                'engine_type' => $listing->engine_type,
+                'price' => $listing->price,
+                'price_currency' => $listing->price_currency ?? 'USD',
+            ];
+        })->values()->toArray();
     }
 
     public function store(StoreAuthorizedAgencyModelRequest $request, AuthorizedAgency $authorizedAgency): JsonResponse
