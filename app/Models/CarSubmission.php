@@ -35,7 +35,6 @@ class CarSubmission extends Model
         'drive_type_id',
         'warranty_status_id',
         'cylinder_id',
-        'location_id',
         'status',
         'admin_notes',
         'reviewed_by',
@@ -81,11 +80,6 @@ class CarSubmission extends Model
     public function bodyType()
     {
         return $this->belongsTo(BodyType::class, 'car_body_type_id');
-    }
-
-    public function location()
-    {
-        return $this->belongsTo(Location::class);
     }
 
     public function carCondition()

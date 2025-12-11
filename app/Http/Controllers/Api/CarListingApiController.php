@@ -226,7 +226,6 @@ class CarListingApiController extends Controller
             'is_verified' => ($validatedData['seller_info']['type'] ?? '') === 'verified_seller',
             'origin_country' => $normalizedGccImport ?? 'UAE',
             'city_id' => $carInfo['city_id'] ?? null,
-            'location_id' => $this->getOrCreateLocationId($validatedData), 
         ];
     }
 
@@ -546,28 +545,8 @@ class CarListingApiController extends Controller
 
         // Resolve city information and corresponding Odoo ID
         $cityId = $validatedData['city_id'] ?? null;
-        $city = null;
-        $location = null;
-        $cityOdooId = null;
-
-        if (isset($validatedData['location_id'])) {
-            $location = \App\Models\Location::find($validatedData['location_id']);
-        }
-
-        if ($cityId) {
-            $city = \App\Models\City::find($cityId);
-        } elseif ($location && !empty($location->city_id)) {
-            $cityId = $location->city_id;
-            $city = \App\Models\City::find($cityId);
-        }
-
-        if ($city && !empty($city->odoo_id)) {
-            $cityOdooId = $city->odoo_id;
-        }
-
-        if (!$cityOdooId && $location && !empty($location->odoo_id)) {
-            $cityOdooId = $location->odoo_id;
-        }
+        $city = $cityId ? \App\Models\City::find($cityId) : null;
+        $cityOdooId = $city?->odoo_id;
 
         if ($city && empty($cityOdooId)) {
             Log::warning('City missing Odoo ID for car listing creation', [
@@ -635,10 +614,8 @@ class CarListingApiController extends Controller
             // Don't fail validation here, but log it for debugging
         }
 
-        if ((($cityId ?? null) || isset($validatedData['location_id'])) && empty($cityOdooId)) {
-            $missingOdooIds[] = $cityId
-                ? "City (ID: {$cityId})"
-                : "Location (ID: {$validatedData['location_id']})";
+        if (($cityId ?? null) && empty($cityOdooId)) {
+            $missingOdooIds[] = "City (ID: {$cityId})";
         }
 
         if (!empty($missingOdooIds)) {
@@ -673,8 +650,6 @@ class CarListingApiController extends Controller
                     'resolved_city_id' => $city?->id,
                     'city_name' => $city?->name,
                     'city_odoo_id' => $city?->odoo_id,
-                    'location_id' => $validatedData['location_id'] ?? null,
-                    'location_odoo_id' => $location?->odoo_id,
                 ],
             ]);
             
@@ -709,8 +684,6 @@ class CarListingApiController extends Controller
                 'resolved_city_id' => $city?->id,
                 'city_name' => $city?->name,
                 'city_odoo_id' => $cityOdooId,
-                'location_id' => $validatedData['location_id'] ?? null,
-                'location_odoo_id' => $location?->odoo_id ?? null,
             ],
         ]);
 
@@ -1265,7 +1238,6 @@ class CarListingApiController extends Controller
             'is_verified' => $data['is_verified'] ?? false,
             'has_insurance' => $data['has_insurance'] ?? false,
             'city_id' => $data['city_id'] ?? null,
-            'location_id' => $this->getOrCreateLocationIdFromFormData($data),
             'import_type_id' => $data['import_type_id'] ?? null,
             'warranty_status_id' => $data['warranty_status_id'] ?? null,
             'engine_type' => $data['engine_type'] ?? null,
@@ -1596,86 +1568,6 @@ class CarListingApiController extends Controller
         ];
         
         return $fuelTypeMapping[$fuelType] ?? strtolower($fuelType);
-    }
-
-    /**
-     * Get or create location ID based on city_id
-     */
-    private function getOrCreateLocationId(array $validatedData): int
-    {
-        // If city_id is provided, find or create a location for it
-        if (isset($validatedData['car_info']['city_id']) && $validatedData['car_info']['city_id']) {
-            $cityId = $validatedData['car_info']['city_id'];
-            $city = \App\Models\City::find($cityId);
-            
-            if ($city) {
-                // Try to find existing location for this city
-                $location = \App\Models\Location::where('name', $city->name)->first();
-                
-                if (!$location) {
-                    // Create new location if none exists
-                    $location = \App\Models\Location::create([
-                        'name' => $city->name,
-                        'odoo_id' => $city->odoo_id
-                    ]);
-                }
-                
-                return $location->id;
-            }
-        }
-        
-        // Fallback to first available location or create a default one
-        $defaultLocation = \App\Models\Location::first();
-        
-        if (!$defaultLocation) {
-            // Create a default location if none exists
-            $defaultLocation = \App\Models\Location::create([
-                'name' => 'Default Location',
-                'odoo_id' => 'default'
-            ]);
-        }
-        
-        return $defaultLocation->id;
-    }
-
-    /**
-     * Get or create location ID from form data
-     */
-    private function getOrCreateLocationIdFromFormData(array $data): int
-    {
-        // If city_id is provided, find or create a location for it
-        if (isset($data['city_id']) && $data['city_id']) {
-            $cityId = $data['city_id'];
-            $city = \App\Models\City::find($cityId);
-            
-            if ($city) {
-                // Try to find existing location for this city
-                $location = \App\Models\Location::where('name', $city->name)->first();
-                
-                if (!$location) {
-                    // Create new location if none exists
-                    $location = \App\Models\Location::create([
-                        'name' => $city->name,
-                        'odoo_id' => $city->odoo_id
-                    ]);
-                }
-                
-                return $location->id;
-            }
-        }
-        
-        // Fallback to first available location or create a default one
-        $defaultLocation = \App\Models\Location::first();
-        
-        if (!$defaultLocation) {
-            // Create a default location if none exists
-            $defaultLocation = \App\Models\Location::create([
-                'name' => 'Default Location',
-                'odoo_id' => 'default'
-            ]);
-        }
-        
-        return $defaultLocation->id;
     }
 
     /**

@@ -13,7 +13,6 @@ class Studio extends Model
     protected $fillable = [
         'odoo_id',
         'name', 
-        'location_id', 
         'logo_url', 
         'description', 
         'contact_info', 
@@ -28,10 +27,6 @@ class Studio extends Model
 
     public function listings() {
         return $this->hasMany(CarListing::class);
-    }
-
-    public function location() {
-        return $this->belongsTo(Location::class);
     }
 
     public function featuredListings() {

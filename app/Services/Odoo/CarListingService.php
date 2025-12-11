@@ -29,29 +29,6 @@ class CarListingService extends OdooCrudService
             }
         }
 
-        if (!isset($data['location_id'])) {
-            $resolvedLocationId = null;
-            if (!empty($data['city_id'])) {
-                $city = $city ?? \App\Models\City::find($data['city_id']);
-                if ($city) {
-                    // Try to find or create a matching location using city name and odoo_id
-                    $location = \App\Models\Location::where('odoo_id', $city->odoo_id)->first();
-                    if (!$location) {
-                        $location = \App\Models\Location::firstOrCreate(
-                            ['name' => $city->name],
-                            ['odoo_id' => $city->odoo_id]
-                        );
-                    }
-                    $resolvedLocationId = $location->id;
-                }
-            }
-            // Fallback to first location if none resolved (to satisfy NOT NULL FK)
-            if (!$resolvedLocationId) {
-                $resolvedLocationId = \App\Models\Location::value('id');
-            }
-            $data['location_id'] = $resolvedLocationId;
-        }
-
         $carListing = parent::create($data);
 
         $this->syncToOdoo($carListing);
@@ -227,18 +204,6 @@ class CarListingService extends OdooCrudService
         if (!$modelId) return null;
         $model = \App\Models\CarModel::find($modelId);
         return $model ? (int)$model->odoo_id : null;
-    }
-
-    private function getLocationOdooId($locationId): ?int
-    {
-        if (!$locationId) return null;
-        $location = \App\Models\Location::find($locationId);
-        if ($location && $location->odoo_id) {
-            return (int)$location->odoo_id;
-        }
-        
-        $city = \App\Models\City::where('name', 'like', '%' . $location->name . '%')->first();
-        return $city ? (int)$city->odoo_id : null;
     }
 
     private function getPreferredOdooLocationId(\App\Models\CarListing $carListing): ?int

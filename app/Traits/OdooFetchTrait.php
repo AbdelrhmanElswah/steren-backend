@@ -262,15 +262,6 @@ trait OdooFetchTrait
         );
     }
 
-    public function fetchLocations(Request $request): JsonResponse
-    {
-        return $this->fetchModelData(
-            \App\Models\Location::class,
-            'locations',
-            $request
-        );
-    }
-
     public function fetchStudios(Request $request): JsonResponse
     {
         return $this->fetchModelData(
