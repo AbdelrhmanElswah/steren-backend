@@ -104,6 +104,7 @@ Route::prefix('authorized-agency-models')->middleware('auth:sanctum')->group(fun
     Route::get('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'show']);
     // Use POST for updates to support multipart/form-data uploads without _method override
     Route::post('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'update']);
+    Route::delete('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'destroy']);
 });
 
 // Authorized agency listings (used + models)

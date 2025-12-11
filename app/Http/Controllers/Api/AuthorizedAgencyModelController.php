@@ -128,6 +128,26 @@ class AuthorizedAgencyModelController extends Controller
             return $this->errorResponse('Failed to update authorized agency model: ' . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Delete an authorized agency model (soft delete)
+     */
+    public function destroy(AuthorizedAgencyModel $authorizedAgencyModel): JsonResponse
+    {
+        try {
+            $authorizedAgencyModel->delete();
+
+            return $this->noContentResponse('Authorized agency model deleted successfully');
+        } catch (\Throwable $e) {
+            Log::error('AuthorizedAgencyModelController@destroy error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'authorized_agency_model_id' => $authorizedAgencyModel->id,
+            ]);
+
+            return $this->errorResponse('Failed to delete authorized agency model: ' . $e->getMessage(), 500);
+        }
+    }
 }
 
 
