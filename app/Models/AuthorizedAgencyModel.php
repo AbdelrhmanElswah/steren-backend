@@ -54,6 +54,26 @@ class AuthorizedAgencyModel extends Model
         'price_currency' => 'USD',
     ];
 
+    protected static function booted(): void
+    {
+        static::deleting(function (AuthorizedAgencyModel $model) {
+            // Remove outer and inner media so files are cleaned up by MediaObserver
+            if ($model->relationLoaded('outerImage')) {
+                $model->outerImage?->delete();
+            } else {
+                $model->outerImage()->delete();
+            }
+
+            if ($model->relationLoaded('innerImages')) {
+                $model->innerImages->each->delete();
+            } else {
+                $model->innerImages()->each(function ($media) {
+                    $media->delete();
+                });
+            }
+        });
+    }
+
     public function authorizedAgency()
     {
         return $this->belongsTo(AuthorizedAgency::class);
