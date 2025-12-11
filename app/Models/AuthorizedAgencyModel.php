@@ -50,6 +50,10 @@ class AuthorizedAgencyModel extends Model
         'top_speed' => 'integer',
     ];
 
+    protected $attributes = [
+        'price_currency' => 'USD',
+    ];
+
     public function authorizedAgency()
     {
         return $this->belongsTo(AuthorizedAgency::class);
