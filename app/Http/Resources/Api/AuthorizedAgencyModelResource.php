@@ -21,6 +21,7 @@ class AuthorizedAgencyModelResource extends JsonResource
             'authorized_agency_id' => $this->authorized_agency_id,
             'car_model_id' => $this->car_model_id,
             'model_name' => $this->getLocalizedName($this->carModel, $lang),
+            'brand_name' => $this->getLocalizedName($this->carModel?->brand, $lang),
             'gcc_import' => $this->gcc_import,
             'engine_size' => $this->engine_size,
             'forced_induction' => $this->forced_induction,

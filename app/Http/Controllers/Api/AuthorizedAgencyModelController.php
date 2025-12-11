@@ -25,7 +25,7 @@ class AuthorizedAgencyModelController extends Controller
     {
         try {
             $models = $authorizedAgency->models()
-                ->with(['outerImage', 'innerImages', 'carModel'])
+                ->with(['outerImage', 'innerImages', 'carModel.brand'])
                 ->get();
 
             return $this->successResponse(
@@ -46,7 +46,7 @@ class AuthorizedAgencyModelController extends Controller
     public function show(AuthorizedAgencyModel $authorizedAgencyModel): JsonResponse
     {
         try {
-            $authorizedAgencyModel->load(['outerImage', 'innerImages', 'carModel', 'authorizedAgency']);
+            $authorizedAgencyModel->load(['outerImage', 'innerImages', 'carModel.brand', 'authorizedAgency']);
 
             // Get trims from car listings for this agency's studio and model
             $trims = $this->getTrimsForModel($authorizedAgencyModel);
