@@ -97,7 +97,7 @@ class AuthorizedAgencyModelController extends Controller
             ->where('status', 'active')
             ->whereNull('sold_at')
             ->with('brand:id,name')
-            ->select('id', 'trim', 'engine_size', 'engine_type', 'price', 'price_currency', 'car_brand_id')
+            ->select('id', 'trim', 'engine_size', 'price', 'price_currency', 'car_brand_id')
             ->get();
 
         return $listings->map(function ($listing) {
@@ -106,7 +106,6 @@ class AuthorizedAgencyModelController extends Controller
                 'trim_name' => $listing->trim ?? 'Base',
                 'brand_name' => $listing->brand->name ?? null,
                 'engine_size' => $listing->engine_size,
-                'engine_type' => $listing->engine_type,
                 'price' => $listing->price,
                 'price_currency' => $listing->price_currency ?? 'USD',
             ];
