@@ -107,6 +107,15 @@ class AuthorizedAgencyListingService
         }
 
         return $this->buildBaseQuery($studioIds)
+            ->where(function ($query) {
+                $query->where(function ($subQuery) {
+                    $subQuery->whereRaw('LOWER(condition_type) != ?', ['new'])
+                        ->orWhereNull('condition_type');
+                })
+                ->whereDoesntHave('carCondition', function ($carConditionQuery) {
+                    $carConditionQuery->whereRaw('LOWER(name) = ?', ['new']);
+                });
+            })
             ->orderByDesc('created_at')
             ->get();
     }
