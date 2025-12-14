@@ -706,4 +706,8 @@ class User extends Authenticatable
 
         return 'free';
     }
+    public function profilePicture()
+    {
+        return $this->hasOne(Media::class)->where('info', 'profile_picture')->latest();
+    }
 }

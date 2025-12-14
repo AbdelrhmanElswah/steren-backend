@@ -81,5 +81,10 @@ return [
         'ocr_endpoint' => env('VEHICLEDATABASES_OCR_ENDPOINT', 'https://api.vehicledatabases.com/vin-ocr'),
         'auction_endpoint' => env('VEHICLEDATABASES_AUCTION_ENDPOINT', 'https://api.vehicledatabases.com/auction'),
     ],
-
+    
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
 ];
