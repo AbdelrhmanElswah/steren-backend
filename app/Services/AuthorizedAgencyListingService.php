@@ -33,12 +33,15 @@ class AuthorizedAgencyListingService
             $usedFormatted = $this->formatter->formatListings($usedListings);
 
             // New models from authorized_agency_models
-            $models = $this->getAgencyModels($authorizedAgencyId, $lang);
+            $modelsData = $this->getAgencyModels($authorizedAgencyId, $lang);
+            $models = $modelsData['models'];
+            $brandName = $modelsData['brand_name'];
 
             return [
                 'agency' => [
                     'id' => $agency->id,
                     'name' => $this->getLocalized($agency, 'name', $lang),
+                    'brand_name' => $brandName,
                     'studio_id' => $studioIds[0] ?? null,
                 ],
                 'new' => [
@@ -130,7 +133,14 @@ class AuthorizedAgencyListingService
             ->where('authorized_agency_id', $authorizedAgencyId)
             ->get();
 
-        return $models->map(function ($model) use ($lang) {
+        // Extract brand name from the first model (if available)
+        $brandName = null;
+        $firstModel = $models->first();
+        if ($firstModel && $firstModel->carModel?->brand) {
+            $brandName = $this->getLocalized($firstModel->carModel->brand, 'name', $lang);
+        }
+
+        $formattedModels = $models->map(function ($model) use ($lang) {
             $outerUrl = null;
             if ($model->outerImage && $model->outerImage->path_file_name) {
                 $outerUrl = $model->outerImage->getS3PublicUrl($model->outerImage->path_file_name);
@@ -140,12 +150,16 @@ class AuthorizedAgencyListingService
                 'id' => $model->id,
                 'car_model_id' => $model->car_model_id,
                 'model_name' => $this->getLocalized($model->carModel, 'name', $lang),
-                'brand_name' => $this->getLocalized($model->carModel?->brand, 'name', $lang),
                 'price_start_from' => $model->price_start_from,
                 'price_currency' => $model->price_currency,
                 'outer_image' => $outerUrl,
             ];
         })->values()->toArray();
+
+        return [
+            'models' => $formattedModels,
+            'brand_name' => $brandName,
+        ];
     }
 
     private function getLocalized($model, string $field, ?string $lang)
