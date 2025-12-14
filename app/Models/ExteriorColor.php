@@ -9,7 +9,7 @@ class ExteriorColor extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'name_ar', 'name_kr'];
+    protected $fillable = ['name', 'name_ar', 'name_kr', 'hex_code'];
 
     public function listings()
     {

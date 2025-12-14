@@ -20,7 +20,7 @@ class ExteriorColorOptionsController extends Controller
         try {
             $lang = $this->getLanguageFromRequest($request);
             
-            $colors = ExteriorColor::select('id', 'name', 'name_ar', 'name_kr')
+            $colors = ExteriorColor::select('id', 'name', 'name_ar', 'name_kr', 'hex_code')
                 ->orderBy('name')
                 ->get();
             
@@ -28,6 +28,7 @@ class ExteriorColorOptionsController extends Controller
                 return [
                     'value' => $color->id,
                     'label' => $this->getLocalizedField($color, 'name', $lang),
+                    'hex_code' => $color->hex_code ?? null,
                 ];
             });
 
