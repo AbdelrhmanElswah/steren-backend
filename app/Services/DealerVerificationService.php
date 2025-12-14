@@ -442,15 +442,35 @@ class DealerVerificationService
             $hasFiles = $this->hasFileUploads($data);
 
             if ($hasFiles) {
-                $response = Http::timeout(30);
-
+                // When files are present, send everything as multipart/form-data
+                // Start building the request
+                $request = Http::timeout(30);
+                
+                // Add file attachments using attach() method
                 $attachments = $this->prepareFileAttachments($data);
                 foreach ($attachments as $fieldName => $file) {
-                    $response = $response->attach($fieldName, $file->getPathname(), $file->getClientOriginalName());
+                    // Attach the file with its original name using file resource for memory efficiency
+                    $request = $request->attach(
+                        $fieldName,
+                        fopen($file->getPathname(), 'r'),
+                        $file->getClientOriginalName()
+                    );
+                    
+                    // Add filename field to payload - use from request data if provided, otherwise use file's original name
+                    $filenameField = $fieldName . '_filename';
+                    if (isset($data[$filenameField]) && !empty($data[$filenameField])) {
+                        $payload[$filenameField] = $data[$filenameField];
+                    } else {
+                        $payload[$filenameField] = $file->getClientOriginalName();
+                    }
                 }
-
-                $response = $response->post($this->baseUrl . '/api/verification/submit', $payload);
+                
+                // Send as multipart/form-data with form fields in payload
+                // When using attach(), Laravel automatically sends as multipart/form-data
+                // and the second parameter becomes form fields
+                $response = $request->post($this->baseUrl . '/api/verification/submit', $payload);
             } else {
+                // When no files, send as JSON
                 $response = Http::timeout(30)->withHeaders([
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
