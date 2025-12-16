@@ -163,7 +163,7 @@ Route::get('home', [App\Http\Controllers\Api\HomePageController::class, 'getHome
 Route::prefix('auth')->group(function () {
     Route::post('/register', [App\Http\Controllers\Auth\AuthController::class, 'register']);
     Route::post('/login', [App\Http\Controllers\Auth\AuthController::class, 'login']);
-    Route::post('/google', [GoogleAuthController::class, 'handleGoogleSignIn']);
+    Route::post('/google', [App\Http\Controllers\Auth\GoogleAuthController::class, 'handleGoogleSignIn']);
     Route::get('/google/redirect', [GoogleAuthController::class, 'redirectToGoogle']);
     Route::get('/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
     Route::post('/send-otp', [App\Http\Controllers\Auth\AuthController::class, 'sendOtp']);
