@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Laravel\Socialite\Facades\Socialite;
 use App\Models\User;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Storage;
 
 class GoogleAuthController extends Controller
 {
+    use ApiResponse;
+    
     protected $authService;
 
     public function __construct(AuthService $authService)
