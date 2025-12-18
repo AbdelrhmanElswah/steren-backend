@@ -60,7 +60,7 @@ return [
         'messaging_sender_id' => env('FIREBASE_MESSAGING_SENDER_ID'),
         'app_id' => env('FIREBASE_APP_ID'),
         'measurement_id' => env('FIREBASE_MEASUREMENT_ID'),
-        'credentials' => storage_path('app/firebase/firebase-credentials.json'),
+        'credentials' => storage_path('app/firebase/steren-888bd-firebase-adminsdk-fbsvc-e0eadb681d.json'),
         'scope_message_url' => env('FIREBASE_SCOPE_MESSAGE_URL', 'https://www.googleapis.com/auth/firebase.messaging'),
     ],
 
