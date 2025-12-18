@@ -163,9 +163,7 @@ Route::get('home', [App\Http\Controllers\Api\HomePageController::class, 'getHome
 Route::prefix('auth')->group(function () {
     Route::post('/register', [App\Http\Controllers\Auth\AuthController::class, 'register']);
     Route::post('/login', [App\Http\Controllers\Auth\AuthController::class, 'login']);
-    Route::post('/google', [App\Http\Controllers\Auth\GoogleAuthController::class, 'handleGoogleSignIn']);
-    Route::get('/google/redirect', [App\Http\Controllers\Auth\GoogleAuthController::class, 'redirectToGoogle']);
-    Route::get('/google/callback', [App\Http\Controllers\Auth\GoogleAuthController::class, 'handleGoogleCallback']);
+    Route::post('/firebase', [App\Http\Controllers\Auth\FirebaseAuthController::class, 'handleFirebaseAuth']);
     Route::post('/send-otp', [App\Http\Controllers\Auth\AuthController::class, 'sendOtp']);
     Route::post('/verify-otp', [App\Http\Controllers\Auth\AuthController::class, 'verifyOtp'])->middleware('auth:sanctum');
     Route::post('/social-login', [App\Http\Controllers\Auth\SocialAuthController::class, 'socialLogin']);
