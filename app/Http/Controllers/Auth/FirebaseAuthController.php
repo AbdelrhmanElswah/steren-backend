@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Models\Media;
+use App\Traits\ApiResponse;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Kreait\Firebase\Factory;
@@ -13,6 +15,8 @@ use Kreait\Firebase\Auth as FirebaseAuth;
 
 class FirebaseAuthController extends Controller
 {
+    use ApiResponse;
+
     protected $firebaseAuth;
 
     public function __construct()
