@@ -50,7 +50,7 @@ trait NotificationTrait
                 throw new Exception("Failed to get Firebase access token.");
             }
 
-            $projectId = env('FIREBASE_PROJECT_ID', 'steren-3d035');
+            $projectId = env('FIREBASE_PROJECT_ID', 'steren-888bd');
             $successCount = 0;
             $failedTokens = [];
 
@@ -209,7 +209,7 @@ trait NotificationTrait
     private function getFireBaseAccessToken()
     {
         try {
-            $filepath = storage_path('app/private/google-services.json');
+            $filepath = storage_path('app/firebase/steren-888bd-d34bf407cc58.json');
             if (!file_exists($filepath)) {
                 throw new Exception("Google credentials file not found at: {$filepath}");
             }
