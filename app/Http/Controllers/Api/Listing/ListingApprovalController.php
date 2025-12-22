@@ -30,7 +30,11 @@ class ListingApprovalController extends Controller
                 $request->user()?->id
             );
 
-            // Notification is already sent by ListingApprovalService via UnifiedNotificationService
+            // Send notification using sendNotification
+            $carListing = CarListing::find($listingId);
+            if ($carListing && $carListing->odoo_id) {
+                $this->sendListingStatusNotification($carListing->odoo_id, 'approved');
+            }
 
             return $this->successResponse($result, 'Listing approved successfully');
 
@@ -53,7 +57,11 @@ class ListingApprovalController extends Controller
                 $request->user()?->id
             );
 
-            // Notification is already sent by ListingApprovalService via UnifiedNotificationService
+            // Send notification using sendNotification
+            $carListing = CarListing::find($listingId);
+            if ($carListing && $carListing->odoo_id) {
+                $this->sendListingStatusNotification($carListing->odoo_id, 'rejected', $validated['reason'] ?? 'No reason provided');
+            }
 
             return $this->successResponse($result, 'Listing rejected successfully');
 
@@ -93,7 +101,8 @@ class ListingApprovalController extends Controller
                 $request->user()?->id
             );
 
-            // Notification is already sent by ListingApprovalService via UnifiedNotificationService
+            // Send notification using sendNotification
+            $this->sendListingStatusNotification($odooId, 'approved');
 
             return $this->successResponse($result, 'Listing approved successfully');
 
@@ -117,7 +126,7 @@ class ListingApprovalController extends Controller
             );
 
             // Send notification to user about listing rejection
-            // $this->sendListingStatusNotification($odooId, 'rejected', $reason);
+            $this->sendListingStatusNotification($odooId, 'rejected', $reason);
 
             return $this->successResponse($result, 'Listing rejected successfully');
 

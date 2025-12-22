@@ -40,6 +40,14 @@ class DealerVerificationController extends Controller
             
             $result = $this->dealerVerificationService->submitVerification($data, $user);
 
+            // Send notification to user about dealer application submission
+            if (isset($result['application_id'])) {
+                $application = DealerApplication::find($result['application_id']);
+                if ($application) {
+                    $this->sendDealerApplicationNotification($application, 'submitted');
+                }
+            }
+
             $message = $result['synced_with_odoo'] ?? false 
                 ? 'Dealer verification submitted and synced successfully'
                 : 'Application saved. Sync with Odoo pending.';
@@ -167,7 +175,11 @@ class DealerVerificationController extends Controller
                 $request->user()?->id
             );
 
-            // Notification is already sent by DealerVerificationService via UnifiedNotificationService
+            // Send notification using sendNotification
+            $application = DealerApplication::find($applicationId);
+            if ($application) {
+                $this->sendDealerApplicationNotification($application, 'approved');
+            }
 
             return $this->successResponse($result, 'Dealer application approved successfully');
 
@@ -193,7 +205,11 @@ class DealerVerificationController extends Controller
                 $request->user()?->id
             );
 
-            // Notification is already sent by DealerVerificationService via UnifiedNotificationService
+            // Send notification using sendNotification
+            $application = DealerApplication::find($applicationId);
+            if ($application) {
+                $this->sendDealerApplicationNotification($application, 'rejected', $validated['reason'] ?? 'No reason provided');
+            }
 
             return $this->successResponse($result, 'Dealer application rejected successfully');
 
@@ -280,7 +296,8 @@ class DealerVerificationController extends Controller
             // Call Odoo mark-paid API after successful approval
             $this->callOdooMarkPaid($odooId);
 
-            // Notification is already sent by DealerVerificationService via UnifiedNotificationService
+            // Send notification using sendNotification
+            $this->sendDealerApplicationNotification($application, 'approved');
 
             return $this->successResponse($result, 'Dealer application approved successfully');
 
@@ -350,16 +367,19 @@ class DealerVerificationController extends Controller
         try {
             $application = DealerApplication::where('odoo_id', $odooId)->firstOrFail();
             
+            $reason = $request->input('reason') ?? 'Rejected via Odoo integration';
+            
             $result = $this->dealerVerificationService->rejectApplication(
                 $application->id,
-                'Rejected via Odoo integration', // Default reason for Odoo rejections
+                $reason,
                 null // No specific reviewer for Odoo integration
             );
 
             // Call Odoo mark-paid API after successful rejection
             $this->callOdooMarkPaid($odooId);
 
-            // Notification is already sent by DealerVerificationService via UnifiedNotificationService
+            // Send notification using sendNotification
+            $this->sendDealerApplicationNotification($application, 'rejected', $reason);
 
             return $this->successResponse($result, 'Dealer application rejected successfully');
 
@@ -419,39 +439,92 @@ class DealerVerificationController extends Controller
             }
 
             // Get or create notification type based on status
-            $notificationTypeName = $status === 'approved' ? 'dealer_approved' : 'dealer_rejected';
+            if ($status === 'submitted') {
+                $notificationTypeName = 'dealer_application_submitted';
+                $displayName = 'Dealer Application Submitted';
+                $description = 'Your dealer application has been submitted';
+                $icon = 'send';
+                $color = '#3B82F6';
+                $templateTitle = 'Dealer Application Submitted!';
+                $templateBody = 'Your dealer application for {{company_name}} has been submitted and is under review.';
+                $sortOrder = 13;
+            } elseif ($status === 'approved') {
+                $notificationTypeName = 'dealer_approved';
+                $displayName = 'Dealer Application Approved';
+                $description = 'Your dealer application has been approved';
+                $icon = 'check_circle';
+                $color = '#10B981';
+                $templateTitle = 'Dealer Application Approved!';
+                $templateBody = 'Congratulations! Your dealer application has been approved. You can now access dealer features.';
+                $sortOrder = 14;
+            } elseif ($status === 'rejected') {
+                $notificationTypeName = 'dealer_rejected';
+                $displayName = 'Dealer Application Rejected';
+                $description = 'Your dealer application has been rejected';
+                $icon = 'cancel';
+                $color = '#EF4444';
+                $templateTitle = 'Dealer Application Rejected';
+                $templateBody = 'Your dealer application was not approved. Reason: {{reason}}';
+                $sortOrder = 15;
+            } else {
+                $notificationTypeName = 'dealer_application_status';
+                $displayName = 'Dealer Application Status';
+                $description = 'Dealer application status update';
+                $icon = 'info';
+                $color = '#6B7280';
+                $templateTitle = 'Dealer Application Update';
+                $templateBody = 'Your dealer application status has been updated.';
+                $sortOrder = 16;
+            }
+
             $notificationType = \App\Models\NotificationType::firstOrCreate(
                 ['name' => $notificationTypeName],
                 [
                     'name' => $notificationTypeName,
-                    'display_name' => $status === 'approved' ? 'Dealer Application Approved' : 'Dealer Application Rejected',
-                    'description' => $status === 'approved' 
-                        ? 'Your dealer application has been approved' 
-                        : 'Your dealer application has been rejected',
-                    'icon' => $status === 'approved' ? 'check_circle' : 'cancel',
-                    'color' => $status === 'approved' ? '#10B981' : '#EF4444',
+                    'display_name' => $displayName,
+                    'description' => $description,
+                    'icon' => $icon,
+                    'color' => $color,
                     'is_active' => true,
                     'default_template' => [
-                        'title' => $status === 'approved' 
-                            ? 'Dealer Application Approved!' 
-                            : 'Dealer Application Rejected',
-                        'body' => $status === 'approved'
-                            ? 'Congratulations! Your dealer application has been approved. You can now access dealer features.'
-                            : 'Your dealer application was not approved. Reason: {{reason}}'
+                        'title' => $templateTitle,
+                        'body' => $templateBody
                     ],
-                    'channels' => ['push', 'email'],
-                    'sort_order' => $status === 'approved' ? 14 : 15
+                    'channels' => ['push'],
+                    'sort_order' => $sortOrder
                 ]
             );
 
             // Prepare notification data
-            $title = $status === 'approved' 
-                ? 'Dealer Application Approved!' 
-                : 'Dealer Application Rejected';
-            
-            $body = $status === 'approved'
-                ? "Congratulations! Your dealer application for {$application->dealership_company_name} has been approved. You can now access dealer features and create premium listings."
-                : "Your dealer application for {$application->dealership_company_name} was not approved. Reason: " . ($reason ?? 'No reason provided');
+            if ($status === 'submitted') {
+                $title = 'Dealer Application Submitted!';
+                $body = "Your dealer application for {$application->dealership_company_name} has been submitted and is under review. We'll notify you once it's been processed.";
+            } elseif ($status === 'approved') {
+                $title = 'Dealer Application Approved!';
+                $body = "Congratulations! Your dealer application for {$application->dealership_company_name} has been approved. You can now access dealer features and create premium listings.";
+            } elseif ($status === 'rejected') {
+                $title = 'Dealer Application Rejected';
+                $body = "Your dealer application for {$application->dealership_company_name} was not approved. Reason: " . ($reason ?? 'No reason provided');
+            } else {
+                $title = 'Dealer Application Update';
+                $body = "Your dealer application status has been updated to: {$status}";
+            }
+
+            // Prepare notification data
+            $notificationData = [
+                'dealer_application_id' => $application->id,
+                'company_name' => $application->dealership_company_name,
+                'status' => $status,
+                'reason' => $reason,
+            ];
+
+            if ($status === 'submitted') {
+                $notificationData['submitted_at'] = now()->toISOString();
+            } elseif ($status === 'approved') {
+                $notificationData['approved_at'] = now()->toISOString();
+            } elseif ($status === 'rejected') {
+                $notificationData['rejected_at'] = now()->toISOString();
+            }
 
             // Send notification to user
             $this->sendNotificationToUser(
@@ -459,14 +532,7 @@ class DealerVerificationController extends Controller
                 $title,
                 $body,
                 $notificationType->id,
-                [
-                    'dealer_application_id' => $application->id,
-                    'company_name' => $application->dealership_company_name,
-                    'status' => $status,
-                    'reason' => $reason,
-                    'approved_at' => $status === 'approved' ? now()->toISOString() : null,
-                    'rejected_at' => $status === 'rejected' ? now()->toISOString() : null,
-                ]
+                $notificationData
             );
 
             Log::info('Dealer application notification sent', [

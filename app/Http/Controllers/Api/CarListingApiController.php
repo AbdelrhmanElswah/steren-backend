@@ -17,6 +17,7 @@ use App\Services\UnifiedNotificationService;
 use App\Traits\ApiResponse;
 use App\Traits\HandlesFileUpload;
 use App\Traits\DocumentTrait;
+use App\Traits\NotificationTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -26,7 +27,7 @@ use Illuminate\Support\Str;
 
 class CarListingApiController extends Controller
 {
-    use ApiResponse, HandlesFileUpload, DocumentTrait;
+    use ApiResponse, HandlesFileUpload, DocumentTrait, NotificationTrait;
 
     public function __construct(
         private CarListingService $carListingService,
@@ -1685,8 +1686,45 @@ class CarListingApiController extends Controller
             // Reload listing with relationships for notification
             $carListing->load(['brand', 'carModel']);
             
-            // Use UnifiedNotificationService to create notification (database + optional Firebase)
-            $this->notificationService->createListingCreatedNotification($carListing);
+            // Get or create notification type
+            $notificationType = \App\Models\NotificationType::firstOrCreate(
+                ['name' => 'listing_created'],
+                [
+                    'name' => 'listing_created',
+                    'display_name' => 'Listing Created',
+                    'description' => 'Notification when a car listing is created',
+                    'icon' => 'add_circle',
+                    'color' => '#3B82F6',
+                    'is_active' => true,
+                    'default_template' => [
+                        'title' => 'Listing Created!',
+                        'body' => 'Your {{car_name}} listing has been created and is pending approval.'
+                    ],
+                    'channels' => ['push'],
+                    'sort_order' => 4
+                ]
+            );
+
+            // Get car name for notification
+            $carName = $carListing->title;
+            if ($carListing->brand && $carListing->carModel) {
+                $carName = $carListing->brand->name . ' ' . $carListing->carModel->name . ' ' . $carListing->year;
+            }
+
+            // Use NotificationTrait to send notification
+            $this->sendNotificationToUser(
+                $user->id,
+                'Listing Created!',
+                "Your {$carName} listing has been created and is pending approval.",
+                $notificationType->id,
+                [
+                    'car_listing_id' => $carListing->id,
+                    'car_name' => $carName,
+                    'price' => $carListing->price,
+                    'currency' => $carListing->price_currency,
+                    'status' => 'pending',
+                ]
+            );
 
             Log::info('Listing created notification sent', [
                 'user_id' => $user->id,

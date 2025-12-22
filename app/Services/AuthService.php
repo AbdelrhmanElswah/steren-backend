@@ -10,6 +10,7 @@ use App\Exceptions\OdooConnectionException;
 use App\Exceptions\OdooPartnerCreationException;
 use App\Exceptions\OdooOtpVerificationException;
 use App\Traits\OtpHelper;
+use App\Traits\NotificationTrait;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,7 @@ use Illuminate\Validation\ValidationException;
 
 class AuthService
 {
-    use OtpHelper;
+    use OtpHelper, NotificationTrait;
 
     public function __construct(
         private OdooService $odooService,
@@ -122,7 +123,36 @@ class AuthService
 
             // Create welcome notification (outside transaction to avoid blocking)
             try {
-                $this->notificationService->createUserCreatedNotification($user);
+                $notificationType = \App\Models\NotificationType::firstOrCreate(
+                    ['name' => 'user_registered'],
+                    [
+                        'name' => 'user_registered',
+                        'display_name' => 'Welcome!',
+                        'description' => 'Welcome notification when user registers',
+                        'icon' => 'welcome',
+                        'color' => '#10B981',
+                        'is_active' => true,
+                        'default_template' => [
+                            'title' => 'Welcome to Steren!',
+                            'body' => 'Thank you for joining us, {{full_name}}! Start exploring amazing cars.'
+                        ],
+                        'channels' => ['push'],
+                        'sort_order' => 1
+                    ]
+                );
+
+                $this->sendNotificationToUser(
+                    $user->id,
+                    'Welcome to Steren!',
+                    "Thank you for joining us, {$user->full_name}! Start exploring amazing cars.",
+                    $notificationType->id,
+                    [
+                        'user_id' => $user->id,
+                        'full_name' => $user->full_name,
+                        'email' => $user->email,
+                        'phone' => $user->phone,
+                    ]
+                );
             } catch (\Exception $e) {
                 Log::warning('Failed to create welcome notification for new user (non-critical)', [
                     'user_id' => $user->id,
@@ -875,7 +905,36 @@ class AuthService
 
             // Create welcome notification after account completion
             try {
-                $this->notificationService->createUserCreatedNotification($user);
+                $notificationType = \App\Models\NotificationType::firstOrCreate(
+                    ['name' => 'user_registered'],
+                    [
+                        'name' => 'user_registered',
+                        'display_name' => 'Welcome!',
+                        'description' => 'Welcome notification when user registers',
+                        'icon' => 'welcome',
+                        'color' => '#10B981',
+                        'is_active' => true,
+                        'default_template' => [
+                            'title' => 'Welcome to Steren!',
+                            'body' => 'Thank you for joining us, {{full_name}}! Start exploring amazing cars.'
+                        ],
+                        'channels' => ['push'],
+                        'sort_order' => 1
+                    ]
+                );
+
+                $this->sendNotificationToUser(
+                    $user->id,
+                    'Welcome to Steren!',
+                    "Thank you for joining us, {$user->full_name}! Start exploring amazing cars.",
+                    $notificationType->id,
+                    [
+                        'user_id' => $user->id,
+                        'full_name' => $user->full_name,
+                        'email' => $user->email,
+                        'phone' => $user->phone,
+                    ]
+                );
             } catch (\Exception $e) {
                 Log::warning('Failed to create welcome notification for completed pending account (non-critical)', [
                     'user_id' => $user->id,
