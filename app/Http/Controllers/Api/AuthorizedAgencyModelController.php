@@ -21,6 +21,29 @@ class AuthorizedAgencyModelController extends Controller
         private AuthorizedAgencyModelService $authorizedAgencyModelService
     ) {}
 
+    /**
+     * List all authorized agency models (public endpoint - no auth required)
+     */
+    public function listAll(): JsonResponse
+    {
+        try {
+            $models = AuthorizedAgencyModel::with(['outerImage', 'innerImages', 'carModel.brand', 'authorizedAgency'])
+                ->get();
+
+            return $this->successResponse(
+                AuthorizedAgencyModelResource::collection($models),
+                'Authorized agency models fetched successfully'
+            );
+        } catch (\Throwable $e) {
+            Log::error('AuthorizedAgencyModelController@listAll error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->errorResponse('Failed to fetch authorized agency models', 500);
+        }
+    }
+
     public function index(AuthorizedAgency $authorizedAgency): JsonResponse
     {
         try {

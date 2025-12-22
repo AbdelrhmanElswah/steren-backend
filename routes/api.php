@@ -94,6 +94,9 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('budgets/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'restoreByOdooId']);
 });
 
+// Authorized Agency Models - Public endpoint (no auth required)
+Route::get('authorized-agency-models', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'listAll']);
+
 // Authorized Agency Models - protected
 Route::prefix('authorized-agencies')->middleware('auth:sanctum')->group(function () {
     Route::get('{authorizedAgency}/models', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'index']);
