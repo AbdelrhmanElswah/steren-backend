@@ -94,8 +94,9 @@ Route::prefix('odoo')->middleware('odoo.tracking')->group(function () {
     Route::post('budgets/odoo/{odooId}/restore', [App\Http\Controllers\Api\Odoo\BudgetController::class, 'restoreByOdooId']);
 });
 
-// Authorized Agency Models - Public endpoint (no auth required)
+// Authorized Agency Models - Public endpoints (no auth required)
 Route::get('authorized-agency-models', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'listAll']);
+Route::get('authorized-agency-models/{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'show']);
 
 // Authorized Agency Models - protected
 Route::prefix('authorized-agencies')->middleware('auth:sanctum')->group(function () {
@@ -104,7 +105,6 @@ Route::prefix('authorized-agencies')->middleware('auth:sanctum')->group(function
 });
 
 Route::prefix('authorized-agency-models')->middleware('auth:sanctum')->group(function () {
-    Route::get('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'show']);
     // Use POST for updates to support multipart/form-data uploads without _method override
     Route::post('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'update']);
     Route::delete('{authorizedAgencyModel}', [App\Http\Controllers\Api\AuthorizedAgencyModelController::class, 'destroy']);
