@@ -9,6 +9,7 @@ use App\Models\NotificationType;
 use App\Models\User;
 use App\Traits\ApiResponse;
 use App\Traits\LocalizedResponse;
+use App\Traits\NotificationTrait;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -18,7 +19,7 @@ use Exception;
 
 class NotificationController extends Controller
 {
-    use ApiResponse, LocalizedResponse;
+    use ApiResponse, LocalizedResponse, NotificationTrait;
 
     protected ?FirebaseNotificationService $firebaseService = null;
 
@@ -26,7 +27,14 @@ class NotificationController extends Controller
     {
         // Firebase service is optional - only inject if Firebase is configured
         try {
-            if (env('FIREBASE_SERVER_KEY') || config('services.firebase.server_key')) {
+            // Check if Firebase is enabled and credentials file exists
+            $firebaseEnabled = config('services.firebase.enabled', env('FIREBASE_ENABLED', false));
+            $credentialsPath = config('services.firebase.credentials');
+            
+            if ($firebaseEnabled && $credentialsPath && file_exists($credentialsPath)) {
+                $this->firebaseService = app(FirebaseNotificationService::class);
+            } elseif (env('FIREBASE_SERVER_KEY') || config('services.firebase.server_key')) {
+                // Fallback to server key if credentials file not available
                 $this->firebaseService = app(FirebaseNotificationService::class);
             }
         } catch (\Exception $e) {
@@ -716,13 +724,11 @@ class NotificationController extends Controller
                 return $this->errorResponse('Validation failed', 422, $validator->errors());
             }
 
-            if ($error = $this->checkFirebaseService()) {
-                return $error;
-            }
-
+            // Register FCM token using trait method (doesn't require Firebase service)
+            // Token will be stored in database and can be used later when Firebase is configured
             $deviceInfo = $request->only(['device_id', 'device_type', 'platform', 'app_version', 'os_version']);
 
-            $fcmToken = $this->firebaseService->registerFcmToken(
+            $fcmToken = $this->registerFcmToken(
                 $user->id,
                 $request->token,
                 $deviceInfo

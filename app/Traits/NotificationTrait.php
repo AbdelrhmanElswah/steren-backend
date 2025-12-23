@@ -209,7 +209,8 @@ trait NotificationTrait
     private function getFireBaseAccessToken()
     {
         try {
-            $filepath = storage_path('app/firebase/steren-888bd-d34bf407cc58.json');
+            // Use credentials path from config, fallback to default
+            $filepath = config('services.firebase.credentials', storage_path('app/firebase/steren-888bd-d34bf407cc58.json'));
             if (!file_exists($filepath)) {
                 throw new Exception("Google credentials file not found at: {$filepath}");
             }
