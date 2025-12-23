@@ -708,6 +708,6 @@ class User extends Authenticatable
     }
     public function profilePicture()
     {
-        return $this->hasOne(Media::class)->where('info', 'profile_picture')->latest();
+        return $this->morphOne(Media::class, 'modelable')->where('info', 'profile_picture')->latest();
     }
 }
