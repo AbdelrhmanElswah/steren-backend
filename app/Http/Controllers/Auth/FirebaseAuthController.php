@@ -139,7 +139,7 @@ class FirebaseAuthController extends Controller
             'firebase_uid' => $firebaseUid,
             'google_id' => $provider === 'google' ? $providerId : null,
             'apple_id' => $provider === 'apple' ? $providerId : null,
-            'name' => $name ?? 'User',
+            'full_name' => $name ?? 'User',
             'email' => $email,
             'email_verified_at' => $emailVerified ? now() : null,
             'password' => null,
@@ -191,8 +191,9 @@ class FirebaseAuthController extends Controller
      */
     private function userHasProfilePicture(User $user): bool
     {
-        return Media::where('user_id', $user->id)
-            ->where('type', 'profile')
+        return Media::where('modelable_type', User::class)
+            ->where('modelable_id', $user->id)
+            ->where('info', 'profile_picture')
             ->exists();
     }
 
@@ -208,15 +209,16 @@ class FirebaseAuthController extends Controller
             $filename = 'profile_' . $user->id . '_' . time() . '.jpg';
             $path = 'profiles/' . $filename;
 
-            Storage::disk('public')->put($path, $imageContent);
+            // Use S3 storage instead of public disk
+            Storage::disk('s3')->put($path, $imageContent, 'public');
 
             Media::create([
-                'user_id' => $user->id,
-                'type' => 'profile',
-                'path' => $path,
-                'url' => Storage::disk('public')->url($path),
-                'mime_type' => 'image/jpeg',
-                'size' => strlen($imageContent),
+                'modelable_type' => User::class,
+                'modelable_id' => $user->id,
+                'media' => $filename,
+                'path_file_name' => $path,
+                'file_type' => 'image/jpeg',
+                'info' => 'profile_picture',
             ]);
         } catch (\Exception $e) {
             \Log::error('Failed to save profile picture: ' . $e->getMessage());
