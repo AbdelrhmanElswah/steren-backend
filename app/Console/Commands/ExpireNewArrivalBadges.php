@@ -51,7 +51,12 @@ class ExpireNewArrivalBadges extends Command
             $listing->update(['is_new_arrival' => false]);
             $expiredCount++;
             
-            $this->line("✓ Expired new arrival badge for listing #{$listing->id} (approved: {$listing->approved_at->format('Y-m-d H:i:s')})");
+            // Handle approved_at as string or Carbon instance
+            $approvedAtFormatted = $listing->approved_at instanceof Carbon 
+                ? $listing->approved_at->format('Y-m-d H:i:s')
+                : Carbon::parse($listing->approved_at)->format('Y-m-d H:i:s');
+            
+            $this->line("✓ Expired new arrival badge for listing #{$listing->id} (approved: {$approvedAtFormatted})");
             
             Log::info('New arrival badge expired', [
                 'listing_id' => $listing->id,
