@@ -367,7 +367,8 @@ class DealerVerificationController extends Controller
         try {
             $application = DealerApplication::where('odoo_id', $odooId)->firstOrFail();
             
-            $reason = $request->input('reason') ?? 'Rejected via Odoo integration';
+            // Use null if no reason provided - DatabaseNotificationService will handle with "rejected by admins"
+            $reason = $request->input('reason') ?: null;
             
             $result = $this->dealerVerificationService->rejectApplication(
                 $application->id,
@@ -404,9 +405,11 @@ class DealerVerificationController extends Controller
             if ($action === 'approve') {
                 $result = $this->dealerVerificationService->approveApplication($application->id, null);
             } else {
+                // Use reason from request if provided, otherwise null - DatabaseNotificationService will handle with "rejected by admins"
+                $reason = $validated['reason'] ?? null;
                 $result = $this->dealerVerificationService->rejectApplication(
                     $application->id, 
-                    'Rejected via Odoo integration', 
+                    $reason, 
                     null
                 );
             }
@@ -504,7 +507,7 @@ class DealerVerificationController extends Controller
                 $body = "Congratulations! Your dealer application for {$application->dealership_company_name} has been approved. You can now access dealer features and create premium listings.";
             } elseif ($status === 'rejected') {
                 $title = 'Dealer Application Rejected';
-                $body = "Your dealer application for {$application->dealership_company_name} was not approved. Reason: " . ($reason ?? 'No reason provided');
+                $body = "Your dealer application for {$application->dealership_company_name} was not approved. Reason: " . ($reason ?? 'rejected by admins');
             } else {
                 $title = 'Dealer Application Update';
                 $body = "Your dealer application status has been updated to: {$status}";

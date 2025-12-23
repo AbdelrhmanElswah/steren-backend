@@ -474,14 +474,22 @@ class UnifiedNotificationService
         // Optionally send Firebase push notification
         if ($this->firebaseEnabled && $this->firebaseService) {
             try {
+                // Get user ID from relationship (DealerApplication uses partner_id, not user_id)
+                $userId = $application->user?->id ?? $application->partner_id;
+                
+                // Localized "rejected by admins" text (use English as default for Firebase)
+                $localizedReasons = [
+                    'en' => 'rejected by admins',
+                    'ar' => 'تم الرفض من قبل الإدارة',
+                    'kr' => 'لەلایەن بەڕێوەبەرانەوە ڕەتکرایەوە',
+                ];
+                
+                // Use English as default for Firebase notification (database notification has all variants)
+                $reasonText = $reason ?? $localizedReasons['en'];
                 $title = 'Dealer Application Rejected';
-                $reasonText = $reason ?? 'No reason provided';
                 $message = "Your dealer application was not approved. Reason: {$reasonText}.";
 
                 $notificationType = \App\Models\NotificationType::findByName('dealer_application_rejected');
-
-                // Get user ID from relationship (DealerApplication uses partner_id, not user_id)
-                $userId = $application->user?->id ?? $application->partner_id;
                 if ($userId) {
                     $userId = (int) $userId;
                     if ($userId > 0) {

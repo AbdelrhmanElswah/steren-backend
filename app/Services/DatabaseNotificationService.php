@@ -441,6 +441,36 @@ class DatabaseNotificationService
     }
 
     /**
+     * Get notification translations with localized "rejected by admins" reason
+     * This method handles the case where no specific reason is provided
+     */
+    private function getNotificationTranslationsWithLocalizedReason(string $type): array
+    {
+        // Localized "rejected by admins" text for each language
+        $localizedReasons = [
+            'en' => 'rejected by admins',
+            'ar' => 'تم الرفض من قبل الإدارة',
+            'kr' => 'لەلایەن بەڕێوەبەرانەوە ڕەتکرایەوە',
+        ];
+
+        // Get base translations
+        $translations = $this->getNotificationTranslations($type, []);
+
+        // Replace {{reason}} with localized text for each language
+        foreach (['en', 'ar', 'kr'] as $lang) {
+            if (isset($translations['message'][$lang])) {
+                $translations['message'][$lang] = str_replace(
+                    '{{reason}}',
+                    $localizedReasons[$lang],
+                    $translations['message'][$lang]
+                );
+            }
+        }
+
+        return $translations;
+    }
+
+    /**
      * Create dealer application submitted notification
      */
     public function createDealerApplicationSubmittedNotification($application): Notification
@@ -548,10 +578,16 @@ class DatabaseNotificationService
                 throw new Exception('Notification type "dealer_application_rejected" not found. Please run the seeder.');
             }
 
-            $reasonText = $reason ?? 'No reason provided';
-            
-            // Get translations
-            $translations = $this->getNotificationTranslations('dealer_application_rejected', ['reason' => $reasonText]);
+            // If no reason provided, use localized "rejected by admins" text
+            if ($reason === null) {
+                $reasonText = 'rejected by admins';
+                // Get translations with localized reason for each language
+                $translations = $this->getNotificationTranslationsWithLocalizedReason('dealer_application_rejected');
+            } else {
+                $reasonText = $reason;
+                // Get translations with the provided reason (same for all languages)
+                $translations = $this->getNotificationTranslations('dealer_application_rejected', ['reason' => $reasonText]);
+            }
 
             // Get user ID from relationship (DealerApplication uses partner_id, not user_id)
             $userId = $application->user?->id ?? $application->partner_id;

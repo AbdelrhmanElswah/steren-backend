@@ -23,7 +23,8 @@ class OdooDealerApprovalRequest extends FormRequest
     {
         return [
             'action' => ['required', 'string', Rule::in(['approve', 'reject'])],
-            // reason and reviewed_by are optional for Odoo integration
+            'reason' => ['nullable', 'string', 'max:1000'], // Optional reason for rejection
+            // reviewed_by is optional for Odoo integration
         ];
     }
 

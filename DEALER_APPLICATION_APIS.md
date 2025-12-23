@@ -357,7 +357,7 @@ Reject a dealer application by Odoo ID.
 
 **Notes**:
 - Finds application by `odoo_id`
-- Uses default rejection reason: "Rejected via Odoo integration"
+- If no reason is provided, uses null (notification will show "rejected by admins")
 - Calls Odoo mark-paid API after rejection
 
 ---
