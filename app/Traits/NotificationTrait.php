@@ -24,7 +24,7 @@ trait NotificationTrait
         int $userId, 
         int $notificationTypeId, 
         array $data = [],
-        string $staticKey = null
+        ?string $staticKey = null
     ) {
         try {
             // Get active FCM tokens for the users

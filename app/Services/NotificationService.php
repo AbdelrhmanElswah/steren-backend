@@ -46,7 +46,7 @@ class NotificationService
     /**
      * Send listing rejection notification
      */
-    public function sendListingRejectedNotification(CarListing $listing, string $reason = null): string
+    public function sendListingRejectedNotification(CarListing $listing, ?string $reason = null): string
     {
         try {
             $notificationType = NotificationType::where('name', 'listing_rejected')->first();
@@ -330,7 +330,7 @@ class NotificationService
     /**
      * Send payment successful notification
      */
-    public function sendPaymentSuccessfulNotification(User $user, float $amount, string $description = null): string
+    public function sendPaymentSuccessfulNotification(User $user, float $amount, ?string $description = null): string
     {
         try {
             $notificationType = NotificationType::where('name', 'payment_successful')->first();
@@ -361,7 +361,7 @@ class NotificationService
     /**
      * Send payment failed notification
      */
-    public function sendPaymentFailedNotification(User $user, float $amount, string $reason = null): string
+    public function sendPaymentFailedNotification(User $user, float $amount, ?string $reason = null): string
     {
         try {
             $notificationType = NotificationType::where('name', 'payment_failed')->first();
