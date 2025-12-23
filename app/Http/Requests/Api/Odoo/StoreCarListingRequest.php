@@ -51,7 +51,7 @@ class StoreCarListingRequest extends FormRequest
             'drive_type_id' => 'nullable|exists:drive_types,id',
             'warranty_status_id' => 'nullable|exists:warranty_statuses,id',
             'cylinder_id' => 'nullable|exists:cylinder_options,id',
-            'engine_size' => 'nullable|numeric|min:0',
+            'engine_size' => 'nullable',
             'engine_type' => 'nullable|string|max:255',
             'horsepower' => 'nullable|integer|min:0',
             'torque' => 'nullable|numeric|min:0',

@@ -56,7 +56,7 @@ class CarListingEditRequest extends FormRequest
             'car_info.year' => 'sometimes|integer|min:1900|max:' . (date('Y') + 1),
             'car_info.gcc_import' => 'nullable|string|max:255',
             'car_info.body_type' => 'sometimes|integer|exists:body_types,id',
-            'car_info.engine_size' => 'nullable|numeric|min:0|max:10',
+            'car_info.engine_size' => 'nullable',
             'car_info.fuel_type' => 'nullable|string|max:50',
             'car_info.cylinders' => 'nullable|integer|min:1|max:16',
             'car_info.transmission' => 'nullable|string|max:50',
