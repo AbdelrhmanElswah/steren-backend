@@ -227,6 +227,7 @@ class CarListingApiController extends Controller
             'is_verified' => ($validatedData['seller_info']['type'] ?? '') === 'verified_seller',
             'origin_country' => $normalizedGccImport ?? 'UAE',
             'city_id' => $carInfo['city_id'] ?? null,
+            'is_new_arrival' => true, // Default to true for new listings
         ];
     }
 
@@ -1255,7 +1256,7 @@ class CarListingApiController extends Controller
             'status_id' => $data['status_id'] ?? null,
             'operator_decision' => $data['operator_decision'] ?? 'pending',
             'is_featured' => $data['is_featured'] ?? false,
-            'is_new_arrival' => $data['is_new_arrival'] ?? false,
+            'is_new_arrival' => $data['is_new_arrival'] ?? true,
             'features' => $data['features'] ?? null,
             'price' => $data['price'],
             'price_currency' => $data['price_currency'],

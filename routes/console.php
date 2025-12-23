@@ -15,3 +15,7 @@ Schedule::command('subscriptions:check-expired --suspend')->dailyAt('01:00');
 // Schedule monthly free slot reset for free users
 // Runs on the 1st day of every month at midnight
 Schedule::command('slots:reset-monthly')->monthlyOn(1, '00:00');
+
+// Schedule new arrival badge expiration
+// Runs daily at 2:00 AM to expire new arrival badges for listings approved more than 2 weeks ago
+Schedule::command('listings:expire-new-arrivals')->dailyAt('02:00');
